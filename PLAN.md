@@ -9,13 +9,13 @@
 
 ---
 ## Phase 1: Core Model Foundations
-0. [ ] Record Architecture Decision: Local-first Option A (in this file and overview) — add note to revisit after Phase 3 completion.
-1. [ ] Create `Models/` directory under `UnifiedScanner/UnifiedScanner/`.
-2. [ ] Implement `Device.swift` with unified domain model (as described in PROJECT_OVERVIEW.md) — include supporting enums + structs (DeviceFormFactor, ClassificationConfidence, DiscoverySource, NetworkService, Port, DeviceConstants, Device.Classification).
-3. [ ] Add `ServiceNormalization.swift` containing `ServiceDeriver` and port→service mapping utilities (copy/adapt logic from netscan `ServiceMapper` & Bonjour service formatting; cite sources in comments).
-4. [ ] Add `IPHeuristics.swift` (copy/adapt core best-IP selection logic from Bonjour reference) — self‑contained.
-5. [ ] Provide `Device+Mock.swift` with sample mock devices (variety: router, mac, phone, tv, iot) for UI previews & initial list.
-6. [ ] Write unit tests (in `UnifiedScannerTests`) validating: identity selection, online status, service dedupe ordering, mock generation.
+0. [x] Record Architecture Decision: Local-first Option A (in this file and overview) — add note to revisit after Phase 3 completion. (Phase 1 complete)
+1. [x] Create `Models/` directory under `UnifiedScanner/UnifiedScanner/`.
+2. [x] Implement `Device.swift` with unified domain model (as described in PROJECT_OVERVIEW.md) — include supporting enums + structs (DeviceFormFactor, ClassificationConfidence, DiscoverySource, NetworkService, Port, DeviceConstants, Device.Classification).
+3. [x] Add `ServiceNormalization.swift` containing `ServiceDeriver` and port→service mapping utilities (copy/adapt logic from netscan `ServiceMapper` & Bonjour service formatting; cite sources in comments).
+4. [x] Add `IPHeuristics.swift` (copy/adapt core best-IP selection logic from Bonjour reference) — self‑contained.
+5. [x] Provide `Device+Mock.swift` with sample mock devices (variety: router, mac, phone, tv, iot) for UI previews & initial list.
+6. [x] Write unit tests (in `UnifiedScannerTests`) validating: identity selection, online status, service dedupe ordering, mock generation.
 
 ## Phase 2: UI Integration (List & Detail)
 7. [ ] Replace ad‑hoc `DeviceItem` in `ContentView.swift` with unified `Device` model.
