@@ -53,8 +53,8 @@ public final class MockMDNSProvider: DiscoveryProvider {
                 ]
                 for dev in samples {
                     if Task.isCancelled { break }
-                    let isCancelled = self.cancelled
-                    if isCancelled { break }
+                     let isCancelled = self.cancelled
+                     if isCancelled { break }
                     continuation.yield(dev)
                     try? await Task.sleep(nanoseconds: 300_000_000)
                 }
@@ -191,18 +191,20 @@ actor DiscoveryCoordinator {
         }
         Task { [pingHosts, pingConfig, autoEnumerateIfEmpty, maxAutoEnumeratedHosts] in
             try? await Task.sleep(nanoseconds: UInt64(mdnsWarmupSeconds * 1_000_000_000))
-            var hosts = pingHosts
-            if hosts.isEmpty, autoEnumerateIfEmpty {
+            let hosts: [String]
+            if pingHosts.isEmpty, autoEnumerateIfEmpty {
                 let enumerated: [String]
                 if hostEnumerator is LocalSubnetEnumerator { // optimized fast static path
                     enumerated = LocalSubnetEnumerator.enumerate(maxHosts: maxAutoEnumeratedHosts)
                 } else {
                     enumerated = hostEnumerator.enumerate(maxHosts: maxAutoEnumeratedHosts)
                 }
-                if !enumerated.isEmpty { hosts = enumerated }
+                hosts = enumerated.isEmpty ? [] : enumerated
                 if ProcessInfo.processInfo.environment["PING_INFO_LOG"] == "1" {
                     print("[Discovery] auto-enumerated hosts count=\(hosts.count)")
                 }
+            } else {
+                hosts = pingHosts
             }
             if ProcessInfo.processInfo.environment["PING_INFO_LOG"] == "1" {
                 print("[Discovery] starting ping batch size=\(hosts.count)")

@@ -46,6 +46,7 @@ public final class ARPTableReader {
 
     /// Read all current ARP table entries from the system
     private static func readARPTableSystem() async throws -> [ARPEntry] {
+        #if os(macOS)
         return try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .utility).async {
                 do {
@@ -75,6 +76,11 @@ public final class ARPTableReader {
                 }
             }
         }
+        #else
+        // iOS: ARP table reading not available via Process
+        // Return empty array - ARP functionality will be limited on iOS
+        return []
+        #endif
     }
 
     /// Parse the output from `arp -a -n` command

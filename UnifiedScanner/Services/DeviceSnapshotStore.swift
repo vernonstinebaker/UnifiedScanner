@@ -78,17 +78,23 @@ final class DeviceSnapshotStore: ObservableObject {
          self.persistenceKey = persistenceKey
          self.persistence = persistence ?? LiveDevicePersistence()
          self.classification = classification
-        let env = ProcessInfo.processInfo.environment
-        let disablePersistence = env["UNIFIEDSCANNER_DISABLE_PERSISTENCE"] == "1"
-        if disablePersistence {
-            self.devices = []
-        } else {
-            self.devices = self.persistence.load(key: persistenceKey)
-        }
-        if env["UNIFIEDSCANNER_CLEAR_ON_START"] == "1" {
-            self.devices.removeAll()
-            persist()
-        }
+         let env = ProcessInfo.processInfo.environment
+         let disablePersistence = env["UNIFIEDSCANNER_DISABLE_PERSISTENCE"] == "1"
+         if disablePersistence {
+             self.devices = []
+         } else {
+             self.devices = self.persistence.load(key: persistenceKey)
+             // Sort loaded devices
+             self.devices.sort { (lhs, rhs) -> Bool in
+                 let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
+                 let rhsIP = rhs.bestDisplayIP ?? rhs.primaryIP ?? "255.255.255.255"
+                 return lhsIP < rhsIP
+             }
+         }
+         if env["UNIFIEDSCANNER_CLEAR_ON_START"] == "1" {
+             self.devices.removeAll()
+             persist()
+         }
         NotificationCenter.default.addObserver(forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification, object: NSUbiquitousKeyValueStore.default, queue: .main) { [weak self] _ in
             guard let self else { return }
             Task { @MainActor in
@@ -135,6 +141,12 @@ final class DeviceSnapshotStore: ObservableObject {
             devices.append(newDevice)
             changedFields = Set(DeviceField.allCases)
         }
+        // Sort devices after modification
+        devices.sort { (lhs, rhs) -> Bool in
+            let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
+            let rhsIP = rhs.bestDisplayIP ?? rhs.primaryIP ?? "255.255.255.255"
+            return lhsIP < rhsIP
+        }
         persist()
         if !changedFields.isEmpty {
             let after = devices.first(where: { $0.id == (before?.id ?? newDevice.id) }) ?? newDevice
@@ -146,42 +158,54 @@ final class DeviceSnapshotStore: ObservableObject {
         for d in list { upsert(d, source: source) }
     }
 
-     func applyPing(_ measurement: PingMeasurement) {
-          let infoLoggingEnabled = (ProcessInfo.processInfo.environment["PING_INFO_LOG"] == "1")
-          if infoLoggingEnabled { print("[Store] applyPing host=\(measurement.host) status=\(measurement.status)") }
-          // Find existing device by primary or secondary IP
-          if let idx = devices.firstIndex(where: { $0.primaryIP == measurement.host || $0.ips.contains(measurement.host) }) {
-             var dev = devices[idx]
-             switch measurement.status {
-             case .success(let rtt):
-                 dev.rttMillis = rtt
-                 dev.lastSeen = measurement.timestamp
-                 dev.discoverySources.insert(.ping)
-             case .timeout, .unreachable, .error:
-                 if infoLoggingEnabled { print("[Ping] ignore non-success for existing host=\(measurement.host) status=\(measurement.status)") }
-                 break
-             }
-             let old = devices[idx]
-             devices[idx] = dev
-             persist()
-             let changed = DeviceField.differences(old: old, new: dev)
-             if !changed.isEmpty { emit(.change(DeviceChange(before: old, after: dev, changed: changed, source: .ping))) }
-         } else {
-             // Only create a new device on successful ping to avoid cluttering UI with non-responsive hosts.
-             guard case .success(let rtt) = measurement.status else {
-                 if infoLoggingEnabled { print("[Ping] suppress creation for host=\(measurement.host) status=\(measurement.status)") }
-                 return
-             }
-             var newDevice = Device(primaryIP: measurement.host, ips: [measurement.host], discoverySources: [.ping])
-             newDevice.rttMillis = rtt
-             newDevice.firstSeen = measurement.timestamp
-             newDevice.lastSeen = measurement.timestamp
-             newDevice.classification = classification.classify(device: newDevice)
-             devices.append(newDevice)
-             persist()
-             emit(.change(DeviceChange(before: nil, after: newDevice, changed: Set(DeviceField.allCases), source: .ping)))
-         }
-     }
+      func applyPing(_ measurement: PingMeasurement) {
+           let infoLoggingEnabled = (ProcessInfo.processInfo.environment["PING_INFO_LOG"] == "1")
+           if infoLoggingEnabled { print("[Store] applyPing host=\(measurement.host) status=\(measurement.status)") }
+           // Find existing device by primary or secondary IP
+           if let idx = devices.firstIndex(where: { $0.primaryIP == measurement.host || $0.ips.contains(measurement.host) }) {
+              var dev = devices[idx]
+              switch measurement.status {
+              case .success(let rtt):
+                  dev.rttMillis = rtt
+                  dev.lastSeen = measurement.timestamp
+                  dev.discoverySources.insert(.ping)
+              case .timeout, .unreachable, .error:
+                  if infoLoggingEnabled { print("[Ping] ignore non-success for existing host=\(measurement.host) status=\(measurement.status)") }
+                  break
+              }
+              let old = devices[idx]
+              devices[idx] = dev
+              // Sort after modification
+              devices.sort { (lhs, rhs) -> Bool in
+                  let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
+                  let rhsIP = rhs.bestDisplayIP ?? rhs.primaryIP ?? "255.255.255.255"
+                  return lhsIP < rhsIP
+              }
+              persist()
+              let changed = DeviceField.differences(old: old, new: dev)
+              if !changed.isEmpty { emit(.change(DeviceChange(before: old, after: dev, changed: changed, source: .ping))) }
+          } else {
+              // Only create a new device on successful ping to avoid cluttering UI with non-responsive hosts.
+              guard case .success(let rtt) = measurement.status else {
+                  if infoLoggingEnabled { print("[Ping] suppress creation for host=\(measurement.host) status=\(measurement.status)") }
+                  return
+              }
+              var newDevice = Device(primaryIP: measurement.host, ips: [measurement.host], discoverySources: [.ping])
+              newDevice.rttMillis = rtt
+              newDevice.firstSeen = measurement.timestamp
+              newDevice.lastSeen = measurement.timestamp
+              newDevice.classification = classification.classify(device: newDevice)
+              devices.append(newDevice)
+              // Sort after modification
+              devices.sort { (lhs, rhs) -> Bool in
+                  let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
+                  let rhsIP = rhs.bestDisplayIP ?? rhs.primaryIP ?? "255.255.255.255"
+                  return lhsIP < rhsIP
+              }
+              persist()
+              emit(.change(DeviceChange(before: nil, after: newDevice, changed: Set(DeviceField.allCases), source: .ping)))
+          }
+      }
 
     func refreshClassifications() {
         var mutations: [DeviceChange] = []
@@ -197,6 +221,12 @@ final class DeviceSnapshotStore: ObservableObject {
                 copy.classification = dev.classification
             }
             return copy
+        }
+        // Sort after modification
+        devices.sort { (lhs, rhs) -> Bool in
+            let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
+            let rhsIP = rhs.bestDisplayIP ?? rhs.primaryIP ?? "255.255.255.255"
+            return lhsIP < rhsIP
         }
         persist()
         for m in mutations { emit(.change(m)) }
@@ -301,6 +331,12 @@ final class DeviceSnapshotStore: ObservableObject {
                 var d = dev
                 if d.classification == nil { d.classification = classification.classify(device: d) }
                 return d
+            }
+            // Sort after loading
+            devices.sort { (lhs, rhs) -> Bool in
+                let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
+                let rhsIP = rhs.bestDisplayIP ?? rhs.primaryIP ?? "255.255.255.255"
+                return lhsIP < rhsIP
             }
             emit(.snapshot(devices))
         }

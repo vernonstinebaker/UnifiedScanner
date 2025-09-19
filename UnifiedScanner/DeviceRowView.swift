@@ -40,6 +40,13 @@ struct DeviceRowView: View {
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
+                    if let mac = device.macAddress {
+                        Text(mac)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .monospaced()
+                    }
                     if let host = device.hostname, host != primaryTitle {
                         Text(host)
                             .font(.caption2)
