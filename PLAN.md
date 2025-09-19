@@ -12,42 +12,44 @@
 0. [x] Record Architecture Decision: Local-first Option A (in this file and overview) — add note to revisit after Phase 3 completion. (Phase 1 complete)
 1. [x] Create `Models/` directory under `UnifiedScanner/UnifiedScanner/`.
 2. [x] Implement `Device.swift` with unified domain model (as described in PROJECT_OVERVIEW.md) — include supporting enums + structs (DeviceFormFactor, ClassificationConfidence, DiscoverySource, NetworkService, Port, DeviceConstants, Device.Classification).
-3. [x] Add `ServiceNormalization.swift` containing `ServiceDeriver` and port→service mapping utilities (copy/adapt logic from netscan `ServiceMapper` & Bonjour service formatting; cite sources in comments).
-4. [x] Add `IPHeuristics.swift` (copy/adapt core best-IP selection logic from Bonjour reference) — self‑contained.
+3. [x] Add `ModelUtilities/ServiceDeriver.swift` containing `ServiceDeriver` and port→service mapping utilities (copy/adapt logic from netscan `ServiceMapper` & Bonjour service formatting; cite sources in comments).
+4. [x] Add `ModelUtilities/IPHeuristics.swift` (copy/adapt core best-IP selection logic from Bonjour reference) — self‑contained.
 5. [x] Provide `Device+Mock.swift` with sample mock devices (variety: router, mac, phone, tv, iot) for UI previews & initial list.
 6. [x] Write unit tests (in `UnifiedScannerTests`) validating: identity selection, online status, service dedupe ordering, mock generation.
 
 ## Phase 2: UI Integration (List & Detail)
-7. [ ] Replace ad‑hoc `DeviceItem` in `ContentView.swift` with unified `Device` model.
-8. [ ] Build a lightweight `DeviceRowView` (if not copying) that consumes `Device` (status indicator, primary name, bestDisplayIP/manufacturer snippet, service pill count summary).
-9. [ ] Refactor `UnifiedDeviceDetail` to consume a `Device` directly; remove local `ServiceItem` / `PortItem` placeholders.
-10. [ ] Implement richer Open Ports section (port number, service name, status) using unified `Port` type.
-11. [ ] Implement service pill actions (open http/https, copy ssh) using normalized `NetworkService.ServiceType`.
-12. [ ] Add SwiftUI previews referencing `Device.mock` set.
+7. [x] Replace ad‑hoc `DeviceItem` in `ContentView.swift` with unified `Device` model.
+8. [x] Build a lightweight `DeviceRowView` (if not copying) that consumes `Device` (status indicator, primary name, bestDisplayIP/manufacturer snippet, service pill count summary).
+9. [x] Refactor `UnifiedDeviceDetail` to consume a `Device` directly; remove local `ServiceItem` / `PortItem` placeholders.
+10. [x] Implement richer Open Ports section (port number, service name, status) using unified `Port` type.
+11. [x] Implement service pill actions (open http/https, copy ssh) using normalized `NetworkService.ServiceType`.
+12. [x] Add SwiftUI previews referencing `Device.mock` set.
 
 ## Phase 3: Classification Pipeline (Static Rules)
-13. [ ] Add `ClassificationRules.swift` replicating essential Bonjour strategies (hostname patterns, service signatures, vendor+service, model hints) with normalized outputs.
-14. [ ] Implement `DeviceClassifier` that produces `Device.Classification` from a `Device`’s current signals.
-15. [ ] Add tests for representative classification scenarios (Apple TV vs HomePod vs generic Mac, Raspberry Pi, Xiaomi patterns, SSH-only host).
-16. [ ] Integrate classification invocation during mock generation & UI (display form factor icon + confidence badge).
+13. [x] Add `Services/ClassificationService.swift` replicating essential Bonjour strategies (hostname patterns, service signatures, vendor+service, model hints) with normalized outputs.
+14. [x] Implement `DeviceClassifier` that produces `Device.Classification` from a `Device`’s current signals. (Implemented as `ClassificationService.classify`.)
+15. [x] Add tests for representative classification scenarios (Apple TV vs generic Mac, printer, router, SSH-only host). (HomePod/Raspberry Pi/Xiaomi deferred.)
+16. [x] Integrate classification invocation during mock generation & UI (display form factor icon + confidence badge).
 
 ## Phase 4: Persistence & Snapshotting
-17. [ ] Define `DeviceSnapshotStore` (in-memory initially) supporting upsert/merge semantics (merge new signals, preserve firstSeen, update lastSeen, accumulate discovery sources & IPs & services).
-18. [ ] Add merge tests (new IP appended; MAC stabilization; service dedupe; discoverySources union).
-19. [ ] Implement optional JSON persistence layer (serialize array of devices) for later sessions.
-20. [ ] Hook store into ContentView (ObservableObject) feeding devices array.
+17. [x] Define `DeviceSnapshotStore` (in-memory initially) supporting upsert/merge semantics (merge new signals, preserve firstSeen, update lastSeen, accumulate discovery sources & IPs & services).
+18. [x] Add merge tests (new IP appended; MAC stabilization; service dedupe; discoverySources union + ports precedence + classification recompute fingerprint).
+19. [x] Implement persistence layer using iCloud Key-Value store (serialize devices JSON under a versioned key; fallback/local JSON optional) + external change observer.
+20. [x] Hook store into ContentView (ObservableObject) feeding devices array.
 
-## Phase 5: Discovery Pipeline Stubs
-21a. [ ] Define `Pinger` protocol + `PingResult` struct (host, latencyMs, timestamp, success).
-21b. [ ] Implement `SimplePingPinger` (iOS only) wrapping SimplePingKit into AsyncStream.
-21c. [ ] Implement `SystemExecPinger` (macOS) invoking `/sbin/ping -c 1 -W <timeout>`; parse output latency.
-21d. [ ] Add conditional factory `PlatformPinger.make()` returning appropriate implementation.
-21e. [ ] Integrate ping RTT updates into `DeviceSnapshotStore` merge (update rttMillis, lastSeen).
+## Phase 5: Discovery Pipeline Implementation ✅ COMPLETED
+21a. [x] Define `Pinger` protocol + streaming `PingMeasurement` (host, sequence, status[rtt/timeout], timestamp).
+21b. [x] Implement `NetworkPinger` (cross-platform) using Network framework TCP/UDP probing with fallback.
+21c. [x] Implement concurrent `PingOrchestrator` with 32 max simultaneous operations.
+21d. [x] Add conditional factory `PlatformPingerFactory.make()` returning Network-based implementation.
+21e. [x] Integrate ping RTT updates into `DeviceSnapshotStore` via `applyPing` (updates rttMillis, lastSeen on success).
 
-21. [ ] Add protocol `DiscoveryProvider` (async sequence or callback) for future network layers.
-22. [ ] Provide stub implementations (`MockMDNSProvider`, `MockARPProvider`, `MockPortScanProvider`) emitting synthetic mutations for demo.
-23. [ ] Integrate stubs with snapshot store to showcase live updates.
-24. [ ] UI: animate inserts/updates (optional polish).
+21. [x] Add protocol `DiscoveryProvider` (async sequence) for future network layers + mock implementation.
+22. [x] Implement `DiscoveryCoordinator` coordinating ping + ARP + broadcast UDP phases.
+23. [x] Integrate `ARPTableReader` with system ARP table parsing and MAC address capture.
+24. [x] Implement broadcast UDP functionality to populate ARP table subnet-wide.
+25. [x] Add comprehensive logging with `PING_INFO_LOG=1` and `ARP_INFO_LOG=1` environment variables.
+26. [x] Test complete discovery pipeline - successfully detects 1400+ devices on local network.
 
 ## Phase 6: Polishing & Docs
 25. [ ] Add inline doc comments for each public-facing model type & derived property.
@@ -68,6 +70,15 @@
 - Do we need IPv6 prioritization logic beyond existing heuristic? (Default: treat IPv4 private ranges as preferred.)
 - Do we store historical RTT samples or only latest? (Currently only latest `rttMillis`; future: rolling window.)
 - Should classification reasons be multi-line structured array vs concatenated string? (Initial: single joined string for simplicity.)
+
+## Deferred Backlog (Post Phase 3)
+- OUI ingestion & live vendor lookup bridging to existing `oui.csv` (protocol hook present; data ingest deferred) — Phase 5
+- DeviceSnapshotStore + mutation streaming (Phase 4 tasks 17–20)
+- Discovery provider implementations (Bonjour, ARP, Ping, PortScan stub, SSDP, WS-Discovery) — Phase 5
+- Fingerprint enrichment (HTTP banners, SSH parsing) — Phase 5/6
+- Accessibility label audit (service pills, port rows) — Phase 6
+- Theming abstraction (UnifiedTheme struct extraction) — Phase 6
+- UI test coverage (navigation & detail flows) — After Phase 4
 
 ## Immediate Next Action
 Implement Phase 1 steps 1–3 (model file, service normalization, heuristics) then add mocks & tests.

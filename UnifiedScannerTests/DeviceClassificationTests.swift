@@ -1,0 +1,38 @@
+import XCTest
+@testable import UnifiedScanner
+
+final class DeviceClassificationTests: XCTestCase {
+    func testAppleTVHighConfidence() {
+        let d = Device.mockAppleTV
+        XCTAssertEqual(d.classification?.formFactor, .tv)
+        XCTAssertEqual(d.classification?.confidence, .high)
+    }
+
+    func testPrinterClassification() {
+        let d = Device.mockPrinter
+        XCTAssertEqual(d.classification?.formFactor, .printer)
+        XCTAssertTrue([.high, .medium].contains(d.classification?.confidence))
+    }
+
+    func testRouterClassification() {
+        let d = Device.mockRouter
+        XCTAssertEqual(d.classification?.formFactor, .router)
+    }
+
+    func testSSHOnlyLowConfidence() {
+        var d = Device(primaryIP: "192.168.1.90", services: [ServiceDeriver.makeService(fromRaw: "_ssh._tcp", port: 22)], openPorts: [])
+        d.classification = ClassificationService.classify(device: d)
+        XCTAssertEqual(d.classification?.formFactor, .server)
+        XCTAssertEqual(d.classification?.confidence, .low)
+    }
+
+    func testAirPlayVsGeneric() {
+        var mac = Device.mockMac
+        XCTAssertEqual(mac.classification?.formFactor, .computer)
+        // Remove AirPlay to degrade classification
+        mac.services = mac.services.filter { $0.type != .airplay }
+        mac.classification = ClassificationService.classify(device: mac)
+        // Might classify as computer (still ssh + vendor) but not tv
+        XCTAssertNotEqual(mac.classification?.formFactor, .tv)
+    }
+}

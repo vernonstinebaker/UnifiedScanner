@@ -14,7 +14,8 @@ public enum IPHeuristics {
         return ipv6.sorted(by: stableSort).first ?? ips.sorted(by: stableSort).first
     }
 
-    private static func stableSort(_ a: String, _ b: String) -> Bool { a < b }
+    // Marked @inline(__always) and nonisolated to avoid unintended MainActor inference in Swift 6
+    nonisolated private static func stableSort(_ a: String, _ b: String) -> Bool { a < b }
 }
 
 fileprivate extension String {

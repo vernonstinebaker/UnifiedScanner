@@ -21,6 +21,7 @@ public enum ServiceDeriver {
     static func normalize(rawType: String) -> (NetworkService.ServiceType, String) {
         let lower = rawType.lowercased()
         if lower.contains("airplay") { return (.airplay, "AirPlay") }
+        if lower.contains("_raop.") { return (.airplayAudio, "AirPlay Audio") }
         if lower.contains("homekit") || lower.contains("hap") { return (.homekit, "HomeKit") }
         if lower.contains("_ssh.") { return (.ssh, "SSH") }
         if lower.contains("_https.") { return (.https, "HTTPS") }
@@ -28,7 +29,7 @@ public enum ServiceDeriver {
         if lower.contains("_ipp.") { return (.ipp, "IPP") }
         if lower.contains("_printer.") { return (.printer, "Printer") }
         if lower.contains("_spotify.") { return (.spotify, "Spotify") }
-        if lower.contains("_chromecast.") { return (.chromecast, "Chromecast") }
+        if lower.contains("_chromecast.") || lower.contains("_googlecast.") { return (.chromecast, "Chromecast") }
         return (.other, rawType.trimmingCharacters(in: CharacterSet(charactersIn: "_")))
     }
 

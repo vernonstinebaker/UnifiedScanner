@@ -1,6 +1,4 @@
 import SwiftUI
-import ScannerDesign
-
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -8,176 +6,215 @@ import UIKit
 import AppKit
 #endif
 
-struct ServiceItem: Identifiable, Hashable {
-    let id = UUID().uuidString
-    let name: String
-    let port: Int
-    let protocolName: String
-}
-
-struct PortItem: Identifiable, Hashable {
-    let id = UUID().uuidString
-    let port: Int
-    let proto: String
-    let state: String
-}
-
 struct UnifiedDeviceDetail: View {
-    let title: String
-    let manufacturer: String?
-    let ips: [String]
-    let mac: String?
-    let isOnline: Bool
-    let services: [ServiceItem]
-    let openPorts: [PortItem]
-    let rttMs: Double?
-    let hostname: String?
+    let device: Device
+
+    private var allIPs: [String] {
+        var result: [String] = []
+        if let primary = device.primaryIP { result.append(primary) }
+        let others = device.ips.filter { $0 != device.primaryIP }
+        result.append(contentsOf: others.sorted())
+        return result
+    }
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: ScannerTheme.space(.xl)) {
-                // Header
-                HStack(spacing: ScannerTheme.space(.md)) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: ScannerTheme.radius(.md))
-                            .fill(ScannerTheme.color(.bgElevated))
-                            .frame(width: 72, height: 72)
-                        Image(systemName: "desktopcomputer")
-                            .foregroundColor(ScannerTheme.color(.accentPrimary))
-                            .font(.system(size: 28))
-                    }
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(title)
-                            .font(ScannerTheme.Typography.title)
-                            .foregroundColor(ScannerTheme.color(.textPrimary))
-                        if let m = manufacturer {
-                            Text(m)
-                                .font(ScannerTheme.Typography.subheadline)
-                                .foregroundColor(ScannerTheme.color(.textSecondary))
-                        }
-                        if let h = hostname {
-                            Text(h)
-                                .font(ScannerTheme.Typography.caption)
-                                .foregroundColor(ScannerTheme.color(.textTertiary))
-                        }
-                    }
-                    Spacer()
-                    Circle()
-                        .fill(isOnline ? ScannerTheme.color(.statusOnline) : ScannerTheme.color(.statusOffline))
-                        .frame(width: 14, height: 14)
-                }
-
-                // Network info card
-                VStack(alignment: .leading, spacing: ScannerTheme.space(.md)) {
-                    InfoRow(label: "Primary IP", value: ips.first)
-                    InfoRow(label: "Other IPs", value: ips.dropFirst().joined(separator: ", ").isEmpty ? nil : ips.dropFirst().joined(separator: ", "))
-                    InfoRow(label: "MAC", value: mac)
-                    InfoRow(label: "RTT (ms)", value: rttMs.map { String(format: "%.1f", $0) })
-                }
-                .padding(ScannerTheme.space(.md))
-                .background(ScannerTheme.color(.bgCard))
-                .cornerRadius(ScannerTheme.radius(.md))
-
-                // Services
-                if !services.isEmpty {
-                    VStack(alignment: .leading, spacing: ScannerTheme.space(.sm)) {
-                        Text("Services")
-                            .font(ScannerTheme.Typography.headline)
-                            .foregroundColor(ScannerTheme.color(.textPrimary))
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: ScannerTheme.space(.sm)) {
-                                ForEach(services) { s in
-                                    Button {
-                                        openService(s)
-                                    } label: {
-                                        Text("\(s.name):\(s.port)")
-                                            .font(ScannerTheme.Typography.caption)
-                                            .foregroundColor(ScannerTheme.color(.textPrimary))
-                                            .padding(.vertical, 6)
-                                            .padding(.horizontal, 10)
-                                            .background(ScannerTheme.color(.bgElevated))
-                                            .cornerRadius(10)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Open ports
-                if !openPorts.isEmpty {
-                    VStack(alignment: .leading, spacing: ScannerTheme.space(.sm)) {
-                        Text("Open Ports")
-                            .font(ScannerTheme.Typography.headline)
-                            .foregroundColor(ScannerTheme.color(.textPrimary))
-                        VStack(spacing: ScannerTheme.space(.sm)) {
-                            ForEach(openPorts) { p in
-                                HStack {
-                                    VStack(alignment: .leading) {
-                                        Text("")
-                                            .font(ScannerTheme.Typography.subheadline)
-                                        Text("")
-                                            .font(ScannerTheme.Typography.body)
-                                    }
-                                    Spacer()
-                                    Text("\(p.port)/\(p.proto)")
-                                        .font(ScannerTheme.Typography.mono)
-                                        .foregroundColor(ScannerTheme.color(.textTertiary))
-                                }
-                                .padding(ScannerTheme.space(.md))
-                                .background(ScannerTheme.color(.bgCard))
-                                .cornerRadius(ScannerTheme.radius(.sm))
-                            }
-                        }
-                    }
-                }
-
-                Spacer()
+            VStack(alignment: .leading, spacing: 28) {
+                header
+                networkInfo
+                servicesSection
+                portsSection
+                Spacer(minLength: 0)
             }
-            .padding(ScannerTheme.space(.lg))
+            .padding(20)
         }
         .navigationTitle("Device")
     }
 
-    func openService(_ s: ServiceItem) {
-        // Attempt to open common service types
-        if s.protocolName.lowercased().contains("http") {
-            let urlString = "http://\(s.name):\(s.port)"
-            if let url = URL(string: urlString) {
+    private var header: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12).fill(Color.gray.opacity(0.15))
+                    .frame(width: 72, height: 72)
+                Image(systemName: iconName)
+                    .font(.system(size: 30))
+                    .foregroundColor(.accentColor)
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                Text(primaryTitle)
+                    .font(.title3.weight(.semibold))
+                if let vendor = device.vendor { Text(vendor).font(.subheadline).foregroundStyle(.secondary) }
+                if let host = device.hostname { Text(host).font(.caption).foregroundStyle(.secondary) }
+                if let c = device.classification {
+                    HStack(spacing: 6) {
+                        ConfidenceBadge(confidence: c.confidence)
+                        Text(c.formFactor?.rawValue.capitalized ?? "Unclassified")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    if !c.reason.isEmpty {
+                        Text(c.reason)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                }
+            }
+            Spacer()
+            Circle()
+                .fill(device.isOnline ? Color.green : Color.red.opacity(0.8))
+                .frame(width: 16, height: 16)
+        }
+    }
+
+    private var networkInfo: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            infoRow("Primary IP", device.primaryIP)
+            let secondary = Array(allIPs.dropFirst())
+            infoRow("Other IPs", secondary.isEmpty ? nil : secondary.joined(separator: ", "))
+            infoRow("MAC", device.macAddress)
+            if let rtt = device.rttMillis { infoRow("RTT (ms)", String(format: "%.1f", rtt)) }
+        }
+        .padding(16)
+        .background(RoundedRectangle(cornerRadius: 12).fill(Color.gray.opacity(0.08)))
+    }
+
+    private var servicesSection: some View {
+        Group {
+            if !device.displayServices.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Services").font(.headline)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(device.displayServices) { svc in
+                                Button { openService(svc) } label: {
+                                    HStack(spacing: 4) {
+                                        Text(serviceLabel(svc))
+                                            .font(.caption)
+                                            .foregroundStyle(.primary)
+                                    }
+                                    .padding(.vertical, 6)
+                                    .padding(.horizontal, 10)
+                                    .background(RoundedRectangle(cornerRadius: 10).fill(Color.gray.opacity(0.15)))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var portsSection: some View {
+        Group {
+            if !device.openPorts.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Open Ports").font(.headline)
+                    VStack(spacing: 8) {
+                        ForEach(device.openPorts) { port in
+                            HStack(alignment: .top) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("\(port.number)/\(port.transport)")
+                                        .font(.system(.subheadline, design: .monospaced))
+                                    Text(port.serviceName.isEmpty ? "Unknown" : port.serviceName)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Text(port.status.rawValue.uppercased())
+                                    .font(.caption2.weight(.semibold))
+                                    .padding(.vertical, 4)
+                                    .padding(.horizontal, 8)
+                                    .background(statusColor(port.status).opacity(0.15))
+                                    .foregroundStyle(statusColor(port.status))
+                                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                            }
+                            .padding(12)
+                            .background(RoundedRectangle(cornerRadius: 10).fill(Color.gray.opacity(0.08)))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Helpers
+    private func infoRow(_ label: String, _ value: String?) -> some View {
+        HStack {
+            Text(label).font(.subheadline).foregroundStyle(.secondary)
+            Spacer()
+            Text(value ?? "N/A").font(.subheadline)
+        }
+    }
+
+    private var primaryTitle: String { device.vendor ?? device.hostname ?? device.bestDisplayIP ?? device.id }
+
+    private var iconName: String {
+        if let ff = device.classification?.formFactor {
+            switch ff {
+            case .router: return "network"
+            case .computer, .laptop: return "desktopcomputer"
+            case .tv: return "tv"
+            case .printer: return "printer"
+            case .phone: return "iphone"
+            case .tablet: return "ipad"
+            case .server: return "server.rack"
+            case .camera: return "camera"
+            case .speaker: return "hifispeaker.fill"
+            case .iot, .hub, .accessory: return "dot.radiowaves.left.and.right"
+            case .gameConsole: return "gamecontroller"
+            case .unknown: return "desktopcomputer"
+            }
+        }
+        if device.displayServices.contains(where: { $0.type == .airplay }) { return "airplayvideo" }
+        if device.displayServices.contains(where: { $0.type == .printer }) { return "printer" }
+        if device.displayServices.contains(where: { $0.type == .http || $0.type == .https }) { return "server.rack" }
+        return "desktopcomputer"
+    }
+
+    private func statusColor(_ status: Port.Status) -> Color {
+        switch status {
+        case .open: return .green
+        case .closed: return .gray
+        case .filtered: return .orange
+        }
+    }
+
+    private func serviceLabel(_ svc: NetworkService) -> String {
+        if let p = svc.port { return "\(svc.name):\(p)" }
+        return svc.name
+    }
+
+    private func openService(_ svc: NetworkService) {
+        guard let port = svc.port else { return }
+        switch svc.type {
+        case .http, .https:
+            let scheme = (svc.type == .https) ? "https" : "http"
+            if let host = device.bestDisplayIP ?? device.hostname, let url = URL(string: "\(scheme)://\(host):\(port)") {
                 #if canImport(UIKit)
                 UIApplication.shared.open(url)
                 #elseif canImport(AppKit)
                 NSWorkspace.shared.open(url)
                 #endif
             }
-        } else if s.protocolName.lowercased().contains("ssh") {
-            let cmd = "ssh user@\(s.name) -p \(s.port)"
-            #if canImport(UIKit)
-            UIPasteboard.general.string = cmd
-            #elseif canImport(AppKit)
-            let pb = NSPasteboard.general
-            pb.clearContents()
-            pb.setString(cmd, forType: .string)
-            #endif
+        case .ssh:
+            if let host = device.bestDisplayIP ?? device.hostname {
+                let cmd = "ssh user@\(host) -p \(port)"
+                #if canImport(UIKit)
+                UIPasteboard.general.string = cmd
+                #elseif canImport(AppKit)
+                let pb = NSPasteboard.general
+                pb.clearContents()
+                pb.setString(cmd, forType: .string)
+                #endif
+            }
+        default:
+            break
         }
     }
 }
 
-fileprivate struct InfoRow: View {
-    let label: String
-    let value: String?
-
-    var body: some View {
-        HStack {
-            Text(label).font(ScannerTheme.Typography.subheadline).foregroundColor(ScannerTheme.color(.textSecondary))
-            Spacer()
-            Text(value ?? "N/A").font(ScannerTheme.Typography.body).foregroundColor(ScannerTheme.color(.textPrimary))
-        }
-    }
-}
-
-struct UnifiedDeviceDetail_Previews: PreviewProvider {
-    static var previews: some View {
-        UnifiedDeviceDetail(title: "My Device", manufacturer: "ACME", ips: ["192.168.1.2", "10.0.0.5"], mac: "AA:BB:CC:DD:EE:FF", isOnline: true, services: [ServiceItem(name: "http-device.local", port: 80, protocolName: "http")], openPorts: [PortItem(port: 22, proto: "tcp", state: "open")], rttMs: 12.4, hostname: "device.local")
-    }
+#Preview("Detail") {
+    UnifiedDeviceDetail(device: .mockMac)
 }

@@ -1,0 +1,349 @@
+import Foundation
+import Combine
+
+// MARK: - Mutation Stream Types
+public enum DeviceField: String, CaseIterable, Sendable {
+    case hostname, vendor, modelHint, rttMillis, services, openPorts, discoverySources, classification, ips, primaryIP, lastSeen, firstSeen, macAddress, fingerprints, isOnlineOverride
+}
+
+public enum MutationSource: Sendable { case mdns, ping, classification, persistenceRestore }
+
+public struct DeviceChange: Sendable {
+    public let before: Device?
+    public let after: Device
+    public let changed: Set<DeviceField>
+    public let source: MutationSource
+    public init(before: Device?, after: Device, changed: Set<DeviceField>, source: MutationSource) {
+        self.before = before
+        self.after = after
+        self.changed = changed
+        self.source = source
+    }
+}
+
+public enum DeviceMutation: Sendable {
+    case snapshot([Device])
+    case change(DeviceChange)
+}
+
+extension DeviceField {
+    static func differences(old: Device, new: Device) -> Set<DeviceField> {
+        var result: Set<DeviceField> = []
+        if old.hostname != new.hostname { result.insert(.hostname) }
+        if old.vendor != new.vendor { result.insert(.vendor) }
+        if old.modelHint != new.modelHint { result.insert(.modelHint) }
+        if old.rttMillis != new.rttMillis { result.insert(.rttMillis) }
+        if old.services != new.services { result.insert(.services) }
+        if old.openPorts != new.openPorts { result.insert(.openPorts) }
+        if old.discoverySources != new.discoverySources { result.insert(.discoverySources) }
+        if old.classification != new.classification { result.insert(.classification) }
+        if old.ips != new.ips { result.insert(.ips) }
+        if old.primaryIP != new.primaryIP { result.insert(.primaryIP) }
+        if old.lastSeen != new.lastSeen { result.insert(.lastSeen) }
+        if old.firstSeen != new.firstSeen { result.insert(.firstSeen) }
+        if old.macAddress != new.macAddress { result.insert(.macAddress) }
+        if old.fingerprints != new.fingerprints { result.insert(.fingerprints) }
+        if old.isOnlineOverride != new.isOnlineOverride { result.insert(.isOnlineOverride) }
+        return result
+    }
+}
+
+/// Actor-backed store responsible for maintaining the current set of Devices.
+/// Performs merge (upsert) operations and persists snapshots to iCloud Key-Value store.
+/// Persistence Strategy:
+///  - Serialize full device array to JSON under a versioned key in NSUbiquitousKeyValueStore
+///  - Also mirrors to UserDefaults for fast local restore
+///  - Listens for external KVS change notifications (not implemented yet; hook in UI layer)
+/// Merge Semantics:
+///  - Identity: existing device matched by `id` (stable: MAC > primaryIP > hostname > generated UUID)
+///  - Preserve `firstSeen` (set if absent)
+///  - Update `lastSeen` to `Date()` on any merge
+///  - Union IPs, discoverySources
+///  - Update primaryIP if new candidate arrives and existing is nil
+///  - Merge services & openPorts with deduplication (ServiceDeriver then port uniqueness)
+///  - Classification is re-run automatically when any of: hostname, vendor, services, openPorts change
+///  - RTT and latency fields overwritten if new value provided (latest wins)
+@MainActor
+final class DeviceSnapshotStore: ObservableObject {
+    @Published private(set) var devices: [Device] = []
+    private var mutationContinuations: [UUID: AsyncStream<DeviceMutation>.Continuation] = [:]
+
+    private let persistence: DevicePersistence
+    private let classification: ClassificationService.Type
+    private let persistenceKey: String
+
+     init(persistenceKey: String = "unifiedscanner:devices:v1",
+         persistence: DevicePersistence? = nil,
+         classification: ClassificationService.Type = ClassificationService.self) {
+         self.persistenceKey = persistenceKey
+         self.persistence = persistence ?? LiveDevicePersistence()
+         self.classification = classification
+        let env = ProcessInfo.processInfo.environment
+        let disablePersistence = env["UNIFIEDSCANNER_DISABLE_PERSISTENCE"] == "1"
+        if disablePersistence {
+            self.devices = []
+        } else {
+            self.devices = self.persistence.load(key: persistenceKey)
+        }
+        if env["UNIFIEDSCANNER_CLEAR_ON_START"] == "1" {
+            self.devices.removeAll()
+            persist()
+        }
+        NotificationCenter.default.addObserver(forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification, object: NSUbiquitousKeyValueStore.default, queue: .main) { [weak self] _ in
+            guard let self else { return }
+            Task { @MainActor in
+                self.reloadFromPersistenceIfChanged()
+            }
+        }
+    }
+
+    // MARK: - Public API
+    func mutationStream(includeInitialSnapshot: Bool = true, buffer: Int = 256) -> AsyncStream<DeviceMutation> {
+        let id = UUID()
+        return AsyncStream(bufferingPolicy: .bufferingOldest(buffer)) { continuation in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.mutationContinuations[id] = continuation
+                if includeInitialSnapshot { continuation.yield(.snapshot(self.devices)) }
+                continuation.onTermination = { [weak self] _ in
+                    Task { @MainActor [weak self] in
+                        self?.mutationContinuations.removeValue(forKey: id)
+                    }
+                }
+            }
+        }
+    }
+
+    private func emit(_ mutation: DeviceMutation) {
+        for (_, cont) in mutationContinuations { cont.yield(mutation) }
+    }
+
+    func upsert(_ incoming: Device, source: MutationSource = .mdns) {
+        let before = devices.first(where: { $0.id == incoming.id })
+        var newDevice = incoming
+        if newDevice.firstSeen == nil { newDevice.firstSeen = Date() }
+        newDevice.lastSeen = Date()
+
+        var changedFields: Set<DeviceField> = []
+        if let idx = devices.firstIndex(where: { $0.id == newDevice.id }) {
+            let merged = merge(existing: devices[idx], incoming: newDevice)
+            let old = devices[idx]
+            devices[idx] = merged
+            changedFields.formUnion(DeviceField.differences(old: old, new: merged))
+        } else {
+            newDevice.classification = classification.classify(device: newDevice)
+            devices.append(newDevice)
+            changedFields = Set(DeviceField.allCases)
+        }
+        persist()
+        if !changedFields.isEmpty {
+            let after = devices.first(where: { $0.id == (before?.id ?? newDevice.id) }) ?? newDevice
+            emit(.change(DeviceChange(before: before, after: after, changed: changedFields, source: source)))
+        }
+     }
+
+    func upsertMany(_ list: [Device], source: MutationSource = .mdns) {
+        for d in list { upsert(d, source: source) }
+    }
+
+     func applyPing(_ measurement: PingMeasurement) {
+          let infoLoggingEnabled = (ProcessInfo.processInfo.environment["PING_INFO_LOG"] == "1")
+          if infoLoggingEnabled { print("[Store] applyPing host=\(measurement.host) status=\(measurement.status)") }
+          // Find existing device by primary or secondary IP
+          if let idx = devices.firstIndex(where: { $0.primaryIP == measurement.host || $0.ips.contains(measurement.host) }) {
+             var dev = devices[idx]
+             switch measurement.status {
+             case .success(let rtt):
+                 dev.rttMillis = rtt
+                 dev.lastSeen = measurement.timestamp
+                 dev.discoverySources.insert(.ping)
+             case .timeout, .unreachable, .error:
+                 if infoLoggingEnabled { print("[Ping] ignore non-success for existing host=\(measurement.host) status=\(measurement.status)") }
+                 break
+             }
+             let old = devices[idx]
+             devices[idx] = dev
+             persist()
+             let changed = DeviceField.differences(old: old, new: dev)
+             if !changed.isEmpty { emit(.change(DeviceChange(before: old, after: dev, changed: changed, source: .ping))) }
+         } else {
+             // Only create a new device on successful ping to avoid cluttering UI with non-responsive hosts.
+             guard case .success(let rtt) = measurement.status else {
+                 if infoLoggingEnabled { print("[Ping] suppress creation for host=\(measurement.host) status=\(measurement.status)") }
+                 return
+             }
+             var newDevice = Device(primaryIP: measurement.host, ips: [measurement.host], discoverySources: [.ping])
+             newDevice.rttMillis = rtt
+             newDevice.firstSeen = measurement.timestamp
+             newDevice.lastSeen = measurement.timestamp
+             newDevice.classification = classification.classify(device: newDevice)
+             devices.append(newDevice)
+             persist()
+             emit(.change(DeviceChange(before: nil, after: newDevice, changed: Set(DeviceField.allCases), source: .ping)))
+         }
+     }
+
+    func refreshClassifications() {
+        var mutations: [DeviceChange] = []
+        devices = devices.map { dev in
+            var copy = dev
+            let newClass = classification.classify(device: dev)
+            if dev.classification != newClass {
+                let before = dev
+                copy.classification = newClass
+                let changed: Set<DeviceField> = [.classification]
+                mutations.append(DeviceChange(before: before, after: copy, changed: changed, source: .classification))
+            } else {
+                copy.classification = dev.classification
+            }
+            return copy
+        }
+        persist()
+        for m in mutations { emit(.change(m)) }
+    }
+
+    func removeAll() {
+        devices.removeAll()
+        persist()
+        emit(.snapshot(devices))
+    }
+
+    // MARK: - Merge Logic
+    private func merge(existing: Device, incoming: Device) -> Device {
+        var result = existing
+        let preClassificationFingerprint = classificationFingerprint(of: existing)
+
+        // Identity-level fields
+        if result.primaryIP == nil, let p = incoming.primaryIP { result.primaryIP = p }
+
+        // Sets / unions
+        result.ips.formUnion(incoming.ips)
+        result.discoverySources.formUnion(incoming.discoverySources)
+
+        // Simple overwrites if new non-nil provided
+        if let host = incoming.hostname, !host.isEmpty { result.hostname = host }
+        if let mac = incoming.macAddress, !mac.isEmpty { result.macAddress = mac }
+        if let vendor = incoming.vendor, !vendor.isEmpty { result.vendor = vendor }
+        if let model = incoming.modelHint, !model.isEmpty { result.modelHint = model }
+        if let rtt = incoming.rttMillis { result.rttMillis = rtt }
+
+        // Services merge (dedupe by (rawType/type, port))
+        if !incoming.services.isEmpty || !incoming.openPorts.isEmpty {
+            let combinedServices = result.services + incoming.services
+            // Dedup services by (type, port, name) preference: keep earlier (existing) unless incoming has more descriptive name
+            var serviceMap: [String: NetworkService] = [:]
+            for svc in combinedServices {
+                let key = "\(svc.type.rawValue)|\(svc.port ?? -1)"
+                if let existing = serviceMap[key] {
+                    // Prefer name with greater length (heuristic for descriptiveness)
+                    if svc.name.count > existing.name.count { serviceMap[key] = svc }
+                } else { serviceMap[key] = svc }
+            }
+            let deduped = Array(serviceMap.values)
+            // Use ServiceDeriver for display ordering
+            result.services = deduped.sorted { a, b in
+                if a.type == b.type { return (a.port ?? 0) < (b.port ?? 0) }
+                return a.type.rawValue < b.type.rawValue
+            }
+
+            // Ports merge (dedupe by number+transport+status preference open>filtered>closed)
+            var portMap: [String: Port] = [:]
+            for p in result.openPorts + incoming.openPorts {
+                let key = "\(p.number)/\(p.transport)"
+                if let ex = portMap[key] {
+                    // Prefer open > filtered > closed, else keep earliest
+                    let priority: (Port.Status) -> Int = { st in
+                        switch st { case .open: return 0; case .filtered: return 1; case .closed: return 2 }
+                    }
+                    if priority(p.status) < priority(ex.status) { portMap[key] = p }
+                } else { portMap[key] = p }
+            }
+            result.openPorts = Array(portMap.values).sorted { $0.number < $1.number }
+        }
+
+        // Fingerprints merge (shallow union)
+        if let incFP = incoming.fingerprints {
+            var fp = result.fingerprints ?? [:]
+            for (k,v) in incFP where !v.isEmpty { fp[k] = v }
+            result.fingerprints = fp
+        }
+
+        // Timestamps
+        result.lastSeen = incoming.lastSeen ?? Date()
+        if result.firstSeen == nil { result.firstSeen = incoming.firstSeen ?? Date() }
+
+        // Recompute classification if relevant fields changed
+        let postFingerprint = classificationFingerprint(of: result)
+        if postFingerprint != preClassificationFingerprint {
+            result.classification = classification.classify(device: result)
+        }
+
+        return result
+    }
+
+    private func classificationFingerprint(of d: Device) -> String {
+        let svcKey = d.services.map { $0.type.rawValue + ("|\($0.port ?? -1)") }.sorted().joined(separator: ",")
+        let portKey = d.openPorts.map { "\($0.number)/\($0.transport)" }.sorted().joined(separator: ",")
+        return "host=\(d.hostname ?? "")|vendor=\(d.vendor ?? "")|model=\(d.modelHint ?? "")|svc=\(svcKey)|ports=\(portKey)"
+    }
+
+    // MARK: - Persistence
+    private func persist() {
+        persistence.save(devices, key: persistenceKey)
+    }
+
+    private func reloadFromPersistenceIfChanged() {
+        let latest = persistence.load(key: persistenceKey)
+        // Only replace if different count or ids changed
+        if latest.map(\ .id) != devices.map(\ .id) || latest.count != devices.count {
+            // Re-run classification to ensure consistency if loaded persisted snapshot lacks it (older version)
+            devices = latest.map { dev in
+                var d = dev
+                if d.classification == nil { d.classification = classification.classify(device: d) }
+                return d
+            }
+            emit(.snapshot(devices))
+        }
+    }
+}
+
+// MARK: - Persistence Adapter
+protocol DevicePersistence {
+    func load(key: String) -> [Device]
+    func save(_ devices: [Device], key: String)
+}
+
+extension DevicePersistence {
+    static var live: DevicePersistence { LiveDevicePersistence() }
+}
+
+struct LiveDevicePersistence: DevicePersistence {
+    private let encoder: JSONEncoder = {
+        let e = JSONEncoder()
+        e.dateEncodingStrategy = .iso8601
+        return e
+    }()
+    private let decoder: JSONDecoder = {
+        let d = JSONDecoder()
+        d.dateDecodingStrategy = .iso8601
+        return d
+    }()
+
+    // Explicitly nonisolated to avoid implicit @MainActor inference
+    nonisolated func load(key: String) -> [Device] {
+        let ubi = NSUbiquitousKeyValueStore.default
+        if let data = ubi.data(forKey: key) ?? (ubi.object(forKey: key) as? Data) {
+            if let arr = try? decoder.decode([Device].self, from: data) { return arr }
+        }
+        if let data = UserDefaults.standard.data(forKey: key), let arr = try? decoder.decode([Device].self, from: data) { return arr }
+        return []
+    }
+
+    nonisolated func save(_ devices: [Device], key: String) {
+        guard let data = try? encoder.encode(devices) else { return }
+        UserDefaults.standard.set(data, forKey: key)
+        let ubi = NSUbiquitousKeyValueStore.default
+        ubi.set(data, forKey: key)
+        ubi.synchronize()
+    }
+}
