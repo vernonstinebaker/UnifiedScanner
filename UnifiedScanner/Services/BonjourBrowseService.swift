@@ -15,6 +15,37 @@ final class BonjourBrowseService: NSObject, @unchecked Sendable {
         return try! NSRegularExpression(pattern: "^_[A-Za-z0-9-]+\\._(tcp|udp)\\.$")
     }()
 
+#if os(iOS)
+    private static let permittedTypesIOS: Set<String> = {
+        [
+            "_services._dns-sd._udp.",
+            "_airplay._tcp.",
+            "_raop._tcp.",
+            "_ssh._tcp.",
+            "_http._tcp.",
+            "_https._tcp.",
+            "_hap._tcp.",
+            "_spotify-connect._tcp.",
+            "_smb._tcp.",
+            "_ipp._tcp.",
+            "_printer._tcp.",
+            "_rfb._tcp.",
+            "_afpovertcp._tcp.",
+            "_sftp-ssh._tcp.",
+            "_companion-link._tcp.",
+            "_device-info._tcp.",
+            "_remotepairing._tcp.",
+            "_apple-mobdev2._tcp.",
+            "_touch-able._tcp.",
+            "_sleep-proxy._udp.",
+            "_workstation._tcp.",
+            "_afp._tcp."
+        ].reduce(into: Set<String>()) { partialResult, type in
+            partialResult.insert(type.lowercased())
+        }
+    }()
+#endif
+
     init(curatedServiceTypes: [String], dynamicBrowserCap: Int) {
         self.curatedServiceTypes = curatedServiceTypes
         self.dynamicBrowserCap = dynamicBrowserCap
@@ -59,6 +90,12 @@ extension BonjourBrowseService: NetServiceBrowserDelegate {
 
     private func emitTypeIfNeeded(_ type: String, origin: String) {
         let lower = type.lowercased()
+#if os(iOS)
+        guard Self.permittedTypesIOS.contains(lower) else {
+            LoggingService.debug("browse: skipping type not declared for iOS origin=\(origin) type=\(type)")
+            return
+        }
+#endif
         var shouldEmit = false
         stateQueue.sync {
             if !emittedServiceTypes.contains(lower) {
@@ -103,6 +140,12 @@ extension BonjourBrowseService: NetServiceBrowserDelegate {
     }
     private func considerStartingDynamicBrowser(forRawDiscoveredType type: String) {
         let normalized = type.lowercased()
+#if os(iOS)
+        guard Self.permittedTypesIOS.contains(normalized) else {
+            LoggingService.debug("browse: iOS skipping dynamic browser for undeclared type=\(type)")
+            return
+        }
+#endif
         stateQueue.sync {
             guard self.activeServiceTypes.count < self.dynamicBrowserCap else { LoggingService.debug("browse: dynamic cap reached cap=\(self.dynamicBrowserCap) skipping type=\(normalized)"); return }
             if !activeServiceTypes.contains(normalized) {

@@ -400,6 +400,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = UnifiedScanner/UnifiedScanner.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = KM3W5N4WXF;
@@ -419,6 +420,8 @@
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSBonjourServices = "_services._dns-sd._udp. _airplay._tcp. _raop._tcp. _ssh._tcp. _http._tcp. _https._tcp. _hap._tcp. _spotify-connect._tcp. _smb._tcp. _ipp._tcp. _printer._tcp. _rfb._tcp. _afpovertcp._tcp. _sftp-ssh._tcp. _companion-link._tcp. _device-info._tcp. _remotepairing._tcp. _apple-mobdev2._tcp. _touch-able._tcp. _sleep-proxy._udp. _workstation._tcp. _afp._tcp.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "UnifiedScanner uses Bonjour to discover devices on your local network.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -436,6 +439,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = plus.agility.UnifiedScanner;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -457,6 +461,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = UnifiedScanner/UnifiedScanner.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = KM3W5N4WXF;
@@ -476,6 +481,8 @@
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSBonjourServices = "_services._dns-sd._udp. _airplay._tcp. _raop._tcp. _ssh._tcp. _http._tcp. _https._tcp. _hap._tcp. _spotify-connect._tcp. _smb._tcp. _ipp._tcp. _printer._tcp. _rfb._tcp. _afpovertcp._tcp. _sftp-ssh._tcp. _companion-link._tcp. _device-info._tcp. _remotepairing._tcp. _apple-mobdev2._tcp. _touch-able._tcp. _sleep-proxy._udp. _workstation._tcp. _afp._tcp.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "UnifiedScanner uses Bonjour to discover devices on your local network.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -493,6 +500,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = plus.agility.UnifiedScanner;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;

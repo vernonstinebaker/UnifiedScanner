@@ -1,4 +1,4 @@
-import Foundation
+@preconcurrency import Foundation
 
 final class BonjourResolveService: NSObject, @unchecked Sendable {
     struct ResolvedService { let ips: [String]; let hostname: String?; let port: Int?; let rawType: String; let txt: [String:String] }
@@ -19,37 +19,48 @@ final class BonjourResolveService: NSObject, @unchecked Sendable {
                 guard let self else { return }
                 for await type in types {
                     if self.stopped { break }
-                    self.startBrowser(for: type)
+                    await self.startBrowser(for: type)
                 }
             }
             continuation.onTermination = { [weak self] _ in self?.stop() }
         }
     }
 
+    @MainActor
     private func startBrowser(for type: String) {
-        let lower = type.lowercased()
+        // Normalize: lowercase + ensure trailing dot to dedupe variants
+        var candidate = type.lowercased()
+        if !candidate.hasSuffix(".") { candidate += "." }
+        let normalizedType = candidate
+        // Some callers might accidentally omit protocol segment; guard to avoid useless browsers
+        if !normalizedType.contains("._tcp.") && !normalizedType.contains("._udp.") {
+            LoggingService.debug("resolve: reject non-canonical type=\(type) normalized=\(normalizedType)")
+            return
+        }
+        let lower = normalizedType
         var shouldStart = false
         stateQueue.sync {
             if !activeTypes.contains(lower) { activeTypes.insert(lower); shouldStart = true }
         }
         guard shouldStart else {
-            LoggingService.debug("resolve: skip duplicate browser type=\(type)")
+            LoggingService.debug("resolve: skip duplicate browser type=\(normalizedType)")
             return
         }
         let create = { [weak self] in
             guard let self else { return }
             let browser = NetServiceBrowser()
-            LoggingService.info("resolve: launching browser for type=\(type) onMain=\(Thread.isMainThread)")
+            LoggingService.info("resolve: launching browser type=\(normalizedType) original=\(type) onMain=\(Thread.isMainThread)")
             browser.delegate = self
-            browser.searchForServices(ofType: type, inDomain: "local.")
-            LoggingService.info("resolve: started browser type=\(type)")
+            browser.searchForServices(ofType: normalizedType, inDomain: "local.")
+            LoggingService.info("resolve: started browser type=\(normalizedType)")
             self.activeBrowsers.append(browser)
         }
-        if Thread.isMainThread { create() } else { DispatchQueue.main.sync(execute: create) }
+        create()
     }
 
     private var activeBrowsers: [NetServiceBrowser] = []
     private var continuations: [AsyncStream<ResolvedService>.Continuation] = []
+    private var resolvingServices: [String: NetService] = [:] // retain services until resolved or failed
 
     func stop() {
         stateQueue.sync { stopped = true; activeTypes.removeAll() }
@@ -106,16 +117,20 @@ final class BonjourResolveService: NSObject, @unchecked Sendable {
     }
 }
 
+@MainActor
 extension BonjourResolveService: NetServiceBrowserDelegate, NetServiceDelegate {
     func netServiceBrowser(_ browser: NetServiceBrowser, didFind service: NetService, moreComing: Bool) {
         service.delegate = self
         let name = service.name; let type = service.type; let domain = service.domain
         LoggingService.info("resolve: discovered service name=\(name) type=\(type) domain=\(domain) moreComing=\(moreComing)")
+        let key = serviceKey(service)
+        let retainedService = service
+        stateQueue.sync { resolvingServices[key] = retainedService }
         if shouldResolve(service) {
             LoggingService.debug("resolve: initiating resolve name=\(name) type=\(type)")
             service.resolve(withTimeout: 5.0)
             let key = self.serviceKey(service)
-            stateQueue.sync { pendingResolveKeys.insert(key) }
+            stateQueue.sync { _ = pendingResolveKeys.insert(key) }
             DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) { [weak self] in
                 guard let self else { return }
                 let stillPending = self.stateQueue.sync { self.pendingResolveKeys.contains(key) }
@@ -129,6 +144,14 @@ extension BonjourResolveService: NetServiceBrowserDelegate, NetServiceDelegate {
     }
     func netServiceBrowser(_ browser: NetServiceBrowser, didNotSearch errorDict: [String : NSNumber]) {
         LoggingService.warn("resolve: browser failed error=\(errorDict)")
+    }
+    func netService(_ sender: NetService, didNotResolve errorDict: [String : NSNumber]) {
+        let key = serviceKey(sender)
+        stateQueue.sync {
+            _ = pendingResolveKeys.remove(key)
+            resolvingServices.removeValue(forKey: key)
+        }
+        LoggingService.warn("resolve: didNotResolve name=\(sender.name) type=\(sender.type) error=\(errorDict)")
     }
     func netServiceDidResolveAddress(_ sender: NetService) {
         guard !stopped else { return }
@@ -144,7 +167,10 @@ extension BonjourResolveService: NetServiceBrowserDelegate, NetServiceDelegate {
         var hostname = sender.hostName
         if let h = hostname, h.hasSuffix(".") { hostname = String(h.dropLast()) }
         let key = serviceKey(sender)
-        stateQueue.sync { pendingResolveKeys.remove(key) }
+        stateQueue.sync {
+            _ = pendingResolveKeys.remove(key)
+            resolvingServices.removeValue(forKey: key)
+        }
         let record = ResolvedService(ips: ips, hostname: hostname, port: sender.port == 0 ? nil : sender.port, rawType: sender.type, txt: txt)
         for c in continuations { c.yield(record) }
     }

@@ -5,40 +5,60 @@ import Darwin
 #endif
 
 // MARK: - ScanProgress
-actor ScanProgress: ObservableObject {
+@MainActor
+final class ScanProgress: ObservableObject {
     enum Phase: String, CaseIterable { case idle, mdnsWarmup, enumerating, arpPriming, pinging, arpRefresh, complete }
-    @MainActor @Published var phase: Phase = .idle
-    @MainActor @Published var totalHosts: Int = 0
-    @MainActor @Published var completedHosts: Int = 0
-    @MainActor @Published var started: Bool = false
-    @MainActor @Published var finished: Bool = false { didSet { if finished { Task { await setPhase(.complete) } } } }
-    @MainActor @Published var successHosts: Int = 0
 
-    private nonisolated func log(_ msg: String) { LoggingService.debug(msg) }
+    @Published var phase: Phase = .idle
+    @Published var totalHosts: Int = 0
+    @Published var completedHosts: Int = 0
+    @Published var started: Bool = false
+    @Published var finished: Bool = false {
+        didSet {
+            if finished && phase != .complete { phase = .complete }
+        }
+    }
+    @Published var successHosts: Int = 0
+
+    private func log(_ message: String) { LoggingService.debug(message) }
 
     func reset() async {
         await setPhase(.idle)
-        await MainActor.run {
-            log("reset (prev total=\(totalHosts) completed=\(completedHosts) success=\(successHosts))")
-            totalHosts = 0; completedHosts = 0; successHosts = 0; started = false; finished = false
-        }
+        log("reset (prev total=\(totalHosts) completed=\(completedHosts) success=\(successHosts))")
+        totalHosts = 0
+        completedHosts = 0
+        successHosts = 0
+        started = false
+        finished = false
     }
+
     func begin(total: Int) async {
         await setPhase(.pinging)
-        await MainActor.run {
-            log("begin total=\(total)")
-            started = true; finished = false; completedHosts = 0; successHosts = 0; totalHosts = total
-        }
+        log("begin total=\(total)")
+        started = true
+        finished = false
+        completedHosts = 0
+        successHosts = 0
+        totalHosts = total
     }
+
     func incrementCompleted() async {
-        await MainActor.run {
-            completedHosts += 1
-            if completedHosts >= totalHosts && totalHosts > 0 { finished = true; log("finished (completed=\(completedHosts) total=\(totalHosts))") }
+        completedHosts += 1
+        if completedHosts >= totalHosts && totalHosts > 0 {
+            finished = true
+            log("finished (completed=\(completedHosts) total=\(totalHosts))")
         }
     }
-    func incrementSuccess() async { await MainActor.run { successHosts += 1 } }
-    func getCurrentProgress() async -> (total: Int, completed: Int, success: Int, started: Bool, finished: Bool, phase: Phase) { await MainActor.run { (totalHosts, completedHosts, successHosts, started, finished, phase) } }
-    func setPhase(_ newPhase: Phase) async { await MainActor.run { self.phase = newPhase } }
+
+    func incrementSuccess() async { successHosts += 1 }
+
+    func getCurrentProgress() async -> (total: Int, completed: Int, success: Int, started: Bool, finished: Bool, phase: Phase) {
+        (totalHosts, completedHosts, successHosts, started, finished, phase)
+    }
+
+    func setPhase(_ newPhase: Phase) async {
+        phase = newPhase
+    }
 }
 
 // MARK: - DiscoveryProvider Protocol
@@ -116,7 +136,9 @@ public final class BonjourDiscoveryProvider: NSObject, @unchecked Sendable, Disc
             for (x,y) in zip(aP,bP) { if x != y { return x < y } }
             return a < b
         }
-        let primary = ipv4s.first ?? ips.first
+        let primary = ipv4s.first(where: { !$0.hasPrefix("127.") && !$0.hasPrefix("169.254.") }) ?? ipv4s.first ?? ips.first
+        let sanitizedIPs = ips.filter { !$0.hasPrefix("127.") && !$0.hasPrefix("169.254.") }
+        let ipSet = sanitizedIPs.isEmpty ? Set(ips) : Set(sanitizedIPs)
 
         // primary chosen above
         var vendor: String? = nil
@@ -126,7 +148,7 @@ public final class BonjourDiscoveryProvider: NSObject, @unchecked Sendable, Disc
             vendor = vm.vendor
             model = vm.model
         }
-        return Device(primaryIP: primary, ips: Set(ips), hostname: hostname, vendor: vendor, modelHint: model, discoverySources: [.mdns], services: [service], fingerprints: fingerprints, firstSeen: Date(), lastSeen: Date())
+        return Device(primaryIP: primary, ips: ipSet, hostname: hostname, vendor: vendor, modelHint: model, discoverySources: [.mdns], services: [service], fingerprints: fingerprints, firstSeen: Date(), lastSeen: Date())
     }
 
     public func start() -> AsyncStream<Device> {
@@ -162,6 +184,7 @@ public final class BonjourDiscoveryProvider: NSObject, @unchecked Sendable, Disc
                         if self.stopped { break }
                         let service = ServiceDeriver.makeService(fromRaw: rs.rawType, port: rs.port)
                         let dev = self.makeSingleServiceDevice(ips: rs.ips, hostname: rs.hostname, service: service, fingerprints: rs.txt)
+                        LoggingService.info("bonjour: yielding device primary=\(dev.primaryIP ?? "nil") hostname=\(dev.hostname ?? "nil") svcType=\(service.type.rawValue) port=\(service.port ?? -1) ips=\(dev.ips.count)")
                         continuation.yield(dev)
                     }
                     continuation.finish()

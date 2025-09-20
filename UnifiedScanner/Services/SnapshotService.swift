@@ -75,6 +75,7 @@ final class SnapshotService: ObservableObject {
      private let persistence: DevicePersistence
     private let classification: ClassificationService.Type
     private let persistenceKey: String
+    private let localIPv4Networks: [IPv4Network]
 
      init(persistenceKey: String = "unifiedscanner:devices:v1",
          persistence: DevicePersistence? = nil,
@@ -86,6 +87,7 @@ final class SnapshotService: ObservableObject {
          self.classification = classification
          self.offlineCheckInterval = offlineCheckInterval
          self.onlineGraceInterval = onlineGraceInterval
+        self.localIPv4Networks = LocalSubnetEnumerator.activeIPv4Networks()
          let env = ProcessInfo.processInfo.environment
          let disablePersistence = env["UNIFIEDSCANNER_DISABLE_PERSISTENCE"] == "1"
          if disablePersistence {
@@ -168,17 +170,32 @@ final class SnapshotService: ObservableObject {
         for (_, cont) in mutationContinuations { cont.yield(mutation) }
     }
 
-     func upsert(_ incoming: Device, source: MutationSource = .mdns) async {
-        // Clear offline override if we have fresh activity
+    func upsert(_ incoming: Device, source: MutationSource = .mdns) async {
+        guard shouldAccept(device: incoming) else {
+            let ipSummary = incoming.ips.sorted().joined(separator: ",")
+            LoggingService.debug("snapshot: skip non-local device primary=\(incoming.primaryIP ?? "nil") ips=\(ipSummary)")
+            return
+        }
+
         var incoming = incoming
+        if source == .mdns {
+            let primary = incoming.primaryIP ?? "nil"
+            let ipsCount = incoming.ips.count
+            let hostname = incoming.hostname ?? "nil"
+            let servicesSummary = incoming.services.map { "\($0.type.rawValue):\($0.port ?? -1)" }.joined(separator: ",")
+            let message = "snapshot: upsert mdns incoming primary=\(primary) ips=\(ipsCount) hostname=\(hostname) services=\(servicesSummary)"
+            LoggingService.info(message)
+        }
+        // Clear offline override if we have fresh activity
         if incoming.isOnlineOverride == false { incoming.isOnlineOverride = nil }
-        let before = devices.first(where: { $0.id == incoming.id })
+        let matchIndex = indexForDevice(incoming)
+        let before = matchIndex.map { devices[$0] }
         var newDevice = incoming
         if newDevice.firstSeen == nil { newDevice.firstSeen = Date() }
         newDevice.lastSeen = Date()
 
         var changedFields: Set<DeviceField> = []
-        if let idx = devices.firstIndex(where: { $0.id == newDevice.id }) {
+        if let idx = matchIndex {
             let merged = await merge(existing: devices[idx], incoming: newDevice)
             let old = devices[idx]
             devices[idx] = merged
@@ -187,7 +204,7 @@ final class SnapshotService: ObservableObject {
             newDevice.classification = await classification.classify(device: newDevice)
             devices.append(newDevice)
             changedFields = Set(DeviceField.allCases)
-         }
+        }
          // Sort devices after modification
          sortDevices()
         persist()
@@ -195,7 +212,7 @@ final class SnapshotService: ObservableObject {
             let after = devices.first(where: { $0.id == (before?.id ?? newDevice.id) }) ?? newDevice
             emit(.change(DeviceChange(before: before, after: after, changed: changedFields, source: source)))
         }
-     }
+    }
 
     func upsertMany(_ list: [Device], source: MutationSource = .mdns) async {
         for d in list { await upsert(d, source: source) }
@@ -391,7 +408,7 @@ final class SnapshotService: ObservableObject {
     private func reloadFromPersistenceIfChanged() async {
         let latest = persistence.load(key: persistenceKey)
         // Only replace if different count or ids changed
-        if latest.map(\ .id) != devices.map(\ .id) || latest.count != devices.count {
+        if latest.map(\.id) != devices.map(\.id) || latest.count != devices.count {
             // Re-run classification to ensure consistency if loaded persisted snapshot lacks it (older version)
             var newDevices: [Device] = []
             for dev in latest {
@@ -404,6 +421,66 @@ final class SnapshotService: ObservableObject {
             sortDevices()
             emit(.snapshot(devices))
         }
+    }
+}
+
+private extension SnapshotService {
+    func shouldAccept(device: Device) -> Bool {
+        var ipCandidates = device.ips
+        if let primary = device.primaryIP { ipCandidates.insert(primary) }
+        if ipCandidates.isEmpty { return true }
+
+        for ip in ipCandidates {
+            let trimmed = ip.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+            if trimmed.hasPrefix("127.") { continue }
+            if trimmed == "::1" { continue }
+            if trimmed.contains(":") { return true } // allow IPv6 (assume local network)
+            if isLocalIPv4(trimmed) { return true }
+        }
+
+        return false
+    }
+
+    func isLocalIPv4(_ ip: String) -> Bool {
+        guard !ip.hasPrefix("169.254.") else { return false }
+        guard let value = IPv4Parser.addressToUInt32(ip) else { return false }
+        if localIPv4Networks.isEmpty { return true }
+        return localIPv4Networks.contains { network in
+            (value & network.netmask) == network.networkAddress
+        }
+    }
+
+    func indexForDevice(_ incoming: Device) -> Int? {
+        // 1. Exact ID match (fast path)
+        if let idx = devices.firstIndex(where: { $0.id == incoming.id }) { return idx }
+
+        // 2. MAC address match (normalized)
+        if let mac = incoming.macAddress?.trimmingCharacters(in: .whitespacesAndNewlines), !mac.isEmpty {
+            let normalized = Device.normalizeMAC(mac)
+            if let idx = devices.firstIndex(where: { device in
+                guard let existingMAC = device.macAddress?.trimmingCharacters(in: .whitespacesAndNewlines), !existingMAC.isEmpty else { return false }
+                return Device.normalizeMAC(existingMAC) == normalized
+            }) { return idx }
+        }
+
+        // 3. Primary IP match
+        if let primary = incoming.primaryIP?.trimmingCharacters(in: .whitespacesAndNewlines), !primary.isEmpty {
+            if let idx = devices.firstIndex(where: { $0.primaryIP == primary }) { return idx }
+        }
+
+        // 4. Any IP overlap
+        if !incoming.ips.isEmpty {
+            let ips = incoming.ips
+            if let idx = devices.firstIndex(where: { !$0.ips.isDisjoint(with: ips) }) { return idx }
+        }
+
+        // 5. Hostname match as a last resort
+        if let host = incoming.hostname?.trimmingCharacters(in: .whitespacesAndNewlines), !host.isEmpty {
+            if let idx = devices.firstIndex(where: { $0.hostname == host }) { return idx }
+        }
+
+        return nil
     }
 }
 

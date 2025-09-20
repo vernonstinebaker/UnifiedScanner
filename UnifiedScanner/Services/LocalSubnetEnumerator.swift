@@ -22,7 +22,7 @@ struct LocalSubnetEnumerator: HostEnumerator {
         return hosts
     }
 
-    private static func primaryIPv4Address() -> String? {
+    static func primaryIPv4Address() -> String? {
         var ifaddr: UnsafeMutablePointer<ifaddrs>? = nil
         guard getifaddrs(&ifaddr) == 0, let start = ifaddr else { return nil }
         defer { freeifaddrs(ifaddr) }
@@ -62,6 +62,47 @@ struct LocalSubnetEnumerator: HostEnumerator {
             index == 3 ? "0" : String(value)
         }.joined(separator: ".")
         return CIDRBlock(cidr: "\(base)/\(prefix)")
+    }
+}
+
+struct IPv4Network: Sendable {
+    let networkAddress: UInt32
+    let netmask: UInt32
+}
+
+extension LocalSubnetEnumerator {
+    static func activeIPv4Networks() -> [IPv4Network] {
+        var networks: [IPv4Network] = []
+        var ifaddr: UnsafeMutablePointer<ifaddrs>? = nil
+        guard getifaddrs(&ifaddr) == 0, let start = ifaddr else { return networks }
+        defer { freeifaddrs(ifaddr) }
+
+        var pointer: UnsafeMutablePointer<ifaddrs>? = start
+        while let current = pointer?.pointee {
+            defer { pointer = current.ifa_next }
+            guard let addrPtr = current.ifa_addr, let maskPtr = current.ifa_netmask else { continue }
+            let flags = Int32(current.ifa_flags)
+            guard (flags & IFF_UP) == IFF_UP else { continue }
+            guard (flags & IFF_LOOPBACK) != IFF_LOOPBACK else { continue }
+            guard addrPtr.pointee.sa_family == sa_family_t(AF_INET) else { continue }
+
+            let ifName = decodeCString(current.ifa_name, context: "LocalSubnetEnumerator.network.ifname")?.lowercased() ?? ""
+            let disallowedPrefixes = ["utun", "ppp", "ipsec", "lo", "gif"]
+            guard !disallowedPrefixes.contains(where: { ifName.hasPrefix($0) }) else { continue }
+
+            let sinAddr = addrPtr.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { $0.pointee }
+            let sinMask = maskPtr.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { $0.pointee }
+            let addr = UInt32(bigEndian: sinAddr.sin_addr.s_addr)
+            let maskRaw = UInt32(bigEndian: sinMask.sin_addr.s_addr)
+            guard maskRaw != 0 else { continue }
+            let network = addr & maskRaw
+            let candidate = IPv4Network(networkAddress: network, netmask: maskRaw)
+            if !networks.contains(where: { $0.networkAddress == candidate.networkAddress && $0.netmask == candidate.netmask }) {
+                networks.append(candidate)
+            }
+        }
+
+        return networks
     }
 }
 

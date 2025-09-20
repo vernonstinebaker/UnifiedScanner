@@ -90,7 +90,7 @@ public enum ServiceDeriver {
     private struct ServiceKey: Hashable { let type: NetworkService.ServiceType; let port: Int? }
 }
 
-private extension NetworkService.ServiceType {
+extension NetworkService.ServiceType {
     var sortIndex: Int {
         switch self {
         case .http: return 0

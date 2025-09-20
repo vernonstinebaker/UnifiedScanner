@@ -19,7 +19,7 @@ struct DeviceRowView: View {
                     DiscoveryPillsView(sources: discoverySources)
                 }
                 if !device.displayServices.isEmpty {
-                    ServiceTagsView(services: Array(device.displayServices.prefix(4)))
+                    ServiceTagsView(services: device.displayServices, maxVisible: 4)
                 }
             }
             Spacer()
@@ -155,24 +155,50 @@ struct DiscoveryPillsView: View {
 
 struct ServiceTagsView: View {
     let services: [NetworkService]
+    var maxVisible: Int? = nil
 
     var body: some View {
+        let compilation = ServicePillCompiler.compile(services: services, maxVisible: maxVisible)
+
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: Theme.space(.sm)) {
-                ForEach(services) { service in
-                    let style = Theme.style(for: service.type)
-                    HStack(spacing: Theme.space(.xs)) {
-                        Image(systemName: style.icon)
-                        Text(style.label.uppercased())
-                    }
-                    .font(Theme.Typography.tag)
-                    .padding(.horizontal, Theme.space(.sm))
-                    .padding(.vertical, Theme.space(.xs))
-                    .background(style.color.opacity(0.18))
-                    .foregroundColor(style.color)
-                    .cornerRadius(Theme.radius(.sm))
+                ForEach(compilation.pills) { pill in
+                    pillView(for: pill)
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func pillView(for pill: ServicePill) -> some View {
+        if pill.isOverflow {
+            Text(pill.label)
+                .font(Theme.Typography.tag)
+                .padding(.horizontal, Theme.space(.sm))
+                .padding(.vertical, Theme.space(.xs))
+                .background(Theme.color(.bgElevated))
+                .foregroundColor(Theme.color(.textSecondary))
+                .cornerRadius(Theme.radius(.sm))
+        } else if let type = pill.type {
+            let style = Theme.style(for: type)
+            HStack(spacing: Theme.space(.xs)) {
+                Image(systemName: style.icon)
+                Text(pill.label.uppercased())
+            }
+            .font(Theme.Typography.tag)
+            .padding(.horizontal, Theme.space(.sm))
+            .padding(.vertical, Theme.space(.xs))
+            .background(style.color.opacity(0.18))
+            .foregroundColor(style.color)
+            .cornerRadius(Theme.radius(.sm))
+        } else {
+            Text(pill.label)
+                .font(Theme.Typography.tag)
+                .padding(.horizontal, Theme.space(.sm))
+                .padding(.vertical, Theme.space(.xs))
+                .background(Theme.color(.bgElevated))
+                .foregroundColor(Theme.color(.textSecondary))
+                .cornerRadius(Theme.radius(.sm))
         }
     }
 }
