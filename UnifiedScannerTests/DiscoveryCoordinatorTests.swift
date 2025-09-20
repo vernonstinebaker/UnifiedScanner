@@ -3,7 +3,7 @@ import XCTest
 
 @MainActor final class DiscoveryCoordinatorTests: XCTestCase {
     func testCoordinatorStagesMDNSBeforePingAndCreatesDeviceOnFirstSuccessfulPing() async {
-        let store = DeviceSnapshotStore(persistenceKey: "coord-test", persistence: MemoryPersistence(), classification: ClassificationService.self)
+        let store = SnapshotService(persistenceKey: "coord-test", persistence: MemoryPersistence(), classification: ClassificationService.self)
         let providerDevice = Device(primaryIP: "192.168.1.10", ips: ["192.168.1.10"], hostname: "apple-tv.local", discoverySources: [.mdns])
         let provider = TestProvider(devices: [providerDevice], perDeviceDelay: 0.05)
         let mockPingService = OneShotMockPingService(rtt: 7.0)
@@ -52,14 +52,23 @@ final class TestProvider: DiscoveryProvider {
     let name = "test-mdns"
     private let devices: [Device]
     private let perDeviceDelay: TimeInterval
-    private var cancelled = false
-    init(devices: [Device], perDeviceDelay: TimeInterval) { self.devices = devices; self.perDeviceDelay = perDeviceDelay }
+
+    private actor CancelState {
+        var cancelled = false
+        func cancel() { cancelled = true }
+    }
+    private let state = CancelState()
+
+    init(devices: [Device], perDeviceDelay: TimeInterval) {
+        self.devices = devices
+        self.perDeviceDelay = perDeviceDelay
+    }
+
     func start() -> AsyncStream<Device> {
-        cancelled = false
-        return AsyncStream { continuation in
+        AsyncStream { continuation in
             Task {
                 for dev in devices {
-                    if cancelled || Task.isCancelled { break }
+                    if await state.cancelled || Task.isCancelled { break }
                     continuation.yield(dev)
                     try? await Task.sleep(nanoseconds: UInt64(perDeviceDelay * 1_000_000_000))
                 }
@@ -67,7 +76,10 @@ final class TestProvider: DiscoveryProvider {
             }
         }
     }
-    func stop() { cancelled = true }
+
+    func stop() {
+        Task { await state.cancel() }
+    }
 }
 
 struct OneShotMockPingService: PingService {

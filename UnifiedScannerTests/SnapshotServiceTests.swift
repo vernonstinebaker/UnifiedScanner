@@ -1,9 +1,9 @@
 import XCTest
 @testable import UnifiedScanner
 
-@MainActor final class DeviceSnapshotStoreTests: XCTestCase {
+@MainActor final class SnapshotServiceTests: XCTestCase {
     func testUpsertPreservesFirstSeenAndUpdatesLastSeen() async {
-        let store = DeviceSnapshotStore(persistence: EphemeralPersistence())
+        let store = SnapshotService(persistence: EphemeralPersistence())
         var d = Device.mockMac
         d.firstSeen = nil
         await store.upsert(d)
@@ -18,7 +18,7 @@ import XCTest
     }
 
     func testIPUnionAndPrimaryIPPreserved() async {
-        let store = DeviceSnapshotStore(persistence: EphemeralPersistence())
+        let store = SnapshotService(persistence: EphemeralPersistence())
         var base = Device.mockMac
         base.primaryIP = "192.168.1.10"
         await store.upsert(base)
@@ -32,7 +32,7 @@ import XCTest
     }
 
     func testServicesMergedAndDeduped() async {
-        let store = DeviceSnapshotStore(persistence: EphemeralPersistence())
+        let store = SnapshotService(persistence: EphemeralPersistence())
         var dev = Device.mockMac
         dev.services = []
         await store.upsert(dev)
@@ -48,7 +48,7 @@ import XCTest
     }
 
     func testClassificationRecomputedOnServiceChange() async {
-        let store = DeviceSnapshotStore(persistence: EphemeralPersistence())
+        let store = SnapshotService(persistence: EphemeralPersistence())
         var dev = Device.mockMac
         dev.services = []
         await store.upsert(dev)
@@ -61,7 +61,7 @@ import XCTest
         XCTAssertNotNil(updated, "Classification should remain available after service update")
     }
     func testPortMergePrecedenceAndOrdering() async {
-        let store = DeviceSnapshotStore(persistence: EphemeralPersistence())
+        let store = SnapshotService(persistence: EphemeralPersistence())
         let dev = Device(primaryIP: "10.0.0.10",
                          ips: ["10.0.0.10"],
                          services: [],
@@ -81,7 +81,7 @@ import XCTest
     }
 
     func testDiscoverySourcesUnion() async {
-        let store = DeviceSnapshotStore(persistence: EphemeralPersistence())
+        let store = SnapshotService(persistence: EphemeralPersistence())
         let dev = Device(primaryIP: "10.0.0.20",
                          ips: ["10.0.0.20"],
                          discoverySources: [.arp],
@@ -99,7 +99,7 @@ import XCTest
     }
 
     func testFingerprintMergeDoesNotTriggerReclassification() async {
-        let store = DeviceSnapshotStore(persistence: EphemeralPersistence())
+        let store = SnapshotService(persistence: EphemeralPersistence())
         var dev = Device.mockMac
         dev.fingerprints = ["osGuess": "macOS"]
         await store.upsert(dev)

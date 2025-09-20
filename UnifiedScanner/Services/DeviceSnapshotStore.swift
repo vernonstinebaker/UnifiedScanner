@@ -64,7 +64,7 @@ extension DeviceField {
 ///  - Classification is re-run automatically when any of: hostname, vendor, services, openPorts change
 ///  - RTT and latency fields overwritten if new value provided (latest wins)
 @MainActor
-final class DeviceSnapshotStore: ObservableObject {
+final class SnapshotService: ObservableObject {
     @Published private(set) var devices: [Device] = []
     private var mutationContinuations: [UUID: AsyncStream<DeviceMutation>.Continuation] = [:]
 
@@ -84,6 +84,13 @@ final class DeviceSnapshotStore: ObservableObject {
              self.devices = []
          } else {
              self.devices = self.persistence.load(key: persistenceKey)
+              if true { // forceOfflineOnRestore now always-on
+                 self.devices = self.devices.map { dev in
+                     var d = dev
+                     d.isOnlineOverride = false
+                     return d
+                 }
+             }
               // Sort loaded devices
               self.devices.sort { (lhs, rhs) -> Bool in
                   let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
@@ -142,11 +149,7 @@ final class DeviceSnapshotStore: ObservableObject {
             changedFields = Set(DeviceField.allCases)
          }
          // Sort devices after modification
-         devices.sort { (lhs, rhs) -> Bool in
-             let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
-             let rhsIP = rhs.bestDisplayIP ?? rhs.primaryIP ?? "255.255.255.255"
-             return compareIPs(lhsIP, rhsIP)
-         }
+         sortDevices()
         persist()
         if !changedFields.isEmpty {
             let after = devices.first(where: { $0.id == (before?.id ?? newDevice.id) }) ?? newDevice
@@ -159,8 +162,7 @@ final class DeviceSnapshotStore: ObservableObject {
     }
 
       func applyPing(_ measurement: PingMeasurement) async {
-           let infoLoggingEnabled = (ProcessInfo.processInfo.environment["PING_INFO_LOG"] == "1")
-           if infoLoggingEnabled { print("[Store] applyPing host=\(measurement.host) status=\(measurement.status)") }
+           LoggingService.debug("applyPing host=\(measurement.host) status=\(measurement.status)")
            // Find existing device by primary or secondary IP
            if let idx = devices.firstIndex(where: { $0.primaryIP == measurement.host || $0.ips.contains(measurement.host) }) {
               var dev = devices[idx]
@@ -170,24 +172,20 @@ final class DeviceSnapshotStore: ObservableObject {
                   dev.lastSeen = measurement.timestamp
                   dev.discoverySources.insert(.ping)
               case .timeout, .unreachable, .error:
-                  if infoLoggingEnabled { print("[Ping] ignore non-success for existing host=\(measurement.host) status=\(measurement.status)") }
+                  LoggingService.debug("ignore non-success existing host=\(measurement.host) status=\(measurement.status)")
                   break
               }
                let old = devices[idx]
                devices[idx] = dev
                // Sort after modification
-               devices.sort { (lhs, rhs) -> Bool in
-                   let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
-                   let rhsIP = rhs.bestDisplayIP ?? rhs.primaryIP ?? "255.255.255.255"
-                   return compareIPs(lhsIP, rhsIP)
-               }
+               sortDevices()
               persist()
               let changed = DeviceField.differences(old: old, new: dev)
               if !changed.isEmpty { emit(.change(DeviceChange(before: old, after: dev, changed: changed, source: .ping))) }
           } else {
               // Only create a new device on successful ping to avoid cluttering UI with non-responsive hosts.
               guard case .success(let rtt) = measurement.status else {
-                  if infoLoggingEnabled { print("[Ping] suppress creation for host=\(measurement.host) status=\(measurement.status)") }
+                   LoggingService.debug("suppress creation host=\(measurement.host) status=\(measurement.status)")
                   return
               }
               var newDevice = Device(primaryIP: measurement.host, ips: [measurement.host], discoverySources: [.ping])
@@ -197,11 +195,7 @@ final class DeviceSnapshotStore: ObservableObject {
              newDevice.classification = await classification.classify(device: newDevice)
                devices.append(newDevice)
                // Sort after modification
-               devices.sort { (lhs, rhs) -> Bool in
-                   let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
-                   let rhsIP = rhs.bestDisplayIP ?? rhs.primaryIP ?? "255.255.255.255"
-                   return compareIPs(lhsIP, rhsIP)
-               }
+               sortDevices()
               persist()
               emit(.change(DeviceChange(before: nil, after: newDevice, changed: Set(DeviceField.allCases), source: .ping)))
           }
@@ -223,18 +217,32 @@ final class DeviceSnapshotStore: ObservableObject {
         }
         devices = newDevices
                // Sort after modification
-               devices.sort { (lhs, rhs) -> Bool in
-                   let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
-                   let rhsIP = rhs.bestDisplayIP ?? rhs.primaryIP ?? "255.255.255.255"
-                   return compareIPs(lhsIP, rhsIP)
-               }
+               sortDevices()
         persist()
         for m in mutations { emit(.change(m)) }
+    }
+
+    private func sortDevices() {
+        devices.sort { (lhs, rhs) -> Bool in
+            let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
+            let rhsIP = rhs.bestDisplayIP ?? rhs.primaryIP ?? "255.255.255.255"
+            return compareIPs(lhsIP, rhsIP)
+        }
     }
 
     func removeAll() {
         devices.removeAll()
         persist()
+        emit(.snapshot(devices))
+    }
+
+    func clearAllData() {
+        devices.removeAll()
+        // Remove both persistence locations explicitly
+        UserDefaults.standard.removeObject(forKey: persistenceKey)
+        let ubi = NSUbiquitousKeyValueStore.default
+        ubi.removeObject(forKey: persistenceKey)
+        ubi.synchronize()
         emit(.snapshot(devices))
     }
 
@@ -353,15 +361,17 @@ final class DeviceSnapshotStore: ObservableObject {
             }
             devices = newDevices
             // Sort after loading
-            devices.sort { (lhs, rhs) -> Bool in
-                let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
-                let rhsIP = rhs.bestDisplayIP ?? rhs.primaryIP ?? "255.255.255.255"
-                return compareIPs(lhsIP, rhsIP)
-            }
+            sortDevices()
             emit(.snapshot(devices))
         }
     }
 }
+
+// Backwards compatibility during migration
+@available(*, deprecated, message: "Use SnapshotService instead")
+typealias DeviceSnapshotStore = SnapshotService
+@available(*, deprecated, message: "Use SnapshotService instead")
+typealias DeviceStore = SnapshotService
 
 // MARK: - Persistence Adapter
 protocol DevicePersistence {

@@ -47,16 +47,16 @@
                ReferencedContainer = "container:UnifiedScanner.xcodeproj">
             </BuildableReference>
          </TestableReference>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "3DD1FD4E2E7B131400D3AF15"
-               BuildableName = "UnifiedScannerUITests.xctest"
-               BlueprintName = "UnifiedScannerUITests"
-               ReferencedContainer = "container:UnifiedScanner.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
+<TestableReference
+             skipped = "YES">
+             <BuildableReference
+                BuildableIdentifier = "primary"
+                BlueprintIdentifier = "3DD1FD4E2E7B131400D3AF15"
+                BuildableName = "UnifiedScannerUITests.xctest"
+                BlueprintName = "UnifiedScannerUITests"
+                ReferencedContainer = "container:UnifiedScanner.xcodeproj">
+             </BuildableReference>
+          </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

@@ -48,15 +48,22 @@ public protocol PingService: Sendable {
     func pingStream(config: PingConfig) async -> AsyncStream<PingMeasurement>
 }
 
-public final class SimplePingKitService: PingService {
-    private let loggerEnabled: Bool
-
-    public init() {
-        self.loggerEnabled = ProcessInfo.processInfo.environment["PING_INFO_LOG"] == "1"
+#if os(macOS)
+public final class NoopPingService: PingService {
+    public init() {}
+    public func pingStream(config: PingConfig) async -> AsyncStream<PingMeasurement> {
+        AsyncStream { continuation in
+            continuation.finish()
+        }
     }
+}
+#endif
+
+public final class SimplePingKitService: PingService {
+    public init() {}
 
     public func pingStream(config: PingConfig) async -> AsyncStream<PingMeasurement> {
-        let logging = loggerEnabled
+        let logging = true
         return AsyncStream { continuation in
             let coordinator = SimplePingStreamCoordinator(continuation: continuation, logging: logging, config: config)
 
@@ -92,7 +99,7 @@ private actor SimplePingStreamCoordinator {
         let (client, configurationDescription) = await MainActor.run { () -> (SimplePingClient, String) in
             let client = SimplePingClient()
             let configuration = PingConfiguration(
-                host: config.host,
+                host: self.config.host,
                 payloadSize: config.payloadSize,
                 interval: config.interval,
                 timeout: config.timeoutPerPing,
@@ -113,7 +120,7 @@ private actor SimplePingStreamCoordinator {
             return (client, description)
         }
 
-        if logging { print(configurationDescription) }
+        if logging { LoggingService.debug(configurationDescription) }
         self.client = client
     }
 
@@ -131,15 +138,15 @@ private actor SimplePingStreamCoordinator {
     private func handleStateChange(_ state: PingState) async {
         switch state {
         case .failed(let error):
-            if logging { print("[SimplePing] failed host=\(config.host) error=\(error)") }
-            let measurement = PingMeasurement(host: config.host,
+            if logging { LoggingService.error("ping failed host=\(self.config.host) error=\(error)") }
+            let measurement = PingMeasurement(host: self.config.host,
                                              sequence: 0,
                                              status: .error(error.errorDescription),
                                              timestamp: Date())
             continuation.yield(measurement)
             await finish()
         case .finished:
-            if logging { print("[SimplePing] finished host=\(config.host)") }
+            if logging { LoggingService.debug("ping finished host=\(self.config.host)") }
             await finish()
         default:
             break
@@ -151,30 +158,30 @@ private actor SimplePingStreamCoordinator {
         case .received(let roundTrip, _, _):
             let millis = roundTrip * 1000.0
             if logging {
-                print("[SimplePing] received host=\(config.host) seq=\(event.sequence) rtt=\(String(format: "%.2f", millis))ms")
+                LoggingService.debug("received host=\(self.config.host) seq=\(event.sequence) rtt=\(String(format: "%.2f", millis))ms")
             }
-            let measurement = PingMeasurement(host: config.host,
+            let measurement = PingMeasurement(host: self.config.host,
                                              sequence: Int(event.sequence),
                                              status: .success(rttMillis: millis),
                                              timestamp: event.timestamp)
             continuation.yield(measurement)
         case .timeout:
-            if logging { print("[SimplePing] timeout host=\(config.host) seq=\(event.sequence)") }
-            let measurement = PingMeasurement(host: config.host,
+            if logging { LoggingService.debug("timeout host=\(self.config.host) seq=\(event.sequence)") }
+            let measurement = PingMeasurement(host: self.config.host,
                                              sequence: Int(event.sequence),
                                              status: .timeout,
                                              timestamp: event.timestamp)
             continuation.yield(measurement)
         case .failed(let error):
-            if logging { print("[SimplePing] error host=\(config.host) seq=\(event.sequence) error=\(error)") }
-            let measurement = PingMeasurement(host: config.host,
+            if logging { LoggingService.error("error host=\(self.config.host) seq=\(event.sequence) error=\(error)") }
+            let measurement = PingMeasurement(host: self.config.host,
                                              sequence: Int(event.sequence),
                                              status: .error(error.errorDescription),
                                              timestamp: event.timestamp)
             continuation.yield(measurement)
             await finish()
         case .sent:
-            if logging { print("[SimplePing] sent host=\(config.host) seq=\(event.sequence)") }
+            if logging { LoggingService.debug("sent host=\(self.config.host) seq=\(event.sequence)") }
         }
     }
 }

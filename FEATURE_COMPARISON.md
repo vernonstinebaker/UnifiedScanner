@@ -1,114 +1,120 @@
 # Feature & Capability Comparison: BonjourScanner vs netscan vs UnifiedScanner
 
-> Purpose: Authoritative reference matrix mapping legacy capabilities to UnifiedScanner design decisions. Legacy projects are **read-only**. This document guides what we adopt, adapt, or defer. Completion status initially unchecked; update as implementation progresses.
+> Purpose: Authoritative reference matrix mapping legacy capabilities to UnifiedScanner design decisions. Legacy projects are **read-only**. This document reflects **current, actually implemented** state plus clearly scoped future work.
 
-Legend: ✅ = Present / Chosen, ❌ = Absent, ⏳ = Planned / In Progress, ➕ = Enhanced/New
+Legend: ✅ = Present, ❌ = Absent, ⏳ = Planned / Not Yet Implemented, ☑️ = Partially Implemented
 
 | Feature / Capability | BonjourScanner | netscan | UnifiedScanner Decision | Implementation Notes / Rationale | Location (Lib vs App) | Status |
 |----------------------|----------------|---------|-------------------------|----------------------------------|-----------------------|--------|
-| Core Device Model (multi-IP) | ✅ `Device.ips:Set` | ❌ (single `ipAddress`) | ➕ Unified uses Set of IPs + primaryIP | Implemented Phase 1 (multi-IP + primary) | App Models | ✅ |
-| Primary IP Heuristic | ✅ `bestDisplayIP` via `IPHeuristics` | Partial (single ip means trivial) | ✅ Copy & adapt Bonjour heuristic | Implemented Phase 1 (`ModelUtilities/IPHeuristics.swift`) | App Models | ✅ |
-| Multi-source Discovery Tracking | Limited (`discoveryMethod: single`) | ✅ `discoverySource` (single) | ➕ Set<DiscoverySource> | Implemented (model field; merge logic later Phase 4) | App Models | ✅ |
-| RTT / Latency Metric | ❌ | ✅ `rttMillis` | ✅ Use optional Double | Field present; live updates deferred (Phase 5) | App Models | ✅ |
-| MAC Address Capture | ✅ `mac` | ✅ `macAddress` | ✅ `macAddress` unified naming | Implemented (normalization helper) | App Models | ✅ |
-| Vendor / OUI | ✅ `vendor` | ✅ `manufacturer` | ✅ `vendor` primary; alias mapping | Vendor field present; OUI loader deferred | App Models | ✅ |
-| Device Type Enum | String + confidence | Strong enum `DeviceType` | ➕ `DeviceFormFactor` + rawType | Implemented; rawType retained for nuances | App Models | ✅ |
-| Device Type Confidence | ✅ `DeviceTypeConfidence` | Approx via `confidence: Double?` | ✅ `ClassificationConfidence` enum | Implemented Phase 1 | App Models | ✅ |
-| Classification Reason | ✅ `classificationReason` | ❌ | ✅ Stored in `Device.Classification.reason` | Implemented Phase 3 | App Models | ✅ |
-| Fingerprints Map | ❌ | ✅ `fingerprints` | ✅ Keep `[String:String]?` | Field present (population deferred) | App Models | ✅ |
+| Core Device Model (multi-IP) | ✅ `Device.ips:Set` | ❌ (single ip) | ➕ Unified uses `Set<String>` + `primaryIP` | Implemented Phase 1 | App Models | ✅ |
+| Primary IP Heuristic | ✅ Bonjour logic | Trivial (single ip) | ✅ Adapt Bonjour heuristic | `IPHeuristics.bestDisplayIP` | App Models | ✅ |
+| Multi-source Discovery Tracking | Limited (single source) | ✅ single enum | ➕ `Set<DiscoverySource>` | Merge logic working | App Models | ✅ |
+| RTT / Latency Metric | ❌ | ✅ `rttMillis` | ✅ Optional Double | Updated on successful ping | App Models | ✅ |
+| MAC Address Capture | ✅ | ✅ | ✅ Unified `macAddress` | ARP (macOS) only; iOS path pending | App Models | ☑️ |
+| Vendor / OUI Field | ✅ `vendor` | ✅ `manufacturer` | ✅ Single `vendor` + alias mapping | Field present; lookup ingestion deferred | App Models | ✅ |
+| Device Type Enum | String + confidence | Strong enum | ➕ `DeviceFormFactor` + `rawType` | Implemented | App Models | ✅ |
+| Device Type Confidence | ✅ | Approx numeric | ✅ `ClassificationConfidence` | Implemented | App Models | ✅ |
+| Classification Reason | ✅ stored | ❌ | ✅ `Classification.reason` | Implemented | App Models | ✅ |
+| Fingerprints Map | ❌ | ✅ | ✅ `[String:String]?` | Field present; population deferred | App Models | ☑️ |
 | First/Last Seen | ✅ | ✅ | ✅ Preserve both | Implemented | App Models | ✅ |
-| Online State Derivation | Computed (5m window) | Explicit `isOnline` flag | ✅ Computed + optional override | Implemented (`recentlySeen` heuristic) | App Models | ✅ |
-| Services Representation | `Set<ServiceInfo>` raw types (`_ssh._tcp`) | `[NetworkService]` normalized enum | ➕ Unified `NetworkService` keeps enum + rawType | Implemented Phase 1 | App Models | ✅ |
-| Service Display Name Formatting | `ServiceNameFormatter` & pill label compiler | `ServiceMapper` + manual naming | ✅ Merge both: normalization + formatting | Implemented (`ModelUtilities/ServiceDeriver.swift`) | App Models Utility | ✅ |
-| Service Deduplication | Limited grouping by display name | `displayServices` logic with port mapping | ✅ Use enhanced netscan logic + improvements | Implemented (displayServices) | App Models Utility | ✅ |
-| Port Scanning | ❌ | ✅ `PortScanner`, `openPorts` | ✅ Adopt netscan approach | Model support only; engine deferred (Phase 5+) | Future Library (maybe) | ⏳ |
-| Port Model Richness | ❌ | ✅ number/description/status | ✅ Preserve + lastSeenOpen + transport | Implemented | App Models | ✅ |
-| Service Pills UI | ✅ (label compiler) | ✅ `ServiceTag` | ✅ Use simplified pills (uppercase text) | Implemented (detail view pills) | App UI | ✅ |
-| Device Row UI | ✅ Distinct style | ✅ Provided in ScannerUI | ✅ Rebuild minimal row (avoid package) | Implemented Phase 2 | App UI | ✅ |
-| Device Detail UI | ✅ Rich classification emphasis | ✅ Basic + extended ports in netscan | ✅ Unified richer hybrid | Implemented Phase 2 | App UI | ✅ |
-| Theme / Design Tokens | `ScannerDesign.Theme` | `Theme` variant in netscan | ✅ Inline `UnifiedTheme` | Basic inline styling; theming file deferred | App UI | ⏳ |
-| Classification Strategies | ✅ Multi-strategy classifier | Partial (simpler) | ✅ Port core + advanced vendor/service patterns | Core + extended patterns implemented (Phase 3 expansion) | App Models Utility | ✅ |
-| Xiaomi / Vendor Parsing | ✅ Specialized patterns | ❌ | ✅ Included (hostname + vendor heuristics) | Implemented in expanded rules (plug/smart + vendor) | App Models Utility | ✅ |
-| OUI Lookup | ✅ (Vendor via file) | ✅ `OUILookupService` | ✅ Protocol hook in place; ingestion later | Hook present (`ClassificationService.ouiLookup`); data ingest deferred | Future Utility | ⏳ |
-| ARP Discovery | ✅ (`ARPService/Worker`) | ✅ separate parsers/services | ✅ Reference netscan parsing + Bonjour scheduling concepts | `ARPService` route-dump reader + UDP warmup + MAC capture | App Utility | ✅ |
-| Ping / Network Reachability | ❌ (light) | ✅ `PingScanner`, `SimplePing` | ➕ SimplePingKit-based ICMP with auto /24 enumeration + concurrent orchestration | `SimplePingKitService` + `PingOrchestrator` + `LocalSubnetEnumerator` + 32 concurrent ops | App Utility | ✅ |
-| Bonjour / mDNS Discovery | ✅ Strong | ✅ Basic `BonjourDiscoverer` | ✅ Port BonjourBrowser concepts | Deferred (Phase 5 provider abstraction) | Future Utility | ⏳ |
-| SSDP / UPnP | ❌ | ✅ `SSDPDiscoverer` | ✅ Optional later (Phase 5) | Deferred | Future Utility | ⏳ |
-| WS-Discovery | ❌ | ✅ `WSDiscoveryDiscoverer` | ⏳ Decide later | Deferred decision | Future Utility | ⏳ |
-| Reverse DNS | ❌ | ✅ `DNSReverseLookupService` | ⏳ Candidate for enrichment | Deferred | Future Utility | ⏳ |
-| HTTP Service Fingerprinting | ❌ | ✅ `HTTPInfoGatherer` | ⏳ Later enrichment | Deferred | Future Utility | ⏳ |
-| SSH Fingerprinting | ❌ | ✅ `SSHFingerprintService` | ⏳ Later enrichment | Deferred | Future Utility | ⏳ |
-| MAC Vendor Lookup Source File | ✅ `oui.csv` | ✅ `oui.csv` | ✅ Single copy inside UnifiedScanner Resources | Not yet imported (deferred) | App Resource | ⏳ |
-| Persistence (KV / Snapshot) | Partial in-memory | ✅ `DeviceKVStore`, `SnapshotStore` | ✅ Fresh `DeviceSnapshotStore` | Core store & merge logic + iCloud KV persistence implemented (Phase 4 complete) | App Models | ✅ |
-| Mutation Event Stream | ✅ `DeviceMutation` | Partial (store events) | ✅ Provide `DeviceMutation` unified | Planned Phase 4 | App Models | ⏳ |
-| Logging Infrastructure | ✅ LoggingService | ✅ Debug.swift | ✅ Minimal cohesive logger | Planned Phase 4+ | App Utility | ⏳ |
- | Concurrency (actors) | Light | Mixed (actors in some services) | ✅ Actor-based store + scanners | Implemented: DeviceSnapshotStore + discovery actors; TODO: replace Task.detached with TaskGroup for cancellation & structured shutdown | App Models/Utility | ✅ |
-| Backend Architecture Pattern | Distinct browser + classification streams | Monolithic services mix | ✅ Adopt decoupled mutation emission (AsyncStream) | Planned Phase 4+ | App Models/Utility | ⏳ |
-| Adaptive Navigation (SplitView) | Basic stack | ✅ NavigationSplitView patterns | ✅ Use netscan adaptive approach | Implemented Phase 2 | App UI | ✅ |
-| ARP Strategy (iOS Limit Workaround) | Scheduled sysctl polling | Parser + direct read | ✅ Hybrid (Bonjour scheduling + netscan parser) | Deferred (after ARP Discovery impl) | Future Utility | ⏳ |
-| Package Modularization Strategy | N/A (single app) | Partial (separate local modules) | ✅ Local-first (Option A) | Completed (removed ScannerDesign/ScannerUI) | Docs / Plan | ✅ |
-| Unit Tests Scope | Classification + mutation + IP heuristics | Broad (scanners, heuristics) | ✅ High-value logic first (model, classification, services) | Core tests done (Phases 1–3) | Tests | ✅ |
-| UI Tests | Basic list/detail | Basic smoke | ⏳ Basic navigation + detail | Deferred (after Phase 4) | Tests | ⏳ |
-| Dark Mode / Theming | Single dark aesthetic | Dark-focused | ✅ Keep dark baseline first | Light theme OOS; theming later | App UI | ⏳ |
-| Accessibility Labels | Partial | Partial | ✅ Audit component labels | Deferred audit | App UI | ⏳ |
-| Internationalization | ❌ | ❌ | ❌ (Defer) | English only initial; TODO: extract user-visible strings to Localized.strings prior to Phase 7 | App | ❌ |
-| Analytics / Telemetry | ❌ | ❌ | ❌ (Defer) | Potential future instrumentation | App | ❌ |
-| Configuration Flags | Minimal | Minimal | ✅ Environment-based simple flags | Future gating (not started); TODO: add FeatureFlag enum & environment override injection | App Utility | ⏳ |
+| Online State Derivation | Computed heuristic | Explicit flag | ✅ Heuristic + override | `recentlySeen` window | App Models | ✅ |
+| Services Representation | Set raw types | Normalized enum | ➕ Enum + rawType | Implemented | App Models | ✅ |
+| Service Display Name Formatting | Label compiler | Mapper | ✅ Merge approaches | `ServiceDeriver` utility | App Models Utility | ✅ |
+| Service Deduplication | Limited | Port/service merge | ✅ Enhanced dedupe | Implemented (type+port) | App Models Utility | ✅ |
+| Port Scanning Engine | ❌ | ✅ Engine + model | Rebuild later | Model fields only; no scanner yet | Future Utility | ⏳ |
+| Port Model Richness | ❌ | ✅ | ✅ Keep richness | Struct present | App Models | ✅ |
+| Service Pills UI | ✅ | ✅ | ✅ Simplified | Implemented | App UI | ✅ |
+| Device Row UI | ✅ | ✅ | ✅ Local rebuild | Implemented Phase 2 | App UI | ✅ |
+| Device Detail UI | ✅ Rich | Basic + ports | ✅ Hybrid detail | Implemented Phase 2 | App UI | ✅ |
+| Theme / Design Tokens | Package theme | Simple theme | ✅ Inline start | Basic styling only | App UI | ☑️ |
+| Classification Strategies | Multi-rule | Simpler | ✅ Port + hostname + vendor + service | Core & extended patterns in place | App Models Utility | ✅ |
+| Xiaomi / Vendor Parsing | ✅ | ❌ | ✅ Include selective rules | Implemented | App Models Utility | ✅ |
+| OUI Lookup (data ingest) | ✅ File-based | ✅ File-based | ✅ Single `oui.csv` asset | Loader not wired yet | Future Utility | ⏳ |
+| ARP Discovery | ✅ | ✅ | ✅ Route dump + MAC capture | macOS only (iOS returns empty) + UDP warmup | App Utility | ☑️ |
+| Ping / Reachability | Light | ✅ SimplePing + orchestrator | ➕ Orchestrated concurrent ICMP | SimplePingKitService + PingOrchestrator + /24 auto enumeration | App Utility | ✅ |
+| Bonjour / mDNS Discovery | Strong | Basic | Re-implement later | Only mock provider exists | Future Utility | ⏳ |
+| SSDP / UPnP | ❌ | ✅ | Evaluate later | Deferred | Future Utility | ⏳ |
+| WS-Discovery | ❌ | ✅ | Evaluate later | Deferred | Future Utility | ⏳ |
+| Reverse DNS | ❌ | ✅ | Plan later | Deferred | Future Utility | ⏳ |
+| HTTP Service Fingerprinting | ❌ | ✅ | Plan later | Deferred | Future Utility | ⏳ |
+| SSH Fingerprinting | ❌ | ✅ | Plan later | Deferred | Future Utility | ⏳ |
+| MAC Vendor Source File | ✅ `oui.csv` | ✅ `oui.csv` | ✅ Single copy bundled | Not yet parsed | App Resource | ⏳ |
+| Persistence (Snapshot Store) | Partial | ✅ KV store | ✅ Unified snapshot store | iCloud KVS + UserDefaults | App Models | ✅ |
+| Mutation Event Stream | ✅ Events | Partial | ✅ Async mutation stream | `SnapshotService.mutationStream` implemented | App Models | ✅ |
+| Logging Infrastructure | LoggingService | Debug prints | Minimal cohesive logger | Still ad-hoc `print` + env flags | App Utility | ⏳ |
+| Concurrency (actors) | Light | Mixed | ✅ Actor store + orchestrators | Store + PingOrchestrator + ARP route dump bridging | App Models/Utility | ✅ |
+| Provider Architecture (decoupled) | Browser + streams | Mixed | Move to mutation bus | Providers still upsert directly; bus planned | App Models/Utility | ⏳ |
+| Adaptive Navigation (SplitView) | Basic | ✅ | ✅ Adopt netscan pattern | Implemented | App UI | ✅ |
+| ARP Strategy (iOS Workaround) | Scheduled polling | Direct read | Hybrid plan | iOS portion not yet implemented | Future Utility | ⏳ |
+| Package Modularization Strategy | N/A | Partial | ✅ Local-first Option A | Completed (collapsed external packages) | Docs / Plan | ✅ |
+| Unit Tests Scope | Classification + some | Broad | ✅ High-value logic | Core tests present | Tests | ✅ |
+| UI Tests | Basic | Smoke | Basic later | Deferred | Tests | ⏳ |
+| Dark Mode / Theming | Dark only | Dark oriented | Keep dark baseline | Light / token extraction deferred | App UI | ⏳ |
+| Accessibility Labels | Partial | Partial | Audit later | Pending audit | App UI | ⏳ |
+| Internationalization | ❌ | ❌ | Defer | English only | App | ❌ |
+| Analytics / Telemetry | ❌ | ❌ | Defer | Not planned early | App | ❌ |
+| Configuration Flags | Minimal | Minimal | Simple env flags | Needs FeatureFlag enum | App Utility | ⏳ |
 
-## Deferred / Backlog Items
-- OUI loader integration (single `oui.csv` ingest) — Phase 5 (protocol hook already present)
-- Snapshot persistence external change listener + mutation stream (DeviceSnapshotStore + DeviceMutation) — Phase 4 (remaining)
-- Discovery providers (Bonjour abstraction, ARP, Ping, PortScan, SSDP, WS-Discovery) — Phase 5
-- Fingerprint enrichment (HTTP banners, SSH host key parsing) — Phase 5/6
-- Accessibility audit (labels for pills, port rows) — Phase 6
-- Theming abstraction (UnifiedTheme) — Phase 6
-- UI tests (navigation + detail) — After store integration (Phase 4)
+### Partial (☑️) Clarifications
+- MAC Address Capture: Implemented via ARP on macOS; iOS path currently returns empty result set (no alternative implemented yet).
+- Fingerprints Map: Structure exists; no active population layer (HTTP / SSH) yet.
+- Theme / Design Tokens: Inline styling only; no extracted token system or light mode.
+- ARP Discovery: Includes route dump + UDP warmup on macOS, absent on iOS.
+
+## Deferred / Backlog Items (Updated)
+- Port scanning engine reimplementation (tiered design, mutation emission)
+- OUI ingestion + live vendor lookup service
+- Real mDNS / Bonjour provider (NetServiceBrowser) + service/TXT parsing
+- SSDP / WS-Discovery evaluation & possible providers
+- Reverse DNS enrichment
+- HTTP banner + SSH host key fingerprint extraction (populate `fingerprints`)
+- Unified logging abstraction (`ScanLogger` facade) replacing ad-hoc prints
+- Provider → mutation bus refactor (providers emit `DeviceMutation` events instead of direct store upserts)
+- Accessibility audit (Dynamic Type, VoiceOver labeling, rotor grouping)
+- Theming abstraction (UnifiedTheme + light / high-contrast variants)
+- UI tests (navigation + detail flows)
+- Configuration: FeatureFlag enum & runtime toggles (logging, discovery providers, port tiers)
 
 ## Feature Adoption Notes
-- When both implementations exist, preference was chosen based on richer semantics (e.g., netscan ports + Bonjour multi-IP).
-- Some netscan utilities (ServiceMapper, PortScanner) are conceptually adopted but **not copied verbatim yet** — they’ll be reauthored with only necessary surface area to reduce legacy baggage.
-- For classification, we intentionally limit early scope to high-signal strategies (hostname patterns, model hints, service signatures, vendor+service) to keep implementation lean while preserving major wins.
+- Preference always for richer semantics when overlapping (e.g., netscan port model + Bonjour multi-IP, merged normalization logic).
+- Some netscan utilities (port scanner, HTTP/SSH fingerprinting) are intentionally **not** copied yet; they will be slimmed and reauthored if still needed.
+- Classification constrained to high-signal heuristics to minimize early complexity while retaining strong identification.
 
 ## Libraries vs In-App Modules
-Given your directive to avoid premature packages, previously separate design/UI packages (`ScannerDesign`, `ScannerUI`) will **not** be retained as external packages. Their concepts (theme tokens, row styles, service tags) will be collapsed into local Swift files inside `UnifiedScanner/UnifiedScanner/` under:
-- `UI/Theme/UnifiedTheme.swift`
-- `UI/Components/DeviceRowView.swift`, `ServiceTagView.swift`
-
-This prevents fragmentation and eases coherent iteration.
+Local-first approach keeps prior package concepts (design/UI) collapsed into local Swift files for rapid iteration. Extraction criteria will be revisited only after multiple independent targets require reuse.
 
 ## Complement to PLAN.md
-- `PLAN.md` drives execution order.
-- This matrix serves as: (a) scoping audit, (b) decision log, (c) progress tracker.
-- Update the Status column alongside commits.
+- `PLAN.md` owns ordered execution tasks.
+- This matrix is a progress & decision ledger; update statuses when implementations land.
 
-## Immediate Adjustments to PLAN.md (Needed / Updated for iOS & iPadOS)
-No structural phase changes required. Add explicit tasks:
-- Phase 1: Add step after model creation — "Collapse ScannerDesign/ScannerUI concepts locally (Theme + DeviceRow + ServiceTag)".
-- Phase 2: Remove dependency on external packages; confirm local UI components.
-- Phase 6: Add explicit tasks for mDNS provider, SSDP, WS-Discovery evaluation, PortScanner reimplementation, OUI ingestion, Accessibility audit (Dynamic Type, VoiceOver), UnifiedTheme extraction, structured concurrency refactor.
-- Phase 7 (New): Cross-platform polish (macOS Catalyst split refinement, iPadOS multi-column adaptation, Localized.strings extraction, logging unification, reverse DNS & fingerprint enrichment).
+## Current Accuracy Audit vs Previous Version
+Removed or corrected prior overstatements:
+- (REMOVED) Claims of multi-port TCP probing & UDP fallback layer — no port scanning engine implemented yet.
+- (REMOVED) Network framework ping replacement — current implementation uses SimplePingKit only.
+- (REMOVED) Unverified performance claim of detecting "1400+ devices".
+- (UPDATED) Mutation event stream now marked ✅ (implemented in store) instead of planned.
+- (UPDATED) ARP feature marked partial (macOS-only) rather than fully complete.
 
-(These edits will be applied upon confirmation.)
+## Immediate Adjustments Recommended for PLAN.md
+- Mark Phase 5 as "Partial" (ping + ARP implemented; port scan, mDNS, logger pending).
+- Add explicit task for provider → mutation bus refactor.
+- Remove unverified large-scale performance test claim or move to future validation task.
 
----
+## Concurrency Improvement TODOs (Still Outstanding)
+- Replace ad-hoc `Task {}` launches in `PingOrchestrator` with structured task groups & cancellation.
+- DiscoveryCoordinator shutdown / cancellation API.
+- Provider emission refactor (mutation bus) for better decoupling & testability.
 
-### Added Platform Notes (macOS + iOS + iPadOS)
-- UnifiedScanner decisions assume simultaneous support; audit UI adaptive layouts for size classes (TODO in PLAN Phase 7).
-- Ensure discovery code avoids macOS-only process calls (already using Network.framework; retain conditional compilation for any future shell fallback).
+## Accessibility TODOs
+- DeviceRowView: Compose VoiceOver label (classification, vendor/hostname, IP, service count, RTT if available).
+- Service pills: Add explicit accessibility label (service name + "service").
+- Port list: Provide descriptive labels (e.g., "Port 22 SSH open").
+- Dynamic Type stress testing (XXXL) & macOS pointer Large Content Viewer.
 
-### Concurrency Improvement TODOs
-- Replace ad-hoc Task.detached launches in orchestrators with TaskGroup & cancellation tokens (Phase 6).
-- Add graceful shutdown method on DiscoveryCoordinator to cancel in-flight operations.
-- Introduce AsyncStream mutation channel (DeviceMutation) bridging store updates (Phase 6).
-
-### Accessibility TODOs
-- DeviceRowView: Add VoiceOver label combining classification, primary IP, vendor.
-- Service pills: Provide accessibilityLabel with service name + "service" suffix.
-- Port list: Mark as accessibilityElement children with descriptive labels (e.g., "Port 22 SSH open").
-- Dynamic Type: Verify layout for sizes up to XXXL (iOS/iPadOS) and Large Content Viewer (macOS pointer hover).
-
-### Testing Gaps TODOs
-- Add tests for: snapshot merge of multiple discovery sources, RTT update path, ARP MAC merge, classification reasoning concatenation ordering.
-- Future: add integration test simulating ping + arp + bonjour synthetic events.
+## Testing Gaps TODOs
+- Snapshot merge tests for multi-source discovery (ping + arp) rtt + MAC union.
+- RTT update path (ensure lastSeen updates only on success).
+- Classification reasoning ordering & reclassification trigger.
+- (Future) integration test with synthetic ping + mock mDNS + arp events.
 
 *End of FEATURE_COMPARISON.md*

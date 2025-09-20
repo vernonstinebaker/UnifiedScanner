@@ -13,12 +13,12 @@ struct LocalSubnetEnumerator: HostEnumerator {
         guard let ip = Self.primaryIPv4Address() else { return [] }
         guard let block = Self.cidrBlock(for: ip, prefix: 24) else { return [] }
         var hosts = block.hostAddresses()
+        // Filter link-local 169.254/16 (not useful for broad scans) and multicast/broadcast edge cases
+        hosts = hosts.filter { !$0.hasPrefix("169.254.") }
         if let limit = maxHosts, limit > 0, hosts.count > limit {
             hosts = Array(hosts.prefix(limit))
         }
-        if ProcessInfo.processInfo.environment["PING_INFO_LOG"] == "1" {
-            print("[Enumerate] baseIP=\(ip) totalHosts=\(hosts.count)")
-        }
+        let totalHosts = hosts.count; LoggingService.debug("enumerate baseIP=\(ip) totalHosts=\(totalHosts)")
         return hosts
     }
 
@@ -39,11 +39,11 @@ struct LocalSubnetEnumerator: HostEnumerator {
             guard (flags & IFF_LOOPBACK) != IFF_LOOPBACK else { continue }
             guard addrPtr.pointee.sa_family == sa_family_t(AF_INET) else { continue }
 
-            let name = String(cString: current.ifa_name)
+            let name = String(validatingUTF8: current.ifa_name) ?? ""
             var addr = addrPtr.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { $0.pointee.sin_addr }
             var buffer = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN))
             guard inet_ntop(AF_INET, &addr, &buffer, socklen_t(INET_ADDRSTRLEN)) != nil else { continue }
-            let ip = String(cString: buffer)
+            let ip = String(validatingUTF8: buffer) ?? ""
 
             if preferred == nil && name.hasPrefix("en") { preferred = ip }
             if fallback == nil { fallback = ip }
@@ -115,6 +115,6 @@ enum IPv4Parser {
         var addr = in_addr(s_addr: value.bigEndian)
         var buffer = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN))
         inet_ntop(AF_INET, &addr, &buffer, socklen_t(INET_ADDRSTRLEN))
-        return String(cString: buffer)
+        return String(validatingUTF8: buffer) ?? ""
     }
 }

@@ -1,108 +1,112 @@
 # UnifiedScanner Implementation Plan
 
-> This plan defines explicit, ordered steps to build the greenfield UnifiedScanner app **without modifying** the legacy reference projects (BonjourScanner, netscan). Update checkboxes as work progresses. Keep commits narrowly scoped per step where feasible.
+> Ordered steps to build the UnifiedScanner app **without modifying** legacy reference projects. This revision corrects earlier overstatements (e.g. full discovery pipeline completion) and aligns with current source.
 
 ## Status Legend
 - [ ] Not Started
-- [~] In Progress
+- [~] In Progress / Partial
 - [x] Complete
 
 ---
 ## Phase 1: Core Model Foundations
-0. [x] Record Architecture Decision: Local-first Option A (in this file and overview) — add note to revisit after Phase 3 completion. (Phase 1 complete)
-1. [x] Create `Models/` directory under `UnifiedScanner/UnifiedScanner/`.
-2. [x] Implement `Device.swift` with unified domain model (as described in PROJECT_OVERVIEW.md) — include supporting enums + structs (DeviceFormFactor, ClassificationConfidence, DiscoverySource, NetworkService, Port, DeviceConstants, Device.Classification).
-3. [x] Add `ModelUtilities/ServiceDeriver.swift` containing `ServiceDeriver` and port→service mapping utilities (copy/adapt logic from netscan `ServiceMapper` & Bonjour service formatting; cite sources in comments).
-4. [x] Add `ModelUtilities/IPHeuristics.swift` (copy/adapt core best-IP selection logic from Bonjour reference) — self‑contained.
-5. [x] Provide `Device+Mock.swift` with sample mock devices (variety: router, mac, phone, tv, iot) for UI previews & initial list.
-6. [x] Write unit tests (in `UnifiedScannerTests`) validating: identity selection, online status, service dedupe ordering, mock generation.
+0. [x] Record Architecture Decision: Local-first Option A (revisit after Phase 3)  
+1. [x] Create `Models/` directory.  
+2. [x] Implement `Device.swift` unified model & supporting enums / structs.  
+3. [x] Add `ServiceDeriver` & port/service normalization utilities.  
+4. [x] Add `IPHeuristics` best display IP logic.  
+5. [x] Provide `Device+Mock.swift` mock devices.  
+6. [x] Unit tests: identity selection, online status, service dedupe ordering, mock generation.  
 
 ## Phase 2: UI Integration (List & Detail)
-7. [x] Replace ad‑hoc `DeviceItem` in `ContentView.swift` with unified `Device` model.
-8. [x] Build a lightweight `DeviceRowView` (if not copying) that consumes `Device` (status indicator, primary name, bestDisplayIP/manufacturer snippet, service pill count summary).
-9. [x] Refactor `UnifiedDeviceDetail` to consume a `Device` directly; remove local `ServiceItem` / `PortItem` placeholders.
-10. [x] Implement richer Open Ports section (port number, service name, status) using unified `Port` type.
-11. [x] Implement service pill actions (open http/https, copy ssh) using normalized `NetworkService.ServiceType`.
-12. [x] Add SwiftUI previews referencing `Device.mock` set.
+7. [x] Replace ad‑hoc types with unified `Device`.  
+8. [x] `DeviceRowView` (status indicators, summary).  
+9. [x] `UnifiedDeviceDetail` consumes `Device`.  
+10. [x] Open Ports section using unified `Port`.  
+11. [x] Service pill actions (open/copy).  
+12. [x] SwiftUI previews use `Device.mock`.  
 
 ## Phase 3: Classification Pipeline (Static Rules)
-13. [x] Add `Services/ClassificationService.swift` replicating essential Bonjour strategies (hostname patterns, service signatures, vendor+service, model hints) with normalized outputs.
-14. [x] Implement `DeviceClassifier` that produces `Device.Classification` from a `Device`’s current signals. (Implemented as `ClassificationService.classify`.)
-15. [x] Add tests for representative classification scenarios (Apple TV vs generic Mac, printer, router, SSH-only host). (HomePod/Raspberry Pi/Xiaomi deferred.)
-16. [x] Integrate classification invocation during mock generation & UI (display form factor icon + confidence badge).
+13. [x] `ClassificationService` (hostname, services, vendor, model hints).  
+14. [x] Classification integration during upsert + mock generation.  
+15. [x] Classification tests (Apple TV vs Mac, printer, router, SSH-only).  
+16. [x] UI shows form factor icon + confidence badge.  
 
 ## Phase 4: Persistence & Snapshotting
-17. [x] Define `DeviceSnapshotStore` (in-memory initially) supporting upsert/merge semantics (merge new signals, preserve firstSeen, update lastSeen, accumulate discovery sources & IPs & services).
-18. [x] Add merge tests (new IP appended; MAC stabilization; service dedupe; discoverySources union + ports precedence + classification recompute fingerprint).
-19. [x] Implement persistence layer using iCloud Key-Value store (serialize devices JSON under a versioned key; fallback/local JSON optional) + external change observer.
-20. [x] Hook store into ContentView (ObservableObject) feeding devices array.
+17. [x] `SnapshotService` (merge semantics, actor-backed; formerly DeviceSnapshotStore).  
+18. [x] Merge tests (IPs, MAC, services, discoverySources, ports precedence).  
+19. [x] Persistence via iCloud KVS + UserDefaults mirror.  
+20. [x] Integrate store with ContentView observable state.  
 
-## Phase 5: Discovery Pipeline Implementation ✅ COMPLETED
-21a. [x] Define `PingService` protocol + streaming `PingMeasurement` (host, sequence, status[rtt/timeout], timestamp).
-21b. [x] Implement `SimplePingKit`-based ICMP ping service for cross-platform probing (replaces earlier Network framework prototype).
-21c. [x] Implement concurrent `PingOrchestrator` with 32 max simultaneous operations.
-21d. [x] Add conditional factory `PlatformPingServiceFactory.make()` returning Network-based implementation.
-21e. [x] Integrate ping RTT updates into `DeviceSnapshotStore` via `applyPing` (updates rttMillis, lastSeen on success).
+## Phase 5: Discovery Pipeline (PARTIAL)
+Earlier version marked this fully complete; correction: Only Ping + ARP (macOS) implemented. Port scanning, real mDNS, structured logging not yet present.
+21a. [x] `PingService` protocol + `PingMeasurement`.  
+21b. [x] `SimplePingKitService` ICMP implementation.  
+21c. [x] `PingOrchestrator` (32 concurrent hosts throttle).  
+21d. [ ] Network framework or exec-based alternate PingService (currently none; SimplePingKit only).  
+21e. [x] RTT updates via `SnapshotService.applyPing`.  
+22. [x] Define `DiscoveryProvider` protocol + mock mDNS provider.  
+23. [x] `DiscoveryCoordinator` (auto /24 enumeration, orchestrates ping + ARP).  
+24. [x] `ARPService` route dump reader + MAC merge (macOS only).  
+25. [x] UDP warmup / broadcast population (macOS) before ARP read.  
+26. [~] Logging: env-var gated prints (`PING_INFO_LOG`, `ARP_INFO_LOG`) — structured logger pending.  
+27. [ ] Port scanning engine (tiered) — NOT IMPLEMENTED.  
+28. [ ] Real mDNS provider (NetServiceBrowser) — NOT IMPLEMENTED.  
+29. [ ] Mutation bus decoupling (providers emit events, not direct store upserts).  
+30. [ ] Large-scale performance validation (synthetic > /24) — NOT RUN.  
 
-21. [x] Add protocol `DiscoveryProvider` (async sequence) for future network layers + mock implementation.
-22. [x] Implement `DiscoveryCoordinator` coordinating ping + ARP + broadcast UDP phases.
-23. [x] Integrate `ARPService` with system ARP table parsing and MAC address capture.
-24. [x] Implement broadcast UDP functionality to populate ARP table subnet-wide.
-25. [x] Add comprehensive logging with `PING_INFO_LOG=1` and `ARP_INFO_LOG=1` environment variables.
-26. [x] Test complete discovery pipeline - successfully detects 1400+ devices on local network.
-
-## Phase 6: Polishing, Discovery Expansion & Docs (macOS + iOS + iPadOS)
-25. [ ] Add inline doc comments for each public-facing model type & derived property. // TODO: Include platform nuances (size classes, Catalyst differences) where relevant.
-26. [ ] Update `PROJECT_OVERVIEW.md` with any deviations / refinements discovered during implementation. // TODO: Document decision to replace Task.detached with TaskGroup for orchestrators.
-27. [ ] Add a brief `ARCHITECTURE_NOTES.md` (if needed) summarizing model merge rules & classification precedence. // TODO: If not adding new file, fold content into PROJECT_OVERVIEW 'Architecture Notes' section instead (user preference: avoid new docs).
-28. [ ] Final pass test coverage review; ensure core logic (identity, service normalization, classification) has > minimal threshold. // TODO: Add new tests: ARP MAC merge, RTT update path, multi-source discovery union, classification reasoning ordering.
-29. [ ] Prepare a consolidated CHANGELOG entry for Phase 1–3 completion. // TODO: Include Phase 5 discovery achievements & performance metrics; clarify upcoming Phase 6 scope.
-
-### Upcoming Discovery Sequencing
-- [ ] Load persisted KV snapshot on launch and render stored devices as offline placeholders until refreshed by live discovery.
-- [ ] Add Bonjour (mDNS) scanning provider with start/stop controls (iOS & macOS parity).
-- [ ] Restore port scanning tiers with cancellation and UI integration.
-- [ ] Provide manual controls to trigger Ping/ARP rescans and toggle Bonjour.
-- [ ] Add a settings sheet for timeouts, concurrency, logging, and feature flags.
-- [ ] Evaluate additional discovery mechanisms (SSDP, WS-Discovery, reverse DNS) for inclusion or removal.
-- [ ] Expand service helpers (browser open, SSH copy, protocol-specific handlers).
-
----
-## Design Rules (Enforced During Implementation)
-- No imports from legacy app modules; copy logic with attribution comments.
-- Do not rename or refactor existing legacy source paths.
-- Keep mutation logic pure & testable (no side-effects outside model/store layers).
-- Prefer value semantics (structs) for domain; reference types only for observable stores.
-- Avoid premature async network code; stubs only until discovery phase begins.
-
-## Open Questions (Track & Resolve Early)
-- Do we need IPv6 prioritization logic beyond existing heuristic? (Default: treat IPv4 private ranges as preferred.)
-- Do we store historical RTT samples or only latest? (Currently only latest `rttMillis`; future: rolling window.)
-- Should classification reasons be multi-line structured array vs concatenated string? (Initial: single joined string for simplicity.)
-
-## Deferred Backlog (Updated for Phases 6–7)
-- OUI ingestion & live vendor lookup bridging to existing `oui.csv` (protocol hook present; data ingest deferred) — Phase 6
-- DeviceSnapshotStore + mutation streaming (Phase 4 tasks 17–20) — Phase 6 (AsyncStream emission)
-- Discovery provider implementations (Bonjour, ARP, Ping, PortScan stub, SSDP, WS-Discovery) — Phase 6 (mDNS + PortScan), Phase 7 (SSDP, WS-Discovery evaluation)
-- Fingerprint enrichment (HTTP banners, SSH parsing) — Phase 7
-- Accessibility label audit (service pills, port rows) — Phase 6 (initial), Phase 7 (Dynamic Type stress + VO rotor refinement)
-- Theming abstraction (UnifiedTheme struct extraction) — Phase 6 (extract), Phase 7 (light mode, high contrast adjustments)
-- UI test coverage (navigation & detail flows) — Phase 7 (after mutation streaming stable)
+## Phase 6: Polishing, Expansion & Docs (macOS + iOS + iPadOS)
+31. [ ] Inline doc comments for public model types & derived properties.  
+32. [ ] Update `PROJECT_OVERVIEW.md` with concurrency + discovery corrections.  
+33. [ ] (If needed) Add architecture notes section (no new file unless required).  
+34. [ ] Add tests: ARP MAC merge, RTT update path, multi-source discovery union, classification reasoning ordering.  
+35. [ ] CHANGELOG style summary covering Phases 1–5 partial.  
+36. [ ] Introduce `ScanLogger` abstraction (category-based, env/flag controlled).  
+37. [ ] Provider → mutation bus refactor (`DeviceMutation` events).  
+38. [ ] FeatureFlag enum & runtime toggles (logging, discovery providers, port tiers).  
+39. [ ] OUI ingestion (parse `oui.csv`, build prefix map).  
+40. [ ] mDNS provider (service discovery + TXT parsing).  
+41. [ ] Port scanner tier 0/1 implementation (22,80,443 first).  
+42. [ ] Reverse DNS enrichment (optional).  
+43. [ ] HTTP / SSH fingerprint population (fill `fingerprints`).  
+44. [ ] Accessibility pass (labels for row/pills/ports, Dynamic Type audit).  
+45. [ ] Theming extraction (UnifiedTheme struct + light mode tokens).  
+46. [ ] UI tests (navigation + detail).  
 
 ## Phase 7: Cross-Platform & Enrichment (Planned)
-- [ ] Implement mDNS provider (re-author lightweight browser using NetServiceBrowser; emit DeviceMutation events)
-- [ ] Reintroduce PortScanner (structured concurrency, cancel support, integrate into enrichment pass)
-- [ ] OUI ingestion (parse oui.csv once; build prefix map; cache)
-- [ ] Mutation AsyncStream channel from DeviceSnapshotStore
-- [ ] Accessibility pass (Dynamic Type XXL+, VoiceOver custom labels, rotor ordering)
-- [ ] Theming: extract UnifiedTheme + light mode + high contrast tokens
-- [ ] Reverse DNS enrichment provider (optional gating flag)
-- [ ] HTTP banner + SSH host key fingerprint capture (fingerprints map population)
-- [ ] FeatureFlag enum + environment overrides
-- [ ] Internationalization prep: extract strings (English only bundle)
+47. [ ] Extended port scanner tiers (configurable list + cancellation).  
+48. [ ] SSDP provider evaluation / implementation.  
+49. [ ] WS-Discovery provider evaluation / implementation.  
+50. [ ] Mutation backpressure strategy (bounded buffer drop policy).  
+51. [ ] Offline pruning (service / port aging policy).  
+52. [ ] Internationalization prep (extract strings).  
+53. [ ] Advanced accessibility (rotor grouping, VoiceOver snapshot tests).  
+54. [ ] Light/high-contrast theme refinement & token documentation.  
+55. [ ] Performance benchmarks (1000-host synthetic run, latency statistics).  
+
+---
+## Design Rules (Enforced)
+- No imports from legacy app modules; copy logic with attribution comments.  
+- Keep merge logic deterministic & testable.  
+- Prefer value semantics for domain (structs) & actor isolation for stateful services.  
+- Avoid premature package modularization (revisit after stable discovery providers).  
+
+## Open Questions (Still Relevant)
+- IPv6 prioritization adjustments beyond current heuristic?  
+- Historical RTT sample window vs latest-only field?  
+- Classification reasons: single concatenated vs structured array (future)?  
+
+## Deferred Backlog (Refined)
+- Tiered port scanner & mutation emission.  
+- Real mDNS provider.  
+- OUI ingestion + vendor lookup caching.  
+- HTTP/SSH fingerprint enrichment.  
+- Reverse DNS provider.  
+- Provider → mutation bus & structured logger.  
+- Accessibility & theming improvements.  
+- UI test coverage.  
 
 ## Immediate Next Action
-Implement Phase 1 steps 1–3 (model file, service normalization, heuristics) then add mocks & tests.
+Implement Phase 6 logging + provider mutation bus before adding new discovery types (ensures consistent event pipeline).
 
 ---
 (End of PLAN.md)

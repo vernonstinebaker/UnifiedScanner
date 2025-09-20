@@ -4,7 +4,7 @@ import XCTest
 @MainActor final class AutoEnumerationTests: XCTestCase {
     func testAutoEnumerationUsesHostEnumeratorWhenPingHostsEmpty() async {
         // Arrange
-        let store = DeviceSnapshotStore(persistenceKey: "auto-enum", persistence: MemoryPersistenceAE(), classification: ClassificationService.self)
+        let store = SnapshotService(persistenceKey: "auto-enum", persistence: MemoryPersistenceAE(), classification: ClassificationService.self)
         let mockEnumerator = MockEnumerator(hosts: ["10.0.0.5", "10.0.0.6"]) // deterministic
         let mockPingService = OneShotMockPingServiceAE(rtt: 3.3)
         let orchestrator = PingOrchestrator(pingService: mockPingService, store: store, maxConcurrent: 4)
@@ -22,8 +22,12 @@ import XCTest
         }
 
         // Act
-        await coordinator.start(pingHosts: [], pingConfig: PingConfig(host: "placeholder", count: 1, interval: 0.1, timeoutPerPing: 0.1), mdnsWarmupSeconds: 0.01, autoEnumerateIfEmpty: true, maxAutoEnumeratedHosts: 10)
-        try? await Task.sleep(nanoseconds: 500_000_000)
+        await coordinator.startAndWait(pingHosts: [], pingConfig: PingConfig(host: "placeholder", count: 1, interval: 0.05, timeoutPerPing: 0.05), mdnsWarmupSeconds: 0.001, autoEnumerateIfEmpty: true, maxAutoEnumeratedHosts: 10)
+        // Wait up to 2 seconds for both hosts instead of fixed sleep
+        let start = Date()
+        while yieldedHosts.count < 2 && Date().timeIntervalSince(start) < 2.0 {
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
         collectTask.cancel()
 
         // Assert

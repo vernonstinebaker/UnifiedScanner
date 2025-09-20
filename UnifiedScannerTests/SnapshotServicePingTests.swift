@@ -1,10 +1,10 @@
 import XCTest
 @testable import UnifiedScanner
 
-final class DeviceSnapshotStorePingTests: XCTestCase {
+final class SnapshotServicePingTests: XCTestCase {
     func testApplyPingUpdatesRTTAndLastSeen() async {
         let persistence = EphemeralPersistencePing()
-        let store = await MainActor.run { DeviceSnapshotStore(persistenceKey: "test", persistence: persistence, classification: ClassificationService.self) }
+        let store = await MainActor.run { SnapshotService(persistenceKey: "test", persistence: persistence, classification: ClassificationService.self) }
         let initial = Device(primaryIP: "192.168.1.10", ips: ["192.168.1.10"], hostname: "test-host", discoverySources: [.mdns])
         await store.upsert(initial)
         let before = await MainActor.run { store.devices.first(where: { $0.primaryIP == "192.168.1.10" })! }
@@ -19,7 +19,7 @@ final class DeviceSnapshotStorePingTests: XCTestCase {
 
     func testApplyPingTimeoutDoesNotChangeLastSeenOrRTT() async {
         let persistence = EphemeralPersistencePing()
-        let store = await MainActor.run { DeviceSnapshotStore(persistenceKey: "test2", persistence: persistence, classification: ClassificationService.self) }
+        let store = await MainActor.run { SnapshotService(persistenceKey: "test2", persistence: persistence, classification: ClassificationService.self) }
         let initial = Device(primaryIP: "192.168.1.11", ips: ["192.168.1.11"], hostname: "test-host2", discoverySources: [.mdns])
         await store.upsert(initial)
         let before = await MainActor.run { store.devices.first(where: { $0.primaryIP == "192.168.1.11" })! }

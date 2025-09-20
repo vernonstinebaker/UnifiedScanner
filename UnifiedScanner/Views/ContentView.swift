@@ -1,10 +1,12 @@
 import SwiftUI
 
 struct ContentView: View {
-    @ObservedObject var store: DeviceSnapshotStore
+    @ObservedObject var store: SnapshotService
     @ObservedObject var progress: ScanProgress
+    @ObservedObject var settings: AppSettings
     @State private var selectedID: String? = nil
     @State private var showDetailSheet: Bool = false
+    @State private var showSettings: Bool = false
 
     #if os(iOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -66,6 +68,14 @@ struct ContentView: View {
             }
             .background(Theme.color(.bgRoot))
             .navigationTitle("Devices")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button { showSettings = true } label: { Image(systemName: "gearshape") }
+                }
+            }
+            .sheet(isPresented: $showSettings) {
+                SettingsView(settings: settings, store: store)
+            }
             .sheet(isPresented: $showDetailSheet) {
                 if let id = selectedID, let device = store.devices.first(where: { $0.id == id }) {
                     NavigationStack {
@@ -115,6 +125,14 @@ struct ContentView: View {
                 }
             }
             .navigationTitle("Devices")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button { showSettings = true } label: { Image(systemName: "gearshape") }
+                }
+            }
+            .sheet(isPresented: $showSettings) {
+                SettingsView(settings: settings, store: store)
+            }
         } detail: {
             if let id = selectedID, let device = store.devices.first(where: { $0.id == id }) {
                 UnifiedDeviceDetail(device: device)
@@ -131,6 +149,17 @@ struct ContentView: View {
         .background(Theme.color(.bgRoot))
     }
 
+    private var progressText: String {
+        switch progress.phase {
+        case .pinging:
+            return "Pinging \(progress.completedHosts)/\(progress.totalHosts) hosts"
+        case .mdnsWarmup:
+            return "Warming up mDNS…"
+        default:
+            return "Scanning \(progress.completedHosts)/\(progress.totalHosts) hosts"
+        }
+    }
+
     private var progressSection: some View {
         Group {
             if progress.started && !progress.finished {
@@ -138,14 +167,38 @@ struct ContentView: View {
                     ProgressView(value: Double(progress.completedHosts), total: Double(max(progress.totalHosts, 1)))
                         .tint(Theme.color(.accentPrimary))
                     HStack(spacing: Theme.space(.sm)) {
-                        Text("Scanning \(progress.completedHosts)/\(progress.totalHosts) hosts")
+                        Text(progressText)
                         Text("\(progress.successHosts) responsive")
                             .foregroundColor(Theme.color(.textSecondary))
                     }
-                    .font(Theme.Typography.caption)
-                    .foregroundColor(Theme.color(.textSecondary))
-                }
-            } else if progress.finished {
+                     .font(Theme.Typography.caption)
+                     .foregroundColor(Theme.color(.textSecondary))
+                 }
+             } else if progress.phase == .arpPriming {
+                 VStack(alignment: .leading, spacing: Theme.space(.xs)) {
+                     ProgressView()
+                         .tint(Theme.color(.accentPrimary))
+                     Text("Priming ARP table…")
+                         .font(Theme.Typography.caption)
+                         .foregroundColor(Theme.color(.textSecondary))
+                 }
+             } else if progress.phase == .enumerating {
+                 VStack(alignment: .leading, spacing: Theme.space(.xs)) {
+                     ProgressView()
+                         .tint(Theme.color(.accentPrimary))
+                     Text("Enumerating subnet…")
+                         .font(Theme.Typography.caption)
+                         .foregroundColor(Theme.color(.textSecondary))
+                 }
+             } else if progress.phase == .arpRefresh && !progress.finished {
+                 VStack(alignment: .leading, spacing: Theme.space(.xs)) {
+                     ProgressView()
+                         .tint(Theme.color(.accentPrimary))
+                     Text("Refreshing ARP entries…")
+                         .font(Theme.Typography.caption)
+                         .foregroundColor(Theme.color(.textSecondary))
+                 }
+             } else if progress.finished {
                 Text("Scan complete: \(progress.successHosts) responsive hosts")
                     .font(Theme.Typography.caption)
                     .foregroundColor(Theme.color(.textSecondary))

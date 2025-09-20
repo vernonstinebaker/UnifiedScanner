@@ -10,7 +10,7 @@ import Network
 /// to encourage population (e.g. lightweight UDP probes). On macOS the service
 /// uses the NET_RT_DUMP route table to enumerate entries, which works inside the
 /// sandbox without shelling out to `/usr/sbin/arp`.
-public final class ARPService {
+public final class ARPService: @unchecked Sendable { // @unchecked because NWConnection callbacks execute on udpQueue; all mutable state confined to that queue
     public struct ARPEntry: Sendable {
         public let ipAddress: String
         public let macAddress: String
@@ -25,7 +25,7 @@ public final class ARPService {
         }
     }
 
-    private static let loggingEnabled = (ProcessInfo.processInfo.environment["ARP_INFO_LOG"] == "1")
+    private static var loggingEnabled: Bool { true }
 
     #if os(macOS)
     private let udpQueue = DispatchQueue(label: "arpservice.udpQueue")
@@ -39,7 +39,7 @@ public final class ARPService {
         do {
             return try await Self.loadRouteDump()
         } catch {
-            if Self.loggingEnabled { print("[ARP] route dump failed: \(error)") }
+            if Self.loggingEnabled { LoggingService.warn("route dump failed: \(error)") }
             return []
         }
         #else
@@ -63,7 +63,7 @@ public final class ARPService {
             }
         }
         if Self.loggingEnabled {
-            print("[ARP] resolved \(map.count)/\(ips.isEmpty ? entries.count : ips.count) addresses")
+            let addressCountMessage = "resolved \(map.count)/\(ips.isEmpty ? entries.count : ips.count) ARP addresses"; LoggingService.debug(addressCountMessage)
         }
         return map
     }
@@ -139,7 +139,7 @@ public final class ARPService {
                 var addr = sin.sin_addr
                 var buffer = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN))
                 inet_ntop(AF_INET, &addr, &buffer, socklen_t(INET_ADDRSTRLEN))
-                destinationIP = String(cString: buffer)
+                destinationIP = String(validatingUTF8: buffer) ?? ""
             case (AF_LINK, RTAX_GATEWAY):
                 let sdl = rawPointer.withMemoryRebound(to: sockaddr_dl.self, capacity: 1) { $0.pointee }
                 interface = extractInterfaceName(from: sdl, dataPointer: rawPointer)

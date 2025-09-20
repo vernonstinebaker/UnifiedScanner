@@ -3,7 +3,7 @@ import XCTest
 
 @MainActor final class DeviceMutationStreamTests: XCTestCase {
     func testStreamEmitsInitialSnapshotAndChangeOnUpsert() async {
-        let store = DeviceSnapshotStore(persistence: EphemeralPersistenceDM())
+        let store = SnapshotService(persistence: EphemeralPersistenceDM())
         var events: [DeviceMutation] = []
         let stream = store.mutationStream()
         let collectTask = Task { for await e in stream.prefix(2) { events.append(e) } }
@@ -21,7 +21,7 @@ import XCTest
     }
 
     func testPingEmitsChangeWithRTTField() async {
-        let store = DeviceSnapshotStore(persistence: EphemeralPersistenceDM())
+        let store = SnapshotService(persistence: EphemeralPersistenceDM())
         let dev = Device(primaryIP: "10.0.0.5", ips: ["10.0.0.5"], hostname: "pinger", discoverySources: [.mdns])
         await store.upsert(dev)
         var rttEvent: DeviceChange?
@@ -39,7 +39,7 @@ import XCTest
     }
 
     func testClassificationChangeEmitsClassificationField() async {
-        let store = DeviceSnapshotStore(persistence: EphemeralPersistenceDM())
+        let store = SnapshotService(persistence: EphemeralPersistenceDM())
         let stream = store.mutationStream(includeInitialSnapshot: false)
         var events: [DeviceMutation] = []
         let collectTask = Task { for await e in stream.prefix(2) { events.append(e) } }
@@ -61,7 +61,7 @@ import XCTest
     }
 
     func testRemoveAllEmitsSnapshotEmpty() async {
-        let store = DeviceSnapshotStore(persistence: EphemeralPersistenceDM())
+        let store = SnapshotService(persistence: EphemeralPersistenceDM())
         let stream = store.mutationStream(includeInitialSnapshot: false)
         var events: [DeviceMutation] = []
         let collectTask = Task { for await e in stream.prefix(2) { events.append(e) } }

@@ -2,20 +2,23 @@ import XCTest
 @testable import UnifiedScanner
 
 final class DeviceClassificationTests: XCTestCase {
-    func testAppleTVHighConfidence() {
-        let d = Device.mockAppleTV
+    func testAppleTVHighConfidence() async {
+        var d = Device.mockAppleTV
+        d.classification = await ClassificationService.classify(device: d)
         XCTAssertEqual(d.classification?.formFactor, .tv)
         XCTAssertEqual(d.classification?.confidence, .high)
     }
 
-    func testPrinterClassification() {
-        let d = Device.mockPrinter
+    func testPrinterClassification() async {
+        var d = Device.mockPrinter
+        d.classification = await ClassificationService.classify(device: d)
         XCTAssertEqual(d.classification?.formFactor, .printer)
         XCTAssertTrue([.high, .medium].contains(d.classification?.confidence))
     }
 
-    func testRouterClassification() {
-        let d = Device.mockRouter
+    func testRouterClassification() async {
+        var d = Device.mockRouter
+        d.classification = await ClassificationService.classify(device: d)
         XCTAssertEqual(d.classification?.formFactor, .router)
     }
 

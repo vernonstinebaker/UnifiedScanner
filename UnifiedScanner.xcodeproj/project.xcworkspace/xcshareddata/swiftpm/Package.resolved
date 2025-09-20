@@ -1,0 +1,15 @@
+{
+  "originHash" : "456db7403b18dce068ad0752b5340d1fb18f712a8c34bff76afe98cf3527249f",
+  "pins" : [
+    {
+      "identity" : "simplepingkit",
+      "kind" : "remoteSourceControl",
+      "location" : "http://orangepi:3000/vds/SimplePingKit.git",
+      "state" : {
+        "revision" : "ab324f0c0cbb56aeb125d0c4f1f0bffea60ab52d",
+        "version" : "1.0.0"
+      }
+    }
+  ],
+  "version" : 3
+}
