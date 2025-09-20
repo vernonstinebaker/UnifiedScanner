@@ -83,25 +83,20 @@ public final class BonjourDiscoveryProvider: NSObject, @unchecked Sendable, Disc
     private let resolveCooldown: TimeInterval
     private let dynamicBrowserCap: Int
     private var stopped = false
-
     private var continuation: AsyncStream<Device>.Continuation?
 
-    // Browsers & tracking
-    private var serviceBrowsers: [NetServiceBrowser] = []
-    private var wildcardBrowser: NetServiceBrowser?
-    private var activeServiceTypes: Set<String> = [] // lowercased types like _http._tcp.
-    private var lastResolved: [String: Date] = [:]
+    // New decomposed services
+    private var browseService: BonjourBrowseService?
+    private var resolveService: BonjourResolveService?
 
-    private let stateQueue = DispatchQueue(label: "BonjourDiscoveryProvider.state")
-
-    // Curated commonly useful service types (include trailing dot as NetService expects)
+    // Curated service baseline
     private let curatedServiceTypes: [String] = [
         "_airplay._tcp.", "_raop._tcp.", "_ssh._tcp.", "_http._tcp.", "_https._tcp.",
         "_hap._tcp.", "_spotify-connect._tcp.", "_smb._tcp.", "_ipp._tcp.", "_printer._tcp.",
         "_rfb._tcp.", "_afpovertcp._tcp.", "_sftp-ssh._tcp."
     ]
 
-    // Simulation support for tests / previews
+    // Simulation support
     public struct SimulatedService: Sendable { public let type: String; public let name: String; public let port: Int; public let hostname: String; public let ip: String; public let txt: [String:String]; public init(type: String, name: String, port: Int, hostname: String, ip: String, txt: [String:String] = [:]) { self.type = type; self.name = name; self.port = port; self.hostname = hostname; self.ip = ip; self.txt = txt } }
     private let simulated: [SimulatedService]?
 
@@ -112,31 +107,74 @@ public final class BonjourDiscoveryProvider: NSObject, @unchecked Sendable, Disc
         super.init()
     }
 
+    // Previous aggregation removed; provider now emits per-service devices.
+    private func makeSingleServiceDevice(ips: [String], hostname: String?, service: NetworkService, fingerprints: [String:String]) -> Device {
+        // Stable primary IP preference: first IPv4 (lowest numerically) else first IPv6
+        let ipv4s = ips.filter { $0.contains(".") }.sorted { a,b in
+            let aP = a.split(separator: ".").compactMap { Int($0) }
+            let bP = b.split(separator: ".").compactMap { Int($0) }
+            for (x,y) in zip(aP,bP) { if x != y { return x < y } }
+            return a < b
+        }
+        let primary = ipv4s.first ?? ips.first
+
+        // primary chosen above
+        var vendor: String? = nil
+        var model: String? = nil
+        if !fingerprints.isEmpty {
+            let vm = VendorModelExtractorService.extract(from: fingerprints)
+            vendor = vm.vendor
+            model = vm.model
+        }
+        return Device(primaryIP: primary, ips: Set(ips), hostname: hostname, vendor: vendor, modelHint: model, discoverySources: [.mdns], services: [service], fingerprints: fingerprints, firstSeen: Date(), lastSeen: Date())
+    }
+
     public func start() -> AsyncStream<Device> {
         stopped = false
         return AsyncStream { continuation in
             self.continuation = continuation
-            if let simulated = self.simulated { // Test / preview path
+            if let simulated = self.simulated {
                 Task { [weak self] in
+                    guard let self else { return }
                     for sim in simulated {
-                        guard let self, !self.stopped else { break }
-                        let device = self.makeDevice(from: sim)
-                        continuation.yield(device)
+                        if self.stopped { break }
+                        let svc = ServiceDeriver.makeService(fromRaw: sim.type, port: sim.port)
+                        let dev = self.makeSingleServiceDevice(ips: [sim.ip], hostname: sim.hostname, service: svc, fingerprints: sim.txt)
+                        continuation.yield(dev)
                     }
                     continuation.finish()
                 }
                 return
             }
-            // Real network path
-            self.startCuratedBrowsers()
-            self.startWildcardBrowser()
+            // Real network path: browse raw types then resolve
+            LoggingService.info("bonjour: provider starting curated=\(self.curatedServiceTypes.count) dynamicCap=\(self.dynamicBrowserCap) cooldown=\(self.resolveCooldown)s")
+            let initBrowsers = { [weak self] in
+                guard let self else { return }
+                let browse = BonjourBrowseService(curatedServiceTypes: self.curatedServiceTypes, dynamicBrowserCap: self.dynamicBrowserCap)
+                let resolve = BonjourResolveService(resolveCooldown: self.resolveCooldown)
+                self.browseService = browse
+                self.resolveService = resolve
+                let typeStream = browse.start()
+                let resolvedStream = resolve.resolveStream(forTypes: typeStream)
+                Task { [weak self] in
+                    guard let self else { return }
+                    for await rs in resolvedStream {
+                        if self.stopped { break }
+                        let service = ServiceDeriver.makeService(fromRaw: rs.rawType, port: rs.port)
+                        let dev = self.makeSingleServiceDevice(ips: rs.ips, hostname: rs.hostname, service: service, fingerprints: rs.txt)
+                        continuation.yield(dev)
+                    }
+                    continuation.finish()
+                }
+            }
+            if Thread.isMainThread { initBrowsers() } else { DispatchQueue.main.sync(execute: initBrowsers) }
         }
     }
 
     public func stop() {
-        stateQueue.sync { stopped = true }
-        for b in serviceBrowsers { b.stop() }
-        serviceBrowsers.removeAll()
+        stopped = true
+        browseService?.stop(); browseService = nil
+        resolveService?.stop(); resolveService = nil
         continuation?.finish(); continuation = nil
     }
 
@@ -144,152 +182,7 @@ public final class BonjourDiscoveryProvider: NSObject, @unchecked Sendable, Disc
 }
 
 // MARK: - Internal Implementation
-extension BonjourDiscoveryProvider: NetServiceBrowserDelegate, NetServiceDelegate {
-    private func startCuratedBrowsers() {
-        for type in curatedServiceTypes { startBrowser(for: type) }
-    }
-    private func startWildcardBrowser() {
-        let type = "_services._dns-sd._udp."
-        let browser = NetServiceBrowser()
-        browser.delegate = self
-        wildcardBrowser = browser
-        serviceBrowsers.append(browser)
-        browser.searchForServices(ofType: type, inDomain: "local.")
-        LoggingService.debug("bonjour: started wildcard browser type=\(type)")
-    }
-
-    private func startBrowser(for type: String) {
-        let lower = type.lowercased()
-        stateQueue.sync { _ = activeServiceTypes.insert(lower) }
-        let browser = NetServiceBrowser()
-        browser.delegate = self
-        serviceBrowsers.append(browser)
-        browser.searchForServices(ofType: type, inDomain: "local.")
-        LoggingService.debug("bonjour: started browser type=\(type)")
-    }
-
-    // MARK: NetServiceBrowserDelegate
-    public func netServiceBrowser(_ browser: NetServiceBrowser, didFind service: NetService, moreComing: Bool) {
-        // If this is the wildcard enumeration browser, the service.type is a discovered service type; spin up dedicated browser if not already
-        if service.type == "_services._dns-sd._udp." { return } // ignore self reference
-        if browserIsWildcard(browser), isServiceTypeEnumeration(service: service) {
-            let newType = service.name.hasSuffix(".") ? service.name : service.name + "." // when enumerating types, name holds the regtype sans domain
-            considerStartingDynamicBrowser(forRawDiscoveredType: newType)
-            return
-        }
-        // Normal service discovery path
-        service.delegate = self
-        resolveIfNeeded(service)
-    }
-
-    public func netServiceBrowser(_ browser: NetServiceBrowser, didNotSearch errorDict: [String : NSNumber]) {
-        LoggingService.warn("bonjour: browser failed error=\(errorDict)")
-    }
-    public func netServiceBrowserDidStopSearch(_ browser: NetServiceBrowser) { LoggingService.debug("bonjour: browser stopped") }
-
-    // MARK: Resolution
-    private func resolveIfNeeded(_ service: NetService) {
-        let key = serviceKey(service)
-        let shouldResolve: Bool = stateQueue.sync {
-            let now = Date()
-            if let last = lastResolved[key], now.timeIntervalSince(last) < resolveCooldown { return false }
-            lastResolved[key] = now
-            return true
-        }
-        guard shouldResolve else { return }
-        service.delegate = self
-        service.resolve(withTimeout: 5.0)
-    }
-
-    public func netServiceDidResolveAddress(_ sender: NetService) {
-        // Copy needed fields early to avoid potential concurrency capture warnings
-        let senderType = sender.type
-        let senderPort = sender.port
-        let senderHostName = sender.hostName
-        guard !stopped else { return }
-        let ips = extractIPs(from: sender)
-        if ips.isEmpty { return }
-        var fingerprints: [String:String] = [:]
-        if let data = sender.txtRecordData() {
-            let dict = NetService.dictionary(fromTXTRecord: data)
-            for (k,v) in dict { fingerprints[k] = String(data: v, encoding: .utf8) ?? v.map { String(format: "%02x", $0) }.joined() }
-        }
-        let rawType = senderType
-        let svc = ServiceDeriver.makeService(fromRaw: rawType, port: senderPort == 0 ? nil : senderPort)
-        var hostname = senderHostName
-        if let h = hostname, h.hasSuffix(".") { hostname = String(h.dropLast()) }
-        let device = Device(primaryIP: ips.first, ips: Set(ips), hostname: hostname, discoverySources: [.mdns], services: [svc], fingerprints: fingerprints, firstSeen: Date(), lastSeen: Date())
-        continuation?.yield(device)
-    }
-
-    public func netService(_ sender: NetService, didNotResolve errorDict: [String : NSNumber]) {
-        let name = sender.name
-        let type = sender.type
-        let errSummary = errorDict.map { "\($0.key)=\($0.value)" }.joined(separator: ",")
-        LoggingService.debug("bonjour: resolve failed name=\(name) type=\(type) error=[\(errSummary)]")
-    }
-
-    // MARK: Helpers
-    private func browserIsWildcard(_ browser: NetServiceBrowser) -> Bool {
-        return browser === wildcardBrowser
-    }
-
-    private func isServiceTypeEnumeration(service: NetService) -> Bool {
-        // When browsing _services._dns-sd._udp., NetService instances represent service types; heuristics: port=0 & no addresses yet.
-        return service.port == -1 || service.port == 0 && service.name.hasPrefix("_") && service.type == "_services._dns-sd._udp."
-    }
-
-    private func considerStartingDynamicBrowser(forRawDiscoveredType type: String) {
-        let normalized = type.lowercased()
-        stateQueue.sync {
-            guard activeServiceTypes.count < dynamicBrowserCap else { return }
-            if !activeServiceTypes.contains(normalized) {
-                activeServiceTypes.insert(normalized)
-                DispatchQueue.main.async { [weak self] in self?.startBrowser(for: type) }
-            }
-        }
-    }
-
-    private func serviceKey(_ s: NetService) -> String { "\(s.name).\(s.type)\(s.domain)" }
-
-    private func stringFromCStringBuffer(_ buf: [CChar]) -> String {
-        if let nul = buf.firstIndex(of: 0) {
-            let bytes = buf[..<nul].map { UInt8(bitPattern: $0) }
-            return String(decoding: bytes, as: UTF8.self)
-        }
-        return String(decoding: buf.map { UInt8(bitPattern: $0) }, as: UTF8.self)
-    }
-
-    private func extractIPs(from service: NetService) -> [String] {
-        guard let datas = service.addresses else { return [] }
-        var ipv4s: [String] = []
-        var ipv6s: [String] = []
-        for data in datas {
-            data.withUnsafeBytes { rawBuf in
-                guard rawBuf.count >= MemoryLayout<sockaddr>.size else { return }
-                let sa = rawBuf.baseAddress!.assumingMemoryBound(to: sockaddr.self).pointee
-                #if canImport(Darwin)
-                if sa.sa_family == sa_family_t(AF_INET) {
-                    let addrIn = rawBuf.baseAddress!.assumingMemoryBound(to: sockaddr_in.self).pointee
-                    var addr = addrIn.sin_addr
-                    var buf = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN))
-                    inet_ntop(AF_INET, &addr, &buf, socklen_t(INET_ADDRSTRLEN))
-                    let ip = stringFromCStringBuffer(buf)
-                    if !ip.isEmpty && !ipv4s.contains(ip) { ipv4s.append(ip) }
-                } else if sa.sa_family == sa_family_t(AF_INET6) {
-                    let addrIn6 = rawBuf.baseAddress!.assumingMemoryBound(to: sockaddr_in6.self).pointee
-                    var addr6 = addrIn6.sin6_addr
-                    var buf6 = [CChar](repeating: 0, count: Int(INET6_ADDRSTRLEN))
-                    inet_ntop(AF_INET6, &addr6, &buf6, socklen_t(INET6_ADDRSTRLEN))
-                    let ip6 = stringFromCStringBuffer(buf6)
-                    if !ip6.isEmpty && !ipv6s.contains(ip6) { ipv6s.append(ip6) }
-                }
-                #endif
-            }
-        }
-        return ipv4s + ipv6s
-    }
-
+extension BonjourDiscoveryProvider {
     private func makeDevice(from sim: SimulatedService) -> Device {
         let svc = ServiceDeriver.makeService(fromRaw: sim.type, port: sim.port)
         return Device(primaryIP: sim.ip, ips: [sim.ip], hostname: sim.hostname, discoverySources: [.mdns], services: [svc], fingerprints: sim.txt, firstSeen: Date(), lastSeen: Date())

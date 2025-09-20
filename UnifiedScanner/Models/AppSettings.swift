@@ -48,8 +48,4 @@ final class AppSettings: ObservableObject {
     private func persist() {
         defaults.set(loggingLevel.rawValue, forKey: loggingLevelKey)
     }
-
-
 }
-
-// SettingsView extracted to Views/SettingsView.swift

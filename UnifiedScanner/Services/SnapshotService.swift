@@ -6,7 +6,7 @@ public enum DeviceField: String, CaseIterable, Sendable {
     case hostname, vendor, modelHint, rttMillis, services, openPorts, discoverySources, classification, ips, primaryIP, lastSeen, firstSeen, macAddress, fingerprints, isOnlineOverride
 }
 
-public enum MutationSource: Sendable { case mdns, ping, arp, classification, persistenceRestore }
+public enum MutationSource: Sendable { case mdns, ping, arp, classification, persistenceRestore, offline }
 
 public struct DeviceChange: Sendable {
     public let before: Device?
@@ -65,19 +65,27 @@ extension DeviceField {
 ///  - RTT and latency fields overwritten if new value provided (latest wins)
 @MainActor
 final class SnapshotService: ObservableObject {
-    @Published private(set) var devices: [Device] = []
-    private var mutationContinuations: [UUID: AsyncStream<DeviceMutation>.Continuation] = [:]
+     @Published private(set) var devices: [Device] = []
+     private var mutationContinuations: [UUID: AsyncStream<DeviceMutation>.Continuation] = [:]
 
-    private let persistence: DevicePersistence
+     private var offlineHeartbeatTask: Task<Void, Never>? = nil
+     private let offlineCheckInterval: TimeInterval
+     private let onlineGraceInterval: TimeInterval
+
+     private let persistence: DevicePersistence
     private let classification: ClassificationService.Type
     private let persistenceKey: String
 
      init(persistenceKey: String = "unifiedscanner:devices:v1",
          persistence: DevicePersistence? = nil,
-         classification: ClassificationService.Type = ClassificationService.self) {
+         classification: ClassificationService.Type = ClassificationService.self,
+         offlineCheckInterval: TimeInterval = 60,
+         onlineGraceInterval: TimeInterval = DeviceConstants.onlineGraceInterval) {
          self.persistenceKey = persistenceKey
          self.persistence = persistence ?? LiveDevicePersistence()
          self.classification = classification
+         self.offlineCheckInterval = offlineCheckInterval
+         self.onlineGraceInterval = onlineGraceInterval
          let env = ProcessInfo.processInfo.environment
          let disablePersistence = env["UNIFIEDSCANNER_DISABLE_PERSISTENCE"] == "1"
          if disablePersistence {
@@ -108,9 +116,38 @@ final class SnapshotService: ObservableObject {
                 await self.reloadFromPersistenceIfChanged()
             }
         }
+        startOfflineHeartbeat()
     }
-
-    // MARK: - Public API
+     
+     private func startOfflineHeartbeat() {
+         offlineHeartbeatTask?.cancel()
+         offlineHeartbeatTask = Task { [weak self] in
+             guard let self else { return }
+             while !Task.isCancelled {
+                 await self.performOfflineSweep()
+                 try? await Task.sleep(nanoseconds: UInt64(self.offlineCheckInterval * 1_000_000_000))
+             }
+         }
+     }
+     
+     private func performOfflineSweep() async {
+         let now = Date()
+         var mutations: [DeviceChange] = []
+         for (idx, dev) in devices.enumerated() {
+             guard dev.isOnlineOverride != false else { continue }
+             guard let last = dev.lastSeen else { continue }
+              if now.timeIntervalSince(last) > self.onlineGraceInterval {
+                 var updated = dev
+                 updated.isOnlineOverride = false
+                 devices[idx] = updated
+                 let changed: Set<DeviceField> = [.isOnlineOverride]
+                 mutations.append(DeviceChange(before: dev, after: updated, changed: changed, source: .offline))
+             }
+         }
+         if !mutations.isEmpty { for m in mutations { emit(.change(m)) } }
+     }
+     
+     // MARK: - Public API
     func mutationStream(includeInitialSnapshot: Bool = true, buffer: Int = 256) -> AsyncStream<DeviceMutation> {
         let id = UUID()
         return AsyncStream(bufferingPolicy: .bufferingOldest(buffer)) { continuation in
@@ -131,7 +168,10 @@ final class SnapshotService: ObservableObject {
         for (_, cont) in mutationContinuations { cont.yield(mutation) }
     }
 
-    func upsert(_ incoming: Device, source: MutationSource = .mdns) async {
+     func upsert(_ incoming: Device, source: MutationSource = .mdns) async {
+        // Clear offline override if we have fresh activity
+        var incoming = incoming
+        if incoming.isOnlineOverride == false { incoming.isOnlineOverride = nil }
         let before = devices.first(where: { $0.id == incoming.id })
         var newDevice = incoming
         if newDevice.firstSeen == nil { newDevice.firstSeen = Date() }
