@@ -1,0 +1,15 @@
+/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/UnifiedScanner/ContentView.swift
+/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/UnifiedScanner/DeviceRowView.swift
+/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/UnifiedScanner/ModelUtilities/IPHeuristics.swift
+/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/UnifiedScanner/ModelUtilities/ServiceDeriver.swift
+/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/UnifiedScanner/Models/Device+Mock.swift
+/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/UnifiedScanner/Models/Device.swift
+/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/UnifiedScanner/Services/ARPTableReader.swift
+/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/UnifiedScanner/Services/ClassificationService.swift
+/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/UnifiedScanner/Services/DeviceSnapshotStore.swift
+/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/UnifiedScanner/Services/DiscoveryProvider.swift
+/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/UnifiedScanner/Services/LocalSubnetEnumerator.swift
+/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/UnifiedScanner/Services/PingScanner.swift
+/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/UnifiedScanner/Services/Pinger.swift
+/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/UnifiedScanner/UnifiedDeviceDetail.swift
+/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/UnifiedScanner/UnifiedScannerApp.swift

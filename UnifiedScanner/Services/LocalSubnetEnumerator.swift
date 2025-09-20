@@ -2,65 +2,119 @@ import Foundation
 import Darwin
 
 // MARK: - Host Enumeration Abstraction
-@preconcurrency protocol HostEnumerator: Sendable { // not actor-isolated
+@preconcurrency protocol HostEnumerator: Sendable {
     func enumerate(maxHosts: Int?) -> [String]
 }
 
-/// Utility responsible for deriving a candidate host list for ping discovery when
-/// explicit hosts are not provided. Strategy: pick the first active non-loopback
-/// IPv4 interface whose name starts with `en` (Wi‑Fi / Ethernet convention on Apple
-/// platforms) and expand a /24 (x.y.z.1 ... x.y.z.254) excluding the local host
-/// itself plus network (.0) and broadcast (.255). This mirrors (simplified) logic
-/// adapted from legacy netscan `BonjourDiscoverer.getLocalSubnetIPs` (reference only).
+/// Generates a /24 host list for the primary active IPv4 interface using
+/// lightweight helpers adapted from the PingScanner project.
 struct LocalSubnetEnumerator: HostEnumerator {
-    // Instance entry point satisfying protocol
-    func enumerate(maxHosts: Int? = nil) -> [String] { Self.enumerate(maxHosts: maxHosts) }
-
-    // Original static implementation retained for internal reuse / tests
-    static func enumerate(maxHosts: Int? = nil) -> [String] {
-        var ifaddr: UnsafeMutablePointer<ifaddrs>? = nil
-        guard getifaddrs(&ifaddr) == 0, let first = ifaddrs_pointer(ifaddr) else { return [] }
-        defer { freeifaddrs(ifaddr) }
-        var primaryCandidate: String? = nil   // first active non-loopback IPv4 whose name starts with "en"
-        var fallbackCandidate: String? = nil  // first active non-loopback IPv4 of any name
-        for ptr in sequence(first: first, next: { $0.pointee.ifa_next }) {
-            let ifa = ptr.pointee
-            let flags = Int32(ifa.ifa_flags)
-            guard (flags & IFF_UP) == IFF_UP else { continue }
-            guard (flags & IFF_LOOPBACK) != IFF_LOOPBACK else { continue }
-            guard ifa.ifa_addr.pointee.sa_family == sa_family_t(AF_INET) else { continue }
-            var addr = ifa.ifa_addr.pointee
-            var hostBuf = [CChar](repeating: 0, count: Int(NI_MAXHOST))
-            let r = getnameinfo(&addr, socklen_t(addr.sa_len), &hostBuf, socklen_t(hostBuf.count), nil, 0, NI_NUMERICHOST)
-            guard r == 0, let ip = String(validatingUTF8: hostBuf) else { continue }
-            let name = String(cString: ifa.ifa_name)
-            if primaryCandidate == nil && name.hasPrefix("en") { primaryCandidate = ip }
-            if fallbackCandidate == nil { fallbackCandidate = ip }
-            if primaryCandidate != nil { break }
-        }
-        let chosen = primaryCandidate ?? fallbackCandidate
-        var result: [String] = []
-        if let ip = chosen { result = expandSlash24(ip: ip) }
-        if let cap = maxHosts, result.count > cap {
-            let stride = max(1, result.count / cap)
-            result = Array(result.enumerated().compactMap { ($0.offset % stride == 0) ? $0.element : nil }.prefix(cap))
+    func enumerate(maxHosts: Int? = nil) -> [String] {
+        guard let ip = Self.primaryIPv4Address() else { return [] }
+        guard let block = Self.cidrBlock(for: ip, prefix: 24) else { return [] }
+        var hosts = block.hostAddresses()
+        if let limit = maxHosts, limit > 0, hosts.count > limit {
+            hosts = Array(hosts.prefix(limit))
         }
         if ProcessInfo.processInfo.environment["PING_INFO_LOG"] == "1" {
-            print("[Enumerate] baseIP=\(chosen ?? "nil") totalHosts=\(result.count)")
+            print("[Enumerate] baseIP=\(ip) totalHosts=\(hosts.count)")
         }
-        return result
+        return hosts
     }
 
-    private static func expandSlash24(ip: String) -> [String] {
+    private static func primaryIPv4Address() -> String? {
+        var ifaddr: UnsafeMutablePointer<ifaddrs>? = nil
+        guard getifaddrs(&ifaddr) == 0, let start = ifaddr else { return nil }
+        defer { freeifaddrs(ifaddr) }
+
+        var preferred: String?
+        var fallback: String?
+
+        var pointer: UnsafeMutablePointer<ifaddrs>? = start
+        while let current = pointer?.pointee {
+            defer { pointer = current.ifa_next }
+            guard let addrPtr = current.ifa_addr else { continue }
+            let flags = Int32(current.ifa_flags)
+            guard (flags & IFF_UP) == IFF_UP else { continue }
+            guard (flags & IFF_LOOPBACK) != IFF_LOOPBACK else { continue }
+            guard addrPtr.pointee.sa_family == sa_family_t(AF_INET) else { continue }
+
+            let name = String(cString: current.ifa_name)
+            var addr = addrPtr.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { $0.pointee.sin_addr }
+            var buffer = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN))
+            guard inet_ntop(AF_INET, &addr, &buffer, socklen_t(INET_ADDRSTRLEN)) != nil else { continue }
+            let ip = String(cString: buffer)
+
+            if preferred == nil && name.hasPrefix("en") { preferred = ip }
+            if fallback == nil { fallback = ip }
+            if preferred != nil { break }
+        }
+
+        return preferred ?? fallback
+    }
+
+    private static func cidrBlock(for ip: String, prefix: Int) -> CIDRBlock? {
         let parts = ip.split(separator: ".")
-        guard parts.count == 4, let selfLast = Int(parts[3]) else { return [] }
-        let base = "\(parts[0]).\(parts[1]).\(parts[2])."
-        var ips: [String] = []
-        ips.reserveCapacity(253)
-        for host in 1...254 where host != selfLast { ips.append(base + String(host)) }
-        return ips
+        guard parts.count == 4 else { return nil }
+        let base = parts.enumerated().map { index, value in
+            index == 3 ? "0" : String(value)
+        }.joined(separator: ".")
+        return CIDRBlock(cidr: "\(base)/\(prefix)")
     }
 }
 
-// Helper to silence optional pointer warnings in Swift 6 migration contexts
-private func ifaddrs_pointer(_ ptr: UnsafeMutablePointer<ifaddrs>?) -> UnsafeMutablePointer<ifaddrs>? { ptr }
+// MARK: - CIDR Utilities (adapted from PingScanner)
+struct CIDRBlock: Equatable {
+    let baseAddress: UInt32
+    let prefix: Int
+
+    init?(cidr: String) {
+        let parts = cidr.split(separator: "/")
+        guard parts.count == 2,
+              let prefixValue = Int(parts[1]),
+              (0...32).contains(prefixValue),
+              let base = IPv4Parser.addressToUInt32(String(parts[0]))
+        else {
+            return nil
+        }
+
+        prefix = prefixValue
+        let mask = prefix == 0 ? UInt32(0) : UInt32.max << (32 - prefix)
+        baseAddress = base & mask
+    }
+
+    func hostAddresses(includeNetwork: Bool = false, includeBroadcast: Bool = false) -> [String] {
+        if prefix == 32 {
+            return [IPv4Parser.uint32ToAddress(baseAddress)]
+        }
+
+        let hostBits = 32 - prefix
+        let hostCount = 1 << hostBits
+        var addresses: [String] = []
+        addresses.reserveCapacity(hostCount)
+
+        for index in 0..<hostCount {
+            let address = baseAddress + UInt32(index)
+            if index == 0 && !includeNetwork && hostCount > 1 { continue }
+            if index == hostCount - 1 && !includeBroadcast && hostCount > 1 { continue }
+            addresses.append(IPv4Parser.uint32ToAddress(address))
+        }
+        return addresses
+    }
+}
+
+enum IPv4Parser {
+    static func addressToUInt32(_ address: String) -> UInt32? {
+        var sin = in_addr()
+        let result = address.withCString { inet_pton(AF_INET, $0, &sin) }
+        guard result == 1 else { return nil }
+        return UInt32(bigEndian: sin.s_addr)
+    }
+
+    static func uint32ToAddress(_ value: UInt32) -> String {
+        var addr = in_addr(s_addr: value.bigEndian)
+        var buffer = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN))
+        inet_ntop(AF_INET, &addr, &buffer, socklen_t(INET_ADDRSTRLEN))
+        return String(cString: buffer)
+    }
+}

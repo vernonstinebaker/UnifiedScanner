@@ -1,0 +1,3 @@
+module UnifiedScanner {
+    header "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/UnifiedScanner.build/include/UnifiedScanner-Swift.h"
+}

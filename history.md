@@ -91,8 +91,23 @@ The UnifiedScanner now has a **fully functional network discovery pipeline** cap
 - Operating efficiently with concurrent network operations
 
 **Ready for Phase 6**: Advanced features (mDNS, SSDP, fingerprinting, etc.)
-									 k
-      Move around:  Use the cursor keys, or "h" to go left,	       h   l
+
+<!-- CLEANUP: Removed accidental Vim help dump that followed. -->
+
+## Upcoming Focus (Phase 6 / 7 TODO Annotations)
+- TODO Phase 6: Implement mDNS provider (NetServiceBrowser wrapper emitting Device mutations)
+- TODO Phase 6: Reintroduce PortScanner using structured concurrency (TaskGroup, cancellation)
+- TODO Phase 6: OUI ingestion (parse oui.csv once into prefix map)
+- TODO Phase 6: DeviceSnapshotStore mutation AsyncStream
+- TODO Phase 6: Accessibility baseline (labels for device row, service pills, port rows)
+- TODO Phase 6: UnifiedTheme extraction (dark mode baseline still primary)
+- TODO Phase 6: Replace Task.detached in orchestrators with TaskGroup & cooperative cancellation
+- TODO Phase 7: SSDP + WS-Discovery evaluation providers (gated by feature flags)
+- TODO Phase 7: Reverse DNS + HTTP/SSH fingerprint enrichment populating `fingerprints`
+- TODO Phase 7: Dynamic Type stress test & VoiceOver rotor refinement
+- TODO Phase 7: Light theme + high contrast adjustments
+- TODO Phase 7: Localized string extraction (English only bundle initially)
+
 		    "j" to go down, "k" to go up, "l" to go right.	 j
 Close this window:  Use ":q<Enter>".
    Get out of Vim:  Use ":qa!<Enter>" (careful, all changes are lost!).

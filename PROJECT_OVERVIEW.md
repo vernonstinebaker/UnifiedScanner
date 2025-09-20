@@ -141,16 +141,141 @@ Future Modularization Criteria (to extract into Swift Packages later):
 - `ScannerDesign`: Only if visual theming diverges across targets.
 
 Ping Strategy (Cross-Platform):
-- iOS / iPadOS: Use bundled `SimplePingKit` (fast, API-driven) via a `Pinger` facade wrapping delegate callbacks into `AsyncStream`.
-- macOS: Avoid SimplePingKit sandbox limitation by using a lightweight `SystemExecPinger` that shells out to `ping -c 1 -W <timeout>` and parses latency; confined behind the same `Pinger` protocol.
+- iOS / iPadOS: Use bundled `SimplePingKit` (fast, API-driven) via a `PingService` facade wrapping delegate callbacks into `AsyncStream`.
+- macOS: Avoid SimplePingKit sandbox limitation by using a lightweight `SystemExecPingService` that shells out to `ping -c 1 -W <timeout>` and parses latency; confined behind the same `PingService` protocol.
 - Placeholder Device Creation: `PingOrchestrator` now creates a lightweight `Device` immediately for any enqueued host not already present so ping-only discoveries surface in UI before first RTT.
-- Auto Host Enumeration: `DiscoveryCoordinator.start` accepts an empty `pingHosts` array; if so it derives a /24 candidate host list via `LocalSubnetEnumerator` (first active `en*` IPv4 interface) with optional thinning.
+- Auto Host Enumeration: `DiscoveryCoordinator.start` accepts an empty `pingHosts` array; if so it derives a /24 candidate host list via `LocalSubnetEnumerator` (first active `en*` IPv4 interface) with optional thinning, including the local host.
 - Facade consolidates results into unified `PingMeasurement` feeding `DeviceSnapshotStore.applyPing` (which now upserts new devices if still absent).
 - Conditional compilation (`#if os(iOS)`) ensures macOS build excludes SimplePingKit dependency specifics.
 
 Decision Log:
 - Chosen Option A (local-first). Reevaluate after Phase 3; record decision in PLAN.md architecture task.
 - Adopted Network framework approach (cross-platform) instead of SimplePingKit/exec fallback - provides better sandbox compatibility and unified TCP/UDP probing capabilities.
+
+## Upcoming Architecture Enhancements (Inline TODOs)
+These are planned refinements for Phases 6–7. Inline `TODO[...]` tags are intentionally placed for traceability.
+
+### Mutation Stream Model
+Introduce a unified streaming layer emitting semantic device mutations rather than ad-hoc method calls.
+```swift
+/// Represents a semantic state change to be folded into DeviceSnapshotStore
+enum DeviceMutation: Sendable {
+    case upsertBase(Device)                 // Initial or refreshed core fields
+    case updateRTT(id: String, rtt: Double) // Latency update only
+    case mergeServices(id: String, services: [NetworkService])
+    case mergeOpenPorts(id: String, ports: [Port])
+    case markOffline(id: String, at: Date)
+    case enrichClassification(id: String, classification: Device.Classification)
+    case attachFingerprints(id: String, data: [String:String])
+}
+```
+- `DeviceSnapshotStore` exposes `apply(_ mutation: DeviceMutation)` folding logic.
+- Public async API: `func mutations() -> AsyncStream<DeviceMutation>` for UI & tests.
+- `DiscoveryCoordinator` owns a `AsyncStream<DeviceMutation>` builder fed by providers.
+- TODO[concurrency]: Replace current direct device store calls with mutation emission + fold layer.
+- TODO[telemetry]: Optionally mirror mutations to a debug ring buffer (keep last 500) for diagnostics.
+
+### Structured Concurrency Refactor
+Current scattered `Task.detached` usages will be consolidated.
+- Coordinator spawns a bounded `TaskGroup` for each provider start (ping, ARP, mDNS, PortScan tiers).
+- Cancellation tree: Cancel coordinator task → cascades to groups → providers finalize and emit `.markOffline` if needed.
+- Shutdown API:
+```swift
+protocol DiscoveryCoordinating: Sendable {
+    func start(configuration: DiscoveryConfig) async
+    func cancelAndDrain(timeout: Duration) async -> Bool // true if clean drain
+}
+```
+- TODO[concurrency]: Implement `cancelAndDrain(timeout:)` with racing cancellation + timeout fallback.
+- TODO[cancellation]: Each provider must periodically `try Task.checkCancellation()` (at least every host or port batch).
+
+### Provider Emission Guidelines
+- Providers never mutate devices directly; they only enqueue `DeviceMutation` events.
+- Ordering guarantee: Within a provider, events for the same `id` are emitted FIFO.
+- Cross-provider ordering is best-effort; `DeviceSnapshotStore` must be idempotent.
+- TODO[merging]: Document conflict precedence (e.g., MAC from ARP wins over mDNS-host-derived MAC placeholder).
+
+### PortScanner V2 (Tiered Design)
+Goals: faster initial UI signal, optional deeper enrichment.
+- Tier 0: (fast) Probe canonical ports {22, 80, 443} concurrently (limit 16).
+- Tier 1: (standard) Add {53, 445, 548, 8008, 8009} after Tier 0 completes or times out.
+- Extended (opt-in): Configurable additional list loaded from JSON (e.g., top 50 common ports).
+- Cancellation semantics: Cancelling a device scan aborts remaining tiers; partially discovered ports still emitted.
+- Timeout policy: Per-port soft timeout 300ms (Tier 0) / 450ms (Tier 1) / 700ms (Extended).
+- TODO[portscan]: Implement tier scheduler + mutation emission `.mergeOpenPorts`.
+- TODO[config]: Add `PortScanConfig(tiersEnabled: Set<PortScanTier>, extendedListPath: URL?)`.
+
+### mDNS (Bonjour) Provider Specification
+- Underlying API: `NetServiceBrowser` + `NetService` resolution wrapped in `actor BonjourProvider`.
+- Event Flow: discover service → resolve host/IP + TXT → map to `NetworkService` + partial `Device`.
+- Merge Rules:
+  - Identity hint order: MAC-from-TXT > hostname > IP.
+  - Services dedupe by (normalized type, port).
+  - Append source tag `"mdns:<rawType>"` into classification sources when classification updates are triggered.
+- TXT Parsing: extract model hints (e.g., `model=`, `ty=` for printers, `md=` for AirPlay) → update `modelHint` / fingerprints.
+- TODO[mdns]: Implement `BonjourProvider` emitting `.mergeServices` + `.upsertBase` + `.attachFingerprints` mutations.
+- TODO[classification]: Trigger incremental reclassification after each service addition if ruleset indicates new decisive signal.
+
+### OUI (Vendor) Ingestion Plan
+- Load once from bundled `oui.csv` into `[String: String]` keyed by 6-hex prefix uppercased.
+- Provide `VendorLookup.shared.lookup(mac: String) -> String?` caching misses.
+- Memory Optimization: Defer loading until first MAC merge (lazy init, ~2–3 ms expected cost).
+- TODO[vendor]: Add unit tests for known Apple / HP / Cisco prefixes.
+- TODO[vendor]: Add fallback heuristic: If vendor unknown & hostname matches known vendor tokens, classification sources note `vendor:inferred`.
+
+### Accessibility & HIG Compliance
+VoiceOver device row label pattern:
+`<Form Factor>, <Hostname OR Vendor>, IP <BestDisplayIP>, <n> services, RTT <x> ms (if present)`.
+- Dynamic Type: Use `.minimumScaleFactor(0.75)` only where truncation harmful; prefer multiline for detail view.
+- Color contrast: Service pills must pass WCAG AA for both light/dark.
+- Hit targets: Minimum 44x44pt for actionable rows / buttons.
+- Rotor grouping: Provide `AccessibilityRotorEntry` tags for Services vs Actions in detail view.
+- TODO[a11y]: Implement `accessibilityLabel` & `accessibilityValue` on `DeviceRowView`.
+- TODO[a11y]: Add snapshot VoiceOver tests (if infra supports) or at least unit verifying label string builder.
+- TODO[dynamicType]: Audit layout at extraExtraExtraLarge size class.
+
+### Logging Unification
+Current env-var scattered prints will be centralized.
+```swift
+struct ScanLogger {
+    enum Category: String { case ping, arp, mdns, portscan, classify, merge }
+    static func log(_ category: Category, _ message: @autoclosure () -> String) {
+        // TODO[logging]: Gate by runtime config (UserDefaults / launch arg) + os.Logger backend.
+    }
+}
+```
+- TODO[logging]: Replace direct print statements with `ScanLogger.log` calls.
+- TODO[logging]: Provide minimal structured interpolation for key fields (device id, ip, port).
+
+### Testing Roadmap (Future Test Names)
+Planned additions to ensure mutation semantics & merging correctness.
+- DeviceSnapshotStoreMergeTests.testUpsertAssignsStableIDMacWins
+- DeviceSnapshotStoreMergeTests.testRTTUpdateDoesNotOverwriteLastSeen
+- DeviceSnapshotStoreMergeTests.testServiceMergeDedupesByTypeAndPort
+- DeviceSnapshotStoreMergeTests.testMarkOfflineSetsRecentlySeenFalse
+- PortScannerTierTests.testTier0CompletesBeforeTier1Starts
+- PortScannerTierTests.testCancellationSkipsRemainingTiers
+- BonjourProviderTests.testTXTModelHintExtractionUpdatesClassification
+- BonjourProviderTests.testMultipleServicesForSameDeviceDeduped
+- VendorLookupTests.testKnownPrefixesReturnVendor
+- VendorLookupTests.testUnknownPrefixReturnsNilAndCachesMiss
+- ClassificationReevaluationTests.testNewServiceTriggersReclassification
+- AccessibilityLabelBuilderTests.testVoiceOverPatternIncludesServiceCount
+- LoggingTests.testLoggerCategoryFormatting
+- TODO[tests]: Implement above sequentially as features land.
+
+### Conflict Resolution Precedence (Draft)
+(Used by mutation fold logic.)
+1. MAC address authoritative once set (never replaced unless normalization reveals same value differently cased).
+2. Hostname updated only if new one is longer & previous was autogenerated / placeholder.
+3. Vendor not replaced if existing vendor came from OUI vs inferred.
+4. RTT retains most recent successful measurement.
+5. Services merged; never removed unless explicit offline pruning phase planned.
+- TODO[merging]: Document offline pruning decision (phase 7 optional) — may remove services not seen for N days.
+
+### Performance Considerations
+- AsyncStream backpressure: Use bounded buffer size (e.g., 500). When exceeded, drop lowest-priority mutation types (`updateRTT`) first.
+- TODO[performance]: Prototype dropping strategy & measure impact with synthetic 1000-host scan.
 
 ## Current Implementation Status (Phase 5 Complete)
 

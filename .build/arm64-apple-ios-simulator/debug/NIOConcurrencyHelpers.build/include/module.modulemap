@@ -1,0 +1,3 @@
+module NIOConcurrencyHelpers {
+    header "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/include/NIOConcurrencyHelpers-Swift.h"
+}

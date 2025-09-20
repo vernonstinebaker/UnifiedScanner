@@ -84,12 +84,12 @@ final class DeviceSnapshotStore: ObservableObject {
              self.devices = []
          } else {
              self.devices = self.persistence.load(key: persistenceKey)
-             // Sort loaded devices
-             self.devices.sort { (lhs, rhs) -> Bool in
-                 let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
-                 let rhsIP = rhs.bestDisplayIP ?? rhs.primaryIP ?? "255.255.255.255"
-                 return lhsIP < rhsIP
-             }
+              // Sort loaded devices
+              self.devices.sort { (lhs, rhs) -> Bool in
+                  let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
+                  let rhsIP = rhs.bestDisplayIP ?? rhs.primaryIP ?? "255.255.255.255"
+                  return compareIPs(lhsIP, rhsIP)
+              }
          }
          if env["UNIFIEDSCANNER_CLEAR_ON_START"] == "1" {
              self.devices.removeAll()
@@ -98,7 +98,7 @@ final class DeviceSnapshotStore: ObservableObject {
         NotificationCenter.default.addObserver(forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification, object: NSUbiquitousKeyValueStore.default, queue: .main) { [weak self] _ in
             guard let self else { return }
             Task { @MainActor in
-                self.reloadFromPersistenceIfChanged()
+                await self.reloadFromPersistenceIfChanged()
             }
         }
     }
@@ -124,7 +124,7 @@ final class DeviceSnapshotStore: ObservableObject {
         for (_, cont) in mutationContinuations { cont.yield(mutation) }
     }
 
-    func upsert(_ incoming: Device, source: MutationSource = .mdns) {
+    func upsert(_ incoming: Device, source: MutationSource = .mdns) async {
         let before = devices.first(where: { $0.id == incoming.id })
         var newDevice = incoming
         if newDevice.firstSeen == nil { newDevice.firstSeen = Date() }
@@ -132,21 +132,21 @@ final class DeviceSnapshotStore: ObservableObject {
 
         var changedFields: Set<DeviceField> = []
         if let idx = devices.firstIndex(where: { $0.id == newDevice.id }) {
-            let merged = merge(existing: devices[idx], incoming: newDevice)
+            let merged = await merge(existing: devices[idx], incoming: newDevice)
             let old = devices[idx]
             devices[idx] = merged
             changedFields.formUnion(DeviceField.differences(old: old, new: merged))
         } else {
-            newDevice.classification = classification.classify(device: newDevice)
+            newDevice.classification = await classification.classify(device: newDevice)
             devices.append(newDevice)
             changedFields = Set(DeviceField.allCases)
-        }
-        // Sort devices after modification
-        devices.sort { (lhs, rhs) -> Bool in
-            let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
-            let rhsIP = rhs.bestDisplayIP ?? rhs.primaryIP ?? "255.255.255.255"
-            return lhsIP < rhsIP
-        }
+         }
+         // Sort devices after modification
+         devices.sort { (lhs, rhs) -> Bool in
+             let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
+             let rhsIP = rhs.bestDisplayIP ?? rhs.primaryIP ?? "255.255.255.255"
+             return compareIPs(lhsIP, rhsIP)
+         }
         persist()
         if !changedFields.isEmpty {
             let after = devices.first(where: { $0.id == (before?.id ?? newDevice.id) }) ?? newDevice
@@ -154,11 +154,11 @@ final class DeviceSnapshotStore: ObservableObject {
         }
      }
 
-    func upsertMany(_ list: [Device], source: MutationSource = .mdns) {
-        for d in list { upsert(d, source: source) }
+    func upsertMany(_ list: [Device], source: MutationSource = .mdns) async {
+        for d in list { await upsert(d, source: source) }
     }
 
-      func applyPing(_ measurement: PingMeasurement) {
+      func applyPing(_ measurement: PingMeasurement) async {
            let infoLoggingEnabled = (ProcessInfo.processInfo.environment["PING_INFO_LOG"] == "1")
            if infoLoggingEnabled { print("[Store] applyPing host=\(measurement.host) status=\(measurement.status)") }
            // Find existing device by primary or secondary IP
@@ -173,14 +173,14 @@ final class DeviceSnapshotStore: ObservableObject {
                   if infoLoggingEnabled { print("[Ping] ignore non-success for existing host=\(measurement.host) status=\(measurement.status)") }
                   break
               }
-              let old = devices[idx]
-              devices[idx] = dev
-              // Sort after modification
-              devices.sort { (lhs, rhs) -> Bool in
-                  let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
-                  let rhsIP = rhs.bestDisplayIP ?? rhs.primaryIP ?? "255.255.255.255"
-                  return lhsIP < rhsIP
-              }
+               let old = devices[idx]
+               devices[idx] = dev
+               // Sort after modification
+               devices.sort { (lhs, rhs) -> Bool in
+                   let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
+                   let rhsIP = rhs.bestDisplayIP ?? rhs.primaryIP ?? "255.255.255.255"
+                   return compareIPs(lhsIP, rhsIP)
+               }
               persist()
               let changed = DeviceField.differences(old: old, new: dev)
               if !changed.isEmpty { emit(.change(DeviceChange(before: old, after: dev, changed: changed, source: .ping))) }
@@ -194,40 +194,40 @@ final class DeviceSnapshotStore: ObservableObject {
               newDevice.rttMillis = rtt
               newDevice.firstSeen = measurement.timestamp
               newDevice.lastSeen = measurement.timestamp
-              newDevice.classification = classification.classify(device: newDevice)
-              devices.append(newDevice)
-              // Sort after modification
-              devices.sort { (lhs, rhs) -> Bool in
-                  let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
-                  let rhsIP = rhs.bestDisplayIP ?? rhs.primaryIP ?? "255.255.255.255"
-                  return lhsIP < rhsIP
-              }
+             newDevice.classification = await classification.classify(device: newDevice)
+               devices.append(newDevice)
+               // Sort after modification
+               devices.sort { (lhs, rhs) -> Bool in
+                   let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
+                   let rhsIP = rhs.bestDisplayIP ?? rhs.primaryIP ?? "255.255.255.255"
+                   return compareIPs(lhsIP, rhsIP)
+               }
               persist()
               emit(.change(DeviceChange(before: nil, after: newDevice, changed: Set(DeviceField.allCases), source: .ping)))
           }
       }
 
-    func refreshClassifications() {
+    func refreshClassifications() async {
         var mutations: [DeviceChange] = []
-        devices = devices.map { dev in
+        var newDevices: [Device] = []
+        for dev in devices {
             var copy = dev
-            let newClass = classification.classify(device: dev)
+            let newClass = await classification.classify(device: dev)
             if dev.classification != newClass {
                 let before = dev
                 copy.classification = newClass
                 let changed: Set<DeviceField> = [.classification]
                 mutations.append(DeviceChange(before: before, after: copy, changed: changed, source: .classification))
-            } else {
-                copy.classification = dev.classification
             }
-            return copy
+            newDevices.append(copy)
         }
-        // Sort after modification
-        devices.sort { (lhs, rhs) -> Bool in
-            let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
-            let rhsIP = rhs.bestDisplayIP ?? rhs.primaryIP ?? "255.255.255.255"
-            return lhsIP < rhsIP
-        }
+        devices = newDevices
+               // Sort after modification
+               devices.sort { (lhs, rhs) -> Bool in
+                   let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
+                   let rhsIP = rhs.bestDisplayIP ?? rhs.primaryIP ?? "255.255.255.255"
+                   return compareIPs(lhsIP, rhsIP)
+               }
         persist()
         for m in mutations { emit(.change(m)) }
     }
@@ -239,7 +239,7 @@ final class DeviceSnapshotStore: ObservableObject {
     }
 
     // MARK: - Merge Logic
-    private func merge(existing: Device, incoming: Device) -> Device {
+    private func merge(existing: Device, incoming: Device) async -> Device {
         var result = existing
         let preClassificationFingerprint = classificationFingerprint(of: existing)
 
@@ -305,7 +305,7 @@ final class DeviceSnapshotStore: ObservableObject {
         // Recompute classification if relevant fields changed
         let postFingerprint = classificationFingerprint(of: result)
         if postFingerprint != preClassificationFingerprint {
-            result.classification = classification.classify(device: result)
+            result.classification = await classification.classify(device: result)
         }
 
         return result
@@ -322,21 +322,41 @@ final class DeviceSnapshotStore: ObservableObject {
         persistence.save(devices, key: persistenceKey)
     }
 
-    private func reloadFromPersistenceIfChanged() {
+    private func compareIPs(_ ip1: String, _ ip2: String) -> Bool {
+        // Handle IPv4 addresses with proper numerical comparison
+        let ip1Parts = ip1.split(separator: ".").compactMap { Int($0) }
+        let ip2Parts = ip2.split(separator: ".").compactMap { Int($0) }
+
+        if ip1Parts.count == 4 && ip2Parts.count == 4 {
+            for (p1, p2) in zip(ip1Parts, ip2Parts) {
+                if p1 != p2 {
+                    return p1 < p2
+                }
+            }
+            return false // IPs are equal
+        }
+
+        // Fallback to string comparison for non-IPv4 or malformed IPs
+        return ip1 < ip2
+    }
+
+    private func reloadFromPersistenceIfChanged() async {
         let latest = persistence.load(key: persistenceKey)
         // Only replace if different count or ids changed
         if latest.map(\ .id) != devices.map(\ .id) || latest.count != devices.count {
             // Re-run classification to ensure consistency if loaded persisted snapshot lacks it (older version)
-            devices = latest.map { dev in
+            var newDevices: [Device] = []
+            for dev in latest {
                 var d = dev
-                if d.classification == nil { d.classification = classification.classify(device: d) }
-                return d
+                if d.classification == nil { d.classification = await classification.classify(device: d) }
+                newDevices.append(d)
             }
+            devices = newDevices
             // Sort after loading
             devices.sort { (lhs, rhs) -> Bool in
                 let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
                 let rhsIP = rhs.bestDisplayIP ?? rhs.primaryIP ?? "255.255.255.255"
-                return lhsIP < rhsIP
+                return compareIPs(lhsIP, rhsIP)
             }
             emit(.snapshot(devices))
         }

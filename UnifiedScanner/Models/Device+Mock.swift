@@ -12,7 +12,8 @@ public extension Device {
                        openPorts: [Port(number: 80, serviceName: "http", description: "Web Admin", status: .open, lastSeenOpen: Date())],
                        firstSeen: Date().addingTimeInterval(-86400),
                        lastSeen: Date())
-        d.classification = ClassificationService.classify(device: d)
+        // Classification will be set asynchronously when needed
+        d.classification = nil
         return d
     }
     static var mockMac: Device {
@@ -26,7 +27,8 @@ public extension Device {
                        openPorts: [Port(number: 22, serviceName: "ssh", description: "Remote Login", status: .open, lastSeenOpen: Date())],
                        firstSeen: Date().addingTimeInterval(-7200),
                        lastSeen: Date())
-        d.classification = ClassificationService.classify(device: d)
+        // Classification will be set asynchronously when needed
+        d.classification = nil
         return d
     }
     static var mockAppleTV: Device {
@@ -40,7 +42,8 @@ public extension Device {
                        openPorts: [],
                        firstSeen: Date().addingTimeInterval(-36000),
                        lastSeen: Date())
-        d.classification = ClassificationService.classify(device: d)
+        // Classification will be set asynchronously when needed
+        d.classification = nil
         return d
     }
     static var mockPrinter: Device {
@@ -54,7 +57,8 @@ public extension Device {
                        openPorts: [Port(number: 631, serviceName: "ipp", description: "IPP Printing", status: .open, lastSeenOpen: Date())],
                        firstSeen: Date().addingTimeInterval(-54000),
                        lastSeen: Date())
-        d.classification = ClassificationService.classify(device: d)
+        // Classification will be set asynchronously when needed
+        d.classification = nil
         return d
     }
     static var mockIOT: Device {
@@ -68,7 +72,8 @@ public extension Device {
                        openPorts: [Port(number: 80, serviceName: "http", description: "Embedded UI", status: .open, lastSeenOpen: Date())],
                        firstSeen: Date().addingTimeInterval(-10800),
                        lastSeen: Date())
-        d.classification = ClassificationService.classify(device: d)
+        // Classification will be set asynchronously when needed
+        d.classification = nil
         return d
     }
     static var allMocks: [Device] { [mockRouter, mockMac, mockAppleTV, mockPrinter, mockIOT] }

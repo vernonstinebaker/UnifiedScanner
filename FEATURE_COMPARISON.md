@@ -31,7 +31,7 @@ Legend: ✅ = Present / Chosen, ❌ = Absent, ⏳ = Planned / In Progress, ➕ =
 | Xiaomi / Vendor Parsing | ✅ Specialized patterns | ❌ | ✅ Included (hostname + vendor heuristics) | Implemented in expanded rules (plug/smart + vendor) | App Models Utility | ✅ |
 | OUI Lookup | ✅ (Vendor via file) | ✅ `OUILookupService` | ✅ Protocol hook in place; ingestion later | Hook present (`ClassificationService.ouiLookup`); data ingest deferred | Future Utility | ⏳ |
 | ARP Discovery | ✅ (`ARPService/Worker`) | ✅ separate parsers/services | ✅ Reference netscan parsing + Bonjour scheduling concepts | `ARPTableReader` + system ARP table parsing + MAC capture | App Utility | ✅ |
-| Ping / Network Reachability | ❌ (light) | ✅ `PingScanner`, `SimplePing` | ➕ Network framework + auto /24 enumeration + concurrent processing | `NetworkPinger` + `PingOrchestrator` + `LocalSubnetEnumerator` + 32 concurrent ops | App Utility | ✅ |
+| Ping / Network Reachability | ❌ (light) | ✅ `PingScanner`, `SimplePing` | ➕ SimplePingKit-based ICMP with auto /24 enumeration + concurrent orchestration | `SimplePingKitService` + `PingOrchestrator` + `LocalSubnetEnumerator` + 32 concurrent ops | App Utility | ✅ |
 | Bonjour / mDNS Discovery | ✅ Strong | ✅ Basic `BonjourDiscoverer` | ✅ Port BonjourBrowser concepts | Deferred (Phase 5 provider abstraction) | Future Utility | ⏳ |
 | SSDP / UPnP | ❌ | ✅ `SSDPDiscoverer` | ✅ Optional later (Phase 5) | Deferred | Future Utility | ⏳ |
 | WS-Discovery | ❌ | ✅ `WSDiscoveryDiscoverer` | ⏳ Decide later | Deferred decision | Future Utility | ⏳ |
@@ -42,7 +42,7 @@ Legend: ✅ = Present / Chosen, ❌ = Absent, ⏳ = Planned / In Progress, ➕ =
 | Persistence (KV / Snapshot) | Partial in-memory | ✅ `DeviceKVStore`, `SnapshotStore` | ✅ Fresh `DeviceSnapshotStore` | Core store & merge logic + iCloud KV persistence implemented (Phase 4 complete) | App Models | ✅ |
 | Mutation Event Stream | ✅ `DeviceMutation` | Partial (store events) | ✅ Provide `DeviceMutation` unified | Planned Phase 4 | App Models | ⏳ |
 | Logging Infrastructure | ✅ LoggingService | ✅ Debug.swift | ✅ Minimal cohesive logger | Planned Phase 4+ | App Utility | ⏳ |
-| Concurrency (actors) | Light | Mixed (actors in some services) | ✅ Actor-based store + scanners | Planned Phase 4 store implementation | App Models/Utility | ⏳ |
+ | Concurrency (actors) | Light | Mixed (actors in some services) | ✅ Actor-based store + scanners | Implemented: DeviceSnapshotStore + discovery actors; TODO: replace Task.detached with TaskGroup for cancellation & structured shutdown | App Models/Utility | ✅ |
 | Backend Architecture Pattern | Distinct browser + classification streams | Monolithic services mix | ✅ Adopt decoupled mutation emission (AsyncStream) | Planned Phase 4+ | App Models/Utility | ⏳ |
 | Adaptive Navigation (SplitView) | Basic stack | ✅ NavigationSplitView patterns | ✅ Use netscan adaptive approach | Implemented Phase 2 | App UI | ✅ |
 | ARP Strategy (iOS Limit Workaround) | Scheduled sysctl polling | Parser + direct read | ✅ Hybrid (Bonjour scheduling + netscan parser) | Deferred (after ARP Discovery impl) | Future Utility | ⏳ |
@@ -51,9 +51,9 @@ Legend: ✅ = Present / Chosen, ❌ = Absent, ⏳ = Planned / In Progress, ➕ =
 | UI Tests | Basic list/detail | Basic smoke | ⏳ Basic navigation + detail | Deferred (after Phase 4) | Tests | ⏳ |
 | Dark Mode / Theming | Single dark aesthetic | Dark-focused | ✅ Keep dark baseline first | Light theme OOS; theming later | App UI | ⏳ |
 | Accessibility Labels | Partial | Partial | ✅ Audit component labels | Deferred audit | App UI | ⏳ |
-| Internationalization | ❌ | ❌ | ❌ (Defer) | English only initial | App | ❌ |
+| Internationalization | ❌ | ❌ | ❌ (Defer) | English only initial; TODO: extract user-visible strings to Localized.strings prior to Phase 7 | App | ❌ |
 | Analytics / Telemetry | ❌ | ❌ | ❌ (Defer) | Potential future instrumentation | App | ❌ |
-| Configuration Flags | Minimal | Minimal | ✅ Environment-based simple flags | Future gating (not started) | App Utility | ⏳ |
+| Configuration Flags | Minimal | Minimal | ✅ Environment-based simple flags | Future gating (not started); TODO: add FeatureFlag enum & environment override injection | App Utility | ⏳ |
 
 ## Deferred / Backlog Items
 - OUI loader integration (single `oui.csv` ingest) — Phase 5 (protocol hook already present)
@@ -81,12 +81,34 @@ This prevents fragmentation and eases coherent iteration.
 - This matrix serves as: (a) scoping audit, (b) decision log, (c) progress tracker.
 - Update the Status column alongside commits.
 
-## Immediate Adjustments to PLAN.md (Needed)
+## Immediate Adjustments to PLAN.md (Needed / Updated for iOS & iPadOS)
 No structural phase changes required. Add explicit tasks:
 - Phase 1: Add step after model creation — "Collapse ScannerDesign/ScannerUI concepts locally (Theme + DeviceRow + ServiceTag)".
 - Phase 2: Remove dependency on external packages; confirm local UI components.
+- Phase 6: Add explicit tasks for mDNS provider, SSDP, WS-Discovery evaluation, PortScanner reimplementation, OUI ingestion, Accessibility audit (Dynamic Type, VoiceOver), UnifiedTheme extraction, structured concurrency refactor.
+- Phase 7 (New): Cross-platform polish (macOS Catalyst split refinement, iPadOS multi-column adaptation, Localized.strings extraction, logging unification, reverse DNS & fingerprint enrichment).
 
 (These edits will be applied upon confirmation.)
 
 ---
+
+### Added Platform Notes (macOS + iOS + iPadOS)
+- UnifiedScanner decisions assume simultaneous support; audit UI adaptive layouts for size classes (TODO in PLAN Phase 7).
+- Ensure discovery code avoids macOS-only process calls (already using Network.framework; retain conditional compilation for any future shell fallback).
+
+### Concurrency Improvement TODOs
+- Replace ad-hoc Task.detached launches in orchestrators with TaskGroup & cancellation tokens (Phase 6).
+- Add graceful shutdown method on DiscoveryCoordinator to cancel in-flight operations.
+- Introduce AsyncStream mutation channel (DeviceMutation) bridging store updates (Phase 6).
+
+### Accessibility TODOs
+- DeviceRowView: Add VoiceOver label combining classification, primary IP, vendor.
+- Service pills: Provide accessibilityLabel with service name + "service" suffix.
+- Port list: Mark as accessibilityElement children with descriptive labels (e.g., "Port 22 SSH open").
+- Dynamic Type: Verify layout for sizes up to XXXL (iOS/iPadOS) and Large Content Viewer (macOS pointer hover).
+
+### Testing Gaps TODOs
+- Add tests for: snapshot merge of multiple discovery sources, RTT update path, ARP MAC merge, classification reasoning concatenation ordering.
+- Future: add integration test simulating ping + arp + bonjour synthetic events.
+
 *End of FEATURE_COMPARISON.md*

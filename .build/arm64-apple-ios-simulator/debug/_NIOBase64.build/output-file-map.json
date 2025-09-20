@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/_NIOBase64.build/master.swiftdeps"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/_NIOBase64/Base64.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/_NIOBase64.build/Base64.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/_NIOBase64.build/Base64.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/_NIOBase64.build/Base64~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/_NIOBase64.build/Base64.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/_NIOBase64.build/Base64.dia"
+  }
+}

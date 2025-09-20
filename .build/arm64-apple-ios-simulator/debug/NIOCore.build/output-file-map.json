@@ -1,0 +1,481 @@
+{
+  "": {
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/master.swiftdeps"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/AddressedEnvelope.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AddressedEnvelope.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AddressedEnvelope.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AddressedEnvelope~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AddressedEnvelope.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AddressedEnvelope.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/AsyncAwaitSupport.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AsyncAwaitSupport.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AsyncAwaitSupport.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AsyncAwaitSupport~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AsyncAwaitSupport.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AsyncAwaitSupport.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/AsyncChannel/AsyncChannel.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AsyncChannel.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AsyncChannel.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AsyncChannel~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AsyncChannel.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AsyncChannel.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/AsyncChannel/AsyncChannelHandler.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AsyncChannelHandler.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AsyncChannelHandler.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AsyncChannelHandler~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AsyncChannelHandler.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AsyncChannelHandler.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/AsyncChannel/AsyncChannelInboundStream.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AsyncChannelInboundStream.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AsyncChannelInboundStream.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AsyncChannelInboundStream~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AsyncChannelInboundStream.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AsyncChannelInboundStream.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/AsyncChannel/AsyncChannelOutboundWriter.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AsyncChannelOutboundWriter.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AsyncChannelOutboundWriter.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AsyncChannelOutboundWriter~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AsyncChannelOutboundWriter.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/AsyncChannelOutboundWriter.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/AsyncSequences/NIOAsyncSequenceProducer.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOAsyncSequenceProducer.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOAsyncSequenceProducer.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOAsyncSequenceProducer~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOAsyncSequenceProducer.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOAsyncSequenceProducer.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/AsyncSequences/NIOAsyncSequenceProducerStrategies.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOAsyncSequenceProducerStrategies.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOAsyncSequenceProducerStrategies.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOAsyncSequenceProducerStrategies~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOAsyncSequenceProducerStrategies.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOAsyncSequenceProducerStrategies.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/AsyncSequences/NIOAsyncWriter.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOAsyncWriter.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOAsyncWriter.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOAsyncWriter~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOAsyncWriter.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOAsyncWriter.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/AsyncSequences/NIOThrowingAsyncSequenceProducer.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOThrowingAsyncSequenceProducer.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOThrowingAsyncSequenceProducer.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOThrowingAsyncSequenceProducer~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOThrowingAsyncSequenceProducer.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOThrowingAsyncSequenceProducer.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/BSDSocketAPI.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/BSDSocketAPI.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/BSDSocketAPI.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/BSDSocketAPI~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/BSDSocketAPI.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/BSDSocketAPI.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/ByteBuffer-aux.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-aux.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-aux.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-aux~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-aux.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-aux.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/ByteBuffer-binaryEncodedLengthPrefix.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-binaryEncodedLengthPrefix.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-binaryEncodedLengthPrefix.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-binaryEncodedLengthPrefix~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-binaryEncodedLengthPrefix.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-binaryEncodedLengthPrefix.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/ByteBuffer-conversions.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-conversions.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-conversions.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-conversions~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-conversions.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-conversions.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/ByteBuffer-core.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-core.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-core.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-core~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-core.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-core.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/ByteBuffer-hex.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-hex.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-hex.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-hex~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-hex.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-hex.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/ByteBuffer-int.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-int.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-int.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-int~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-int.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-int.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/ByteBuffer-lengthPrefix.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-lengthPrefix.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-lengthPrefix.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-lengthPrefix~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-lengthPrefix.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-lengthPrefix.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/ByteBuffer-multi-int.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-multi-int.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-multi-int.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-multi-int~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-multi-int.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-multi-int.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/ByteBuffer-quicBinaryEncodingStrategy.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-quicBinaryEncodingStrategy.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-quicBinaryEncodingStrategy.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-quicBinaryEncodingStrategy~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-quicBinaryEncodingStrategy.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-quicBinaryEncodingStrategy.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/ByteBuffer-views.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-views.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-views.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-views~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-views.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ByteBuffer-views.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/Channel.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/Channel.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/Channel.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/Channel~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/Channel.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/Channel.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/ChannelHandler.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ChannelHandler.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ChannelHandler.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ChannelHandler~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ChannelHandler.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ChannelHandler.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/ChannelHandlers.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ChannelHandlers.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ChannelHandlers.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ChannelHandlers~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ChannelHandlers.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ChannelHandlers.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/ChannelInvoker.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ChannelInvoker.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ChannelInvoker.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ChannelInvoker~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ChannelInvoker.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ChannelInvoker.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/ChannelOption.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ChannelOption.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ChannelOption.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ChannelOption~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ChannelOption.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ChannelOption.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/ChannelPipeline.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ChannelPipeline.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ChannelPipeline.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ChannelPipeline~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ChannelPipeline.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ChannelPipeline.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/CircularBuffer.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/CircularBuffer.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/CircularBuffer.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/CircularBuffer~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/CircularBuffer.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/CircularBuffer.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/Codec.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/Codec.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/Codec.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/Codec~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/Codec.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/Codec.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/ConvenienceOptionSupport.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ConvenienceOptionSupport.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ConvenienceOptionSupport.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ConvenienceOptionSupport~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ConvenienceOptionSupport.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/ConvenienceOptionSupport.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/DeadChannel.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/DeadChannel.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/DeadChannel.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/DeadChannel~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/DeadChannel.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/DeadChannel.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/DispatchQueue+WithFuture.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/DispatchQueue+WithFuture.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/DispatchQueue+WithFuture.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/DispatchQueue+WithFuture~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/DispatchQueue+WithFuture.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/DispatchQueue+WithFuture.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/EventLoop+Deprecated.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoop+Deprecated.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoop+Deprecated.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoop+Deprecated~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoop+Deprecated.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoop+Deprecated.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/EventLoop+SerialExecutor.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoop+SerialExecutor.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoop+SerialExecutor.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoop+SerialExecutor~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoop+SerialExecutor.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoop+SerialExecutor.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/EventLoop.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoop.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoop.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoop~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoop.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoop.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/EventLoopFuture+AssumeIsolated.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoopFuture+AssumeIsolated.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoopFuture+AssumeIsolated.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoopFuture+AssumeIsolated~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoopFuture+AssumeIsolated.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoopFuture+AssumeIsolated.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/EventLoopFuture+Deprecated.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoopFuture+Deprecated.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoopFuture+Deprecated.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoopFuture+Deprecated~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoopFuture+Deprecated.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoopFuture+Deprecated.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/EventLoopFuture+WithEventLoop.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoopFuture+WithEventLoop.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoopFuture+WithEventLoop.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoopFuture+WithEventLoop~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoopFuture+WithEventLoop.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoopFuture+WithEventLoop.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/EventLoopFuture.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoopFuture.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoopFuture.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoopFuture~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoopFuture.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/EventLoopFuture.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/FileDescriptor.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/FileDescriptor.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/FileDescriptor.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/FileDescriptor~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/FileDescriptor.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/FileDescriptor.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/FileHandle.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/FileHandle.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/FileHandle.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/FileHandle~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/FileHandle.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/FileHandle.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/FileRegion.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/FileRegion.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/FileRegion.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/FileRegion~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/FileRegion.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/FileRegion.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/GlobalSingletons.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/GlobalSingletons.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/GlobalSingletons.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/GlobalSingletons~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/GlobalSingletons.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/GlobalSingletons.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/IO.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/IO.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/IO.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/IO~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/IO.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/IO.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/IOData.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/IOData.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/IOData.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/IOData~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/IOData.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/IOData.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/IPProtocol.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/IPProtocol.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/IPProtocol.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/IPProtocol~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/IPProtocol.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/IPProtocol.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/IntegerBitPacking.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/IntegerBitPacking.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/IntegerBitPacking.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/IntegerBitPacking~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/IntegerBitPacking.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/IntegerBitPacking.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/IntegerTypes.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/IntegerTypes.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/IntegerTypes.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/IntegerTypes~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/IntegerTypes.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/IntegerTypes.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/Interfaces.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/Interfaces.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/Interfaces.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/Interfaces~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/Interfaces.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/Interfaces.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/Linux.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/Linux.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/Linux.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/Linux~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/Linux.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/Linux.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/MarkedCircularBuffer.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/MarkedCircularBuffer.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/MarkedCircularBuffer.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/MarkedCircularBuffer~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/MarkedCircularBuffer.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/MarkedCircularBuffer.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/MulticastChannel.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/MulticastChannel.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/MulticastChannel.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/MulticastChannel~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/MulticastChannel.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/MulticastChannel.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/NIOAny.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOAny.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOAny.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOAny~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOAny.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOAny.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/NIOCloseOnErrorHandler.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOCloseOnErrorHandler.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOCloseOnErrorHandler.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOCloseOnErrorHandler~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOCloseOnErrorHandler.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOCloseOnErrorHandler.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/NIOCoreSendableMetatype.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOCoreSendableMetatype.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOCoreSendableMetatype.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOCoreSendableMetatype~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOCoreSendableMetatype.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOCoreSendableMetatype.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/NIOLoopBound.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOLoopBound.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOLoopBound.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOLoopBound~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOLoopBound.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOLoopBound.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/NIOPooledRecvBufferAllocator.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOPooledRecvBufferAllocator.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOPooledRecvBufferAllocator.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOPooledRecvBufferAllocator~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOPooledRecvBufferAllocator.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOPooledRecvBufferAllocator.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/NIOScheduledCallback.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOScheduledCallback.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOScheduledCallback.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOScheduledCallback~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOScheduledCallback.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOScheduledCallback.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/NIOSendable.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOSendable.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOSendable.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOSendable~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOSendable.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/NIOSendable.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/RecvByteBufferAllocator.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/RecvByteBufferAllocator.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/RecvByteBufferAllocator.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/RecvByteBufferAllocator~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/RecvByteBufferAllocator.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/RecvByteBufferAllocator.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/SingleStepByteToMessageDecoder.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/SingleStepByteToMessageDecoder.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/SingleStepByteToMessageDecoder.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/SingleStepByteToMessageDecoder~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/SingleStepByteToMessageDecoder.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/SingleStepByteToMessageDecoder.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/SocketAddresses.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/SocketAddresses.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/SocketAddresses.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/SocketAddresses~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/SocketAddresses.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/SocketAddresses.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/SocketOptionProvider.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/SocketOptionProvider.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/SocketOptionProvider.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/SocketOptionProvider~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/SocketOptionProvider.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/SocketOptionProvider.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/SystemCallHelpers.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/SystemCallHelpers.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/SystemCallHelpers.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/SystemCallHelpers~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/SystemCallHelpers.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/SystemCallHelpers.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/TimeAmount+Duration.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/TimeAmount+Duration.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/TimeAmount+Duration.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/TimeAmount+Duration~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/TimeAmount+Duration.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/TimeAmount+Duration.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/TypeAssistedChannelHandler.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/TypeAssistedChannelHandler.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/TypeAssistedChannelHandler.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/TypeAssistedChannelHandler~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/TypeAssistedChannelHandler.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/TypeAssistedChannelHandler.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/UniversalBootstrapSupport.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/UniversalBootstrapSupport.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/UniversalBootstrapSupport.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/UniversalBootstrapSupport~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/UniversalBootstrapSupport.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/UniversalBootstrapSupport.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOCore/Utilities.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/Utilities.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/Utilities.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/Utilities~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/Utilities.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOCore.build/Utilities.dia"
+  }
+}

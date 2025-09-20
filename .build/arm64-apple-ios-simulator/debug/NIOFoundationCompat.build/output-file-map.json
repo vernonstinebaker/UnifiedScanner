@@ -1,0 +1,33 @@
+{
+  "": {
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOFoundationCompat.build/master.swiftdeps"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOFoundationCompat/ByteBuffer-foundation.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOFoundationCompat.build/ByteBuffer-foundation.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOFoundationCompat.build/ByteBuffer-foundation.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOFoundationCompat.build/ByteBuffer-foundation~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOFoundationCompat.build/ByteBuffer-foundation.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOFoundationCompat.build/ByteBuffer-foundation.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOFoundationCompat/Codable+ByteBuffer.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOFoundationCompat.build/Codable+ByteBuffer.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOFoundationCompat.build/Codable+ByteBuffer.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOFoundationCompat.build/Codable+ByteBuffer~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOFoundationCompat.build/Codable+ByteBuffer.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOFoundationCompat.build/Codable+ByteBuffer.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOFoundationCompat/JSONSerialization+ByteBuffer.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOFoundationCompat.build/JSONSerialization+ByteBuffer.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOFoundationCompat.build/JSONSerialization+ByteBuffer.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOFoundationCompat.build/JSONSerialization+ByteBuffer~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOFoundationCompat.build/JSONSerialization+ByteBuffer.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOFoundationCompat.build/JSONSerialization+ByteBuffer.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOFoundationCompat/WaitSpinningRunLoop.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOFoundationCompat.build/WaitSpinningRunLoop.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOFoundationCompat.build/WaitSpinningRunLoop.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOFoundationCompat.build/WaitSpinningRunLoop~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOFoundationCompat.build/WaitSpinningRunLoop.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOFoundationCompat.build/WaitSpinningRunLoop.dia"
+  }
+}

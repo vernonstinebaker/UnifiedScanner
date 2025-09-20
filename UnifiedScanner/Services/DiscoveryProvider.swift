@@ -1,33 +1,59 @@
 import Foundation
 import Combine
 
-final class ScanProgress: ObservableObject {
-    @Published var totalHosts: Int = 0
-    @Published var completedHosts: Int = 0
-    @Published var started: Bool = false
-    @Published var finished: Bool = false
-    @Published var successHosts: Int = 0
+actor ScanProgress: ObservableObject {
+    @MainActor @Published var totalHosts: Int = 0
+    @MainActor @Published var completedHosts: Int = 0
+    @MainActor @Published var started: Bool = false
+    @MainActor @Published var finished: Bool = false
+    @MainActor @Published var successHosts: Int = 0
 
-    private func log(_ msg: String) {
+    private nonisolated func log(_ msg: String) {
         print("[Progress] \(msg)")
     }
 
-    func reset() {
-        log("reset (prev total=\(totalHosts) completed=\(completedHosts) success=\(successHosts))")
-        totalHosts = 0
-        completedHosts = 0
-        successHosts = 0
-        started = false
-        finished = false
+    func reset() async {
+        await MainActor.run {
+            log("reset (prev total=\(totalHosts) completed=\(completedHosts) success=\(successHosts))")
+            totalHosts = 0
+            completedHosts = 0
+            successHosts = 0
+            started = false
+            finished = false
+        }
     }
 
-    fileprivate func begin(total: Int) {
-        log("begin total=\(total)")
-        started = true
-        finished = false
-        completedHosts = 0
-        successHosts = 0
-        totalHosts = total
+    func begin(total: Int) async {
+        await MainActor.run {
+            log("begin total=\(total)")
+            started = true
+            finished = false
+            completedHosts = 0
+            successHosts = 0
+            totalHosts = total
+        }
+    }
+
+    func incrementCompleted() async {
+        await MainActor.run {
+            completedHosts += 1
+            if completedHosts >= totalHosts && totalHosts > 0 {
+                finished = true
+                log("finished (completed=\(completedHosts) total=\(totalHosts))")
+            }
+        }
+    }
+
+    func incrementSuccess() async {
+        await MainActor.run {
+            successHosts += 1
+        }
+    }
+
+    func getCurrentProgress() async -> (total: Int, completed: Int, success: Int, started: Bool, finished: Bool) {
+        await MainActor.run {
+            (totalHosts, completedHosts, successHosts, started, finished)
+        }
     }
 }
 
@@ -38,10 +64,25 @@ public protocol DiscoveryProvider: AnyObject, Sendable {
 }
 
 // Stub provider examples (future real implementations will replace)
-public final class MockMDNSProvider: DiscoveryProvider {
+public final class MockMDNSProvider: @unchecked Sendable, DiscoveryProvider {
     public let name = "mock-mdns"
-    private var cancelled = false
+    private let cancelledLock = NSLock()
+    private var _cancelled = false
     public init() {}
+
+    private var cancelled: Bool {
+        get {
+            cancelledLock.lock()
+            defer { cancelledLock.unlock() }
+            return _cancelled
+        }
+        set {
+            cancelledLock.lock()
+            defer { cancelledLock.unlock() }
+            _cancelled = newValue
+        }
+    }
+
     public func start() -> AsyncStream<Device> {
         cancelled = false
         return AsyncStream { continuation in
@@ -53,8 +94,7 @@ public final class MockMDNSProvider: DiscoveryProvider {
                 ]
                 for dev in samples {
                     if Task.isCancelled { break }
-                     let isCancelled = self.cancelled
-                     if isCancelled { break }
+                    if self.cancelled { break }
                     continuation.yield(dev)
                     try? await Task.sleep(nanoseconds: 300_000_000)
                 }
@@ -62,19 +102,20 @@ public final class MockMDNSProvider: DiscoveryProvider {
             }
         }
     }
+
     public func stop() { cancelled = true }
 }
 
 // MARK: - PingOrchestrator
 public actor PingOrchestrator {
-    private let pinger: Pinger
+    private let pingService: PingService
     private let store: DeviceSnapshotStore
     private let maxConcurrent: Int
     private var active: Set<String> = []
     private var progress: ScanProgress?
 
-    init(pinger: Pinger, store: DeviceSnapshotStore, maxConcurrent: Int = 32, progress: ScanProgress? = nil) {
-        self.pinger = pinger
+    init(pingService: PingService, store: DeviceSnapshotStore, maxConcurrent: Int = 32, progress: ScanProgress? = nil) {
+        self.pingService = pingService
         self.store = store
         self.maxConcurrent = maxConcurrent
         self.progress = progress
@@ -85,14 +126,13 @@ public actor PingOrchestrator {
     public func enqueue(hosts: [String], config: PingConfig) async {
         let logging = (ProcessInfo.processInfo.environment["PING_INFO_LOG"] == "1")
         if let progress = self.progress {
-            await MainActor.run {
-                if !progress.started {
-                    progress.started = true
-                    if logging { print("[Ping] forcing progress.started=true (late start)") }
-                }
-                if progress.totalHosts == 0 {
-                    if logging { print("[Ping][WARN] enqueue before progress total set (hosts=\(hosts.count))") }
-                }
+            let current = await progress.getCurrentProgress()
+            if !current.started {
+                await progress.begin(total: hosts.count)
+                if logging { print("[Ping] forcing progress.started=true (late start)") }
+            }
+            if current.total == 0 {
+                if logging { print("[Ping][WARN] enqueue before progress total set (hosts=\(hosts.count))") }
             }
         } else {
             if logging { print("[Ping][WARN] enqueue without progress reference") }
@@ -121,20 +161,20 @@ public actor PingOrchestrator {
         active.insert(host)
         let storeRef = store
         let progressRef = progress
-        Task { [pinger] in
+        Task { [pingService] in
             if logging { print("[Ping] creating stream for host=\(host)") }
-            let stream = await pinger.pingStream(config: PingConfig(host: host, count: baseConfig.count, interval: baseConfig.interval, timeoutPerPing: baseConfig.timeoutPerPing))
+            let stream = await pingService.pingStream(config: PingConfig(host: host, count: baseConfig.count, interval: baseConfig.interval, timeoutPerPing: baseConfig.timeoutPerPing))
             var sawSuccess = false
             var measurementCount = 0
             for await m in stream {
                 measurementCount += 1
                 if logging { print("[Ping] measurement \(measurementCount) for host=\(host): \(m.status)") }
                 if case .success = m.status { sawSuccess = true }
-                await MainActor.run { storeRef.applyPing(m) }
+                await storeRef.applyPing(m)
             }
             if logging { print("[Ping] stream complete host=\(host) sawSuccess=\(sawSuccess) measurements=\(measurementCount)") }
             await self.didFinish(host: host, sawSuccess: sawSuccess)
-            if let progressRef, sawSuccess { await MainActor.run { progressRef.successHosts += 1 } }
+            if let progressRef, sawSuccess { await progressRef.incrementSuccess() }
         }
     }
 
@@ -142,16 +182,12 @@ public actor PingOrchestrator {
         let logging = (ProcessInfo.processInfo.environment["PING_INFO_LOG"] == "1")
         active.remove(host)
         if let progress = progress {
-            await MainActor.run {
-                let oldCompleted = progress.completedHosts
-                progress.completedHosts += 1
-                if logging { print("[Ping] didFinish host=\(host) completed=\(progress.completedHosts)/\(progress.totalHosts) success=\(sawSuccess) (was \(oldCompleted))") }
-                if progress.totalHosts == 0 {
-                    if logging { print("[Ping][WARN] progress.totalHosts still 0 at didFinish (race condition)") }
-                } else if progress.completedHosts >= progress.totalHosts {
-                    progress.finished = true
-                    if logging { print("[Ping] progress finished (completed=\(progress.completedHosts) total=\(progress.totalHosts))") }
-                }
+            let current = await progress.getCurrentProgress()
+            await progress.incrementCompleted()
+            let newCompleted = current.completed + 1
+            if logging { print("[Ping] didFinish host=\(host) completed=\(newCompleted)/\(current.total) success=\(sawSuccess) (was \(current.completed))") }
+            if current.total == 0 {
+                if logging { print("[Ping][WARN] progress.totalHosts still 0 at didFinish (race condition)") }
             }
         } else {
             if logging { print("[Ping][WARN] didFinish with no progress reference host=\(host)") }
@@ -184,7 +220,7 @@ actor DiscoveryCoordinator {
             let stream = provider.start()
             let t = Task {
                 for await dev in stream {
-                    await MainActor.run { self.store.upsert(dev, source: .mdns) }
+                    await self.store.upsert(dev, source: .mdns)
                 }
             }
             tasks.append(t)
@@ -193,12 +229,7 @@ actor DiscoveryCoordinator {
             try? await Task.sleep(nanoseconds: UInt64(mdnsWarmupSeconds * 1_000_000_000))
             let hosts: [String]
             if pingHosts.isEmpty, autoEnumerateIfEmpty {
-                let enumerated: [String]
-                if hostEnumerator is LocalSubnetEnumerator { // optimized fast static path
-                    enumerated = LocalSubnetEnumerator.enumerate(maxHosts: maxAutoEnumeratedHosts)
-                } else {
-                    enumerated = hostEnumerator.enumerate(maxHosts: maxAutoEnumeratedHosts)
-                }
+                let enumerated = hostEnumerator.enumerate(maxHosts: maxAutoEnumeratedHosts)
                 hosts = enumerated.isEmpty ? [] : enumerated
                 if ProcessInfo.processInfo.environment["PING_INFO_LOG"] == "1" {
                     print("[Discovery] auto-enumerated hosts count=\(hosts.count)")
@@ -213,9 +244,10 @@ actor DiscoveryCoordinator {
                 if ProcessInfo.processInfo.environment["PING_INFO_LOG"] == "1" {
                     print("[Discovery] calling progress.begin total=\(hosts.count)")
                 }
-                await MainActor.run { progress.begin(total: hosts.count) }
+                await progress.begin(total: hosts.count)
+                let current = await progress.getCurrentProgress()
                 if ProcessInfo.processInfo.environment["PING_INFO_LOG"] == "1" {
-                    print("[Discovery] progress after begin total=\(progress.totalHosts) started=\(progress.started)")
+                    print("[Discovery] progress after begin total=\(current.total) started=\(current.started)")
                 }
             }
             if hosts.isEmpty {
@@ -237,20 +269,11 @@ actor DiscoveryCoordinator {
             let progressRef = await self.pingOrchestrator.currentProgress()
             if let progress = progressRef {
                 // Poll for completion
-                while !progress.finished {
+                var current = await progress.getCurrentProgress()
+                while !current.finished {
                     try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s
+                    current = await progress.getCurrentProgress()
                 }
-            }
-
-            // After ping operations complete, send broadcast UDP to populate ARP table
-            if ProcessInfo.processInfo.environment["PING_INFO_LOG"] == "1" {
-                print("[Discovery] ping operations complete, sending broadcast UDP")
-            }
-
-            // Extract subnet from first host (assuming /24 subnet)
-            if let firstHost = hosts.first {
-                let subnet = firstHost.split(separator: ".").prefix(3).joined(separator: ".") + ".0"
-                await NetworkPinger.sendBroadcastUDP(for: subnet, timeout: 1.0)
             }
 
             // Read ARP table to get MAC addresses
@@ -262,17 +285,15 @@ actor DiscoveryCoordinator {
 
             // Update devices with MAC addresses
             if !ipToMac.isEmpty {
-                await MainActor.run {
-                    for (ip, mac) in ipToMac {
-                        // Find device by IP and update MAC address
-                        if let existingDevice = self.store.devices.first(where: { $0.primaryIP == ip || $0.ips.contains(ip) }) {
-                            if existingDevice.macAddress == nil || existingDevice.macAddress!.isEmpty {
-                                var updatedDevice = existingDevice
-                                updatedDevice.macAddress = mac
-                                self.store.upsert(updatedDevice, source: .ping)
-                                if ProcessInfo.processInfo.environment["PING_INFO_LOG"] == "1" {
-                                    print("[Discovery] updated \(ip) with MAC \(mac)")
-                                }
+                for (ip, mac) in ipToMac {
+                    // Find device by IP and update MAC address
+                    if let existingDevice = await MainActor.run(body: { self.store.devices.first(where: { $0.primaryIP == ip || $0.ips.contains(ip) }) }) {
+                        if existingDevice.macAddress == nil || existingDevice.macAddress!.isEmpty {
+                            var updatedDevice = existingDevice
+                            updatedDevice.macAddress = mac
+                            await self.store.upsert(updatedDevice, source: .ping)
+                            if ProcessInfo.processInfo.environment["PING_INFO_LOG"] == "1" {
+                                print("[Discovery] updated \(ip) with MAC \(mac)")
                             }
                         }
                     }

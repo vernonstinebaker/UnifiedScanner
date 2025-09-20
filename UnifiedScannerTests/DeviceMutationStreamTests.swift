@@ -8,7 +8,7 @@ import XCTest
         let stream = store.mutationStream()
         let collectTask = Task { for await e in stream.prefix(2) { events.append(e) } }
         let dev = Device(primaryIP: "10.0.0.2", ips: ["10.0.0.2"], hostname: "h1", discoverySources: [.mdns])
-        store.upsert(dev)
+        await store.upsert(dev)
         _ = await collectTask.value
         XCTAssertEqual(events.count, 2)
         guard case .snapshot(let snapDevices) = events[0] else { return XCTFail("First event should be snapshot") }
@@ -23,7 +23,7 @@ import XCTest
     func testPingEmitsChangeWithRTTField() async {
         let store = DeviceSnapshotStore(persistence: EphemeralPersistenceDM())
         let dev = Device(primaryIP: "10.0.0.5", ips: ["10.0.0.5"], hostname: "pinger", discoverySources: [.mdns])
-        store.upsert(dev)
+        await store.upsert(dev)
         var rttEvent: DeviceChange?
         let stream = store.mutationStream(includeInitialSnapshot: false)
         let collectTask = Task {
@@ -32,7 +32,7 @@ import XCTest
             }
         }
         let measurement = PingMeasurement(host: "10.0.0.5", sequence: 0, status: .success(rttMillis: 5.0))
-        store.applyPing(measurement)
+        await store.applyPing(measurement)
         _ = await collectTask.value
         XCTAssertNotNil(rttEvent, "Expected RTT change event")
         XCTAssertEqual(rttEvent?.after.rttMillis, 5.0)
@@ -45,11 +45,11 @@ import XCTest
         let collectTask = Task { for await e in stream.prefix(2) { events.append(e) } }
         // Initial device: minimal info -> unknown classification
         let base = Device(primaryIP: "10.0.0.50", ips: ["10.0.0.50"], hostname: nil, discoverySources: [])
-        store.upsert(base)
+        await store.upsert(base)
         // Second upsert adds SSH service triggering classification rule (ssh_only)
         let sshService = NetworkService(name: "ssh", type: .ssh, rawType: "_ssh._tcp", port: 22, isStandardPort: true)
         let updated = Device(id: base.id, primaryIP: base.primaryIP, ips: base.ips, hostname: base.hostname, vendor: nil, discoverySources: [], services: [sshService])
-        store.upsert(updated)
+        await store.upsert(updated)
         _ = await collectTask.value
         XCTAssertEqual(events.count, 2)
         guard case .change(let secondChange) = events[1] else { return XCTFail("Expected second event to be change") }
@@ -66,7 +66,7 @@ import XCTest
         var events: [DeviceMutation] = []
         let collectTask = Task { for await e in stream.prefix(2) { events.append(e) } }
         let dev = Device(primaryIP: "10.0.0.60", ips: ["10.0.0.60"], hostname: "temp", discoverySources: [])
-        store.upsert(dev)
+        await store.upsert(dev)
         store.removeAll()
         _ = await collectTask.value
         XCTAssertEqual(events.count, 2)

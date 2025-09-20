@@ -1,0 +1,40 @@
+{
+  "": {
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/master.swiftdeps"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOConcurrencyHelpers/NIOAtomic.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/NIOAtomic.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/NIOAtomic.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/NIOAtomic~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/NIOAtomic.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/NIOAtomic.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOConcurrencyHelpers/NIOLock.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/NIOLock.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/NIOLock.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/NIOLock~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/NIOLock.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/NIOLock.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOConcurrencyHelpers/NIOLockedValueBox.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/NIOLockedValueBox.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/NIOLockedValueBox.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/NIOLockedValueBox~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/NIOLockedValueBox.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/NIOLockedValueBox.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOConcurrencyHelpers/atomics.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/atomics.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/atomics.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/atomics~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/atomics.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/atomics.dia"
+  },
+  "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/checkouts/swift-nio/Sources/NIOConcurrencyHelpers/lock.swift": {
+    "dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/lock.d",
+    "object": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/lock.swift.o",
+    "swiftmodule": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/lock~partial.swiftmodule",
+    "swift-dependencies": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/lock.swiftdeps",
+    "diagnostics": "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOConcurrencyHelpers.build/lock.dia"
+  }
+}

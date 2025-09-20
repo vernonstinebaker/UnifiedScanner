@@ -1,5 +1,29 @@
 import Foundation
 
+// MARK: - OUI Lookup Protocol
+
+// OUI lookup protocol (lightweight hook; implementation can be injected later)
+protocol OUILookupProviding: Sendable {
+    func vendorFor(mac: String) -> String?
+}
+
+// MARK: - OUI Lookup Manager
+private actor OUILookupManager {
+    private var lookup: OUILookupProviding?
+
+    func setLookup(_ lookup: OUILookupProviding?) {
+        self.lookup = lookup
+    }
+
+    func getLookup() -> OUILookupProviding? {
+        return lookup
+    }
+}
+
+private let ouiLookupManager = OUILookupManager()
+
+// MARK: - Classification Service
+
 // ClassificationService: expanded, modular rule groups with optional OUI (vendor prefix) hook.
 struct ClassificationService {
     struct MatchResult {
@@ -10,18 +34,11 @@ struct ClassificationService {
         let sources: [String]
     }
 
-    // OUI lookup protocol (lightweight hook; implementation can be injected later)
-    protocol OUILookupProviding {
-        func vendorFor(mac: String) -> String?
-    }
-
-    static var ouiLookup: OUILookupProviding? = nil
-
-    static func classify(device: Device) -> Device.Classification {
+    static func classify(device: Device) async -> Device.Classification {
         var candidates: [MatchResult] = []
         let lowerHost = device.hostname?.lowercased() ?? ""
         let explicitVendor = device.vendor?.lowercased() ?? ""
-        let inferredVendor = inferVendorFromOUI(mac: device.macAddress)
+        let inferredVendor = await inferVendorFromOUI(mac: device.macAddress)
         // Prefer explicit vendor, else fallback to OUI inferred
         let vendor = explicitVendor.isEmpty ? (inferredVendor ?? "") : explicitVendor
         let services = device.services
@@ -128,9 +145,10 @@ struct ClassificationService {
     // MARK: - Helpers
     private static func containsAny(_ haystack: String, _ needles: [String]) -> Bool { needles.contains { haystack.contains($0) } }
 
-    private static func inferVendorFromOUI(mac: String?) -> String? {
+    private static func inferVendorFromOUI(mac: String?) async -> String? {
         guard let mac = mac?.replacingOccurrences(of: "-", with: ":").uppercased(), mac.count >= 8 else { return nil }
-        return ouiLookup?.vendorFor(mac: mac)
+        let lookup = await ouiLookupManager.getLookup()
+        return lookup?.vendorFor(mac: mac)
     }
 }
 

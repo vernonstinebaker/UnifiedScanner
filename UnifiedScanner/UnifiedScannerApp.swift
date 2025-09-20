@@ -36,15 +36,15 @@ struct UnifiedScannerApp: App {
         NSUbiquitousKeyValueStore.default.synchronize()
         UserDefaults.standard.removeObject(forKey: key)
         snapshotStore.removeAll()
-        scanProgress.reset()
+        Task { await scanProgress.reset() }
     }
 
     private func startDiscoveryIfNeeded() {
         guard !coordinatorStarted else { return }
         coordinatorStarted = true
 
-        let pinger = PlatformPingerFactory.make()
-        let orchestrator = PingOrchestrator(pinger: pinger, store: snapshotStore, maxConcurrent: 32, progress: scanProgress)
+        let pingService = SimplePingKitService()
+        let orchestrator = PingOrchestrator(pingService: pingService, store: snapshotStore, maxConcurrent: 32, progress: scanProgress)
         let providers: [DiscoveryProvider] = [] // mDNS discovery disabled until real provider implemented
         let arpReader = ARPTableReader()
         let coordinator = DiscoveryCoordinator(store: snapshotStore, pingOrchestrator: orchestrator, providers: providers, arpReader: arpReader)

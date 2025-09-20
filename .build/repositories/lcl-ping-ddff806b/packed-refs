@@ -1,0 +1,31 @@
+# pack-refs with: peeled fully-peeled sorted 
+f3bb26babfb6e166e10c13e26841cffdd9eea948 refs/heads/infrared0-add-funding
+43600693628d289b38bcebd4487a2a47fcecc42d refs/heads/main
+ac64fa4f8b0b85b8b854b1c7dad4be6b8409f520 refs/heads/zhennan_add_bind_to_interface
+43c1248f762ed4ae7c49f73fdcf1056af045ed8d refs/heads/zhennan_cleanup
+4225e45a33855710437aaf154cb7b16eed0feac4 refs/heads/zhennan_reduce_memory_footprint
+4d905a926f4df8bd86dd97f7921f1b1bcb42fdf7 refs/heads/zhennan_support_urlsession
+f8444fc1bbd215c7188f80aa0a9c0190725fa37c refs/pull/1/head
+4225e45a33855710437aaf154cb7b16eed0feac4 refs/pull/11/head
+74e4a795e35645caca517a128d230776ec09268f refs/pull/12/head
+ac64fa4f8b0b85b8b854b1c7dad4be6b8409f520 refs/pull/13/head
+f4f3068da5d04431de52a667bab0c2ee493fe3dc refs/pull/14/head
+3f258d011d84b5261fa96db9420d44c105da1830 refs/pull/4/head
+61f1220bd7a81be95f8ad305673896d3cf440752 refs/pull/5/head
+84ad0daea4741c7961ac085a7c0aa27cc9471686 refs/pull/6/head
+43c1248f762ed4ae7c49f73fdcf1056af045ed8d refs/pull/7/head
+4d905a926f4df8bd86dd97f7921f1b1bcb42fdf7 refs/pull/8/head
+f3bb26babfb6e166e10c13e26841cffdd9eea948 refs/pull/9/head
+264291f04059589397625ad8e95b5f7121b2d7e7 refs/pull/9/merge
+2705e5313a8e3197e3f6533cb57fc487d5d6b609 refs/tags/0.2.0
+^b8e9c3f2c728b48fcaada4217fda74d98dc31fdb
+27c23a6e77f8d67bc04edb934e73aaa3e790d668 refs/tags/1.0.0
+^7cd2f1375df06eed3d8ea104d42ab1e73280d84a
+f86073c57a1c60278c801440ea4a5a857ce8029c refs/tags/1.0.1
+^e202465052f503ffe59e7fde5eaf869b7e535e23
+eb5e7243624545d8703402f2cdcabbededf7a8ed refs/tags/1.0.2
+^28f3728d0ad1c6218c47dd9fcfccfedae7e9138f
+863c4e153b062e0bdf153750905c705212360b4f refs/tags/1.0.3
+^1492497476c79e5fb83507fa4eb4056725a93a8c
+06aa5c90deb6ee51a89b62c54add5d78c39618df refs/tags/1.0.4
+^43600693628d289b38bcebd4487a2a47fcecc42d

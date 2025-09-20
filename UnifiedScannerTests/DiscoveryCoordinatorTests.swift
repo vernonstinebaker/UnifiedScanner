@@ -6,8 +6,8 @@ import XCTest
         let store = DeviceSnapshotStore(persistenceKey: "coord-test", persistence: MemoryPersistence(), classification: ClassificationService.self)
         let providerDevice = Device(primaryIP: "192.168.1.10", ips: ["192.168.1.10"], hostname: "apple-tv.local", discoverySources: [.mdns])
         let provider = TestProvider(devices: [providerDevice], perDeviceDelay: 0.05)
-        let mockPinger = OneShotMockPinger(rtt: 7.0)
-        let orchestrator = PingOrchestrator(pinger: mockPinger, store: store, maxConcurrent: 4)
+        let mockPingService = OneShotMockPingService(rtt: 7.0)
+        let orchestrator = PingOrchestrator(pingService: mockPingService, store: store, maxConcurrent: 4)
         let coordinator = DiscoveryCoordinator(store: store, pingOrchestrator: orchestrator, providers: [provider])
 
         // Collect first two change events (mdns upsert, ping device creation with RTT)
@@ -70,7 +70,7 @@ final class TestProvider: DiscoveryProvider {
     func stop() { cancelled = true }
 }
 
-struct OneShotMockPinger: Pinger {
+struct OneShotMockPingService: PingService {
     let rtt: Double
     func pingStream(config: PingConfig) async -> AsyncStream<PingMeasurement> {
         AsyncStream { continuation in

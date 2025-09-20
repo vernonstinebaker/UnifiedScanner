@@ -38,10 +38,10 @@
 20. [x] Hook store into ContentView (ObservableObject) feeding devices array.
 
 ## Phase 5: Discovery Pipeline Implementation ✅ COMPLETED
-21a. [x] Define `Pinger` protocol + streaming `PingMeasurement` (host, sequence, status[rtt/timeout], timestamp).
-21b. [x] Implement `NetworkPinger` (cross-platform) using Network framework TCP/UDP probing with fallback.
+21a. [x] Define `PingService` protocol + streaming `PingMeasurement` (host, sequence, status[rtt/timeout], timestamp).
+21b. [x] Implement `SimplePingKit`-based ICMP ping service for cross-platform probing (replaces earlier Network framework prototype).
 21c. [x] Implement concurrent `PingOrchestrator` with 32 max simultaneous operations.
-21d. [x] Add conditional factory `PlatformPingerFactory.make()` returning Network-based implementation.
+21d. [x] Add conditional factory `PlatformPingServiceFactory.make()` returning Network-based implementation.
 21e. [x] Integrate ping RTT updates into `DeviceSnapshotStore` via `applyPing` (updates rttMillis, lastSeen on success).
 
 21. [x] Add protocol `DiscoveryProvider` (async sequence) for future network layers + mock implementation.
@@ -51,12 +51,12 @@
 25. [x] Add comprehensive logging with `PING_INFO_LOG=1` and `ARP_INFO_LOG=1` environment variables.
 26. [x] Test complete discovery pipeline - successfully detects 1400+ devices on local network.
 
-## Phase 6: Polishing & Docs
-25. [ ] Add inline doc comments for each public-facing model type & derived property.
-26. [ ] Update `PROJECT_OVERVIEW.md` with any deviations / refinements discovered during implementation.
-27. [ ] Add a brief `ARCHITECTURE_NOTES.md` (if needed) summarizing model merge rules & classification precedence.
-28. [ ] Final pass test coverage review; ensure core logic (identity, service normalization, classification) has > minimal threshold.
-29. [ ] Prepare a consolidated CHANGELOG entry for Phase 1–3 completion.
+## Phase 6: Polishing, Discovery Expansion & Docs (macOS + iOS + iPadOS)
+25. [ ] Add inline doc comments for each public-facing model type & derived property. // TODO: Include platform nuances (size classes, Catalyst differences) where relevant.
+26. [ ] Update `PROJECT_OVERVIEW.md` with any deviations / refinements discovered during implementation. // TODO: Document decision to replace Task.detached with TaskGroup for orchestrators.
+27. [ ] Add a brief `ARCHITECTURE_NOTES.md` (if needed) summarizing model merge rules & classification precedence. // TODO: If not adding new file, fold content into PROJECT_OVERVIEW 'Architecture Notes' section instead (user preference: avoid new docs).
+28. [ ] Final pass test coverage review; ensure core logic (identity, service normalization, classification) has > minimal threshold. // TODO: Add new tests: ARP MAC merge, RTT update path, multi-source discovery union, classification reasoning ordering.
+29. [ ] Prepare a consolidated CHANGELOG entry for Phase 1–3 completion. // TODO: Include Phase 5 discovery achievements & performance metrics; clarify upcoming Phase 6 scope.
 
 ---
 ## Design Rules (Enforced During Implementation)
@@ -71,14 +71,26 @@
 - Do we store historical RTT samples or only latest? (Currently only latest `rttMillis`; future: rolling window.)
 - Should classification reasons be multi-line structured array vs concatenated string? (Initial: single joined string for simplicity.)
 
-## Deferred Backlog (Post Phase 3)
-- OUI ingestion & live vendor lookup bridging to existing `oui.csv` (protocol hook present; data ingest deferred) — Phase 5
-- DeviceSnapshotStore + mutation streaming (Phase 4 tasks 17–20)
-- Discovery provider implementations (Bonjour, ARP, Ping, PortScan stub, SSDP, WS-Discovery) — Phase 5
-- Fingerprint enrichment (HTTP banners, SSH parsing) — Phase 5/6
-- Accessibility label audit (service pills, port rows) — Phase 6
-- Theming abstraction (UnifiedTheme struct extraction) — Phase 6
-- UI test coverage (navigation & detail flows) — After Phase 4
+## Deferred Backlog (Updated for Phases 6–7)
+- OUI ingestion & live vendor lookup bridging to existing `oui.csv` (protocol hook present; data ingest deferred) — Phase 6
+- DeviceSnapshotStore + mutation streaming (Phase 4 tasks 17–20) — Phase 6 (AsyncStream emission)
+- Discovery provider implementations (Bonjour, ARP, Ping, PortScan stub, SSDP, WS-Discovery) — Phase 6 (mDNS + PortScan), Phase 7 (SSDP, WS-Discovery evaluation)
+- Fingerprint enrichment (HTTP banners, SSH parsing) — Phase 7
+- Accessibility label audit (service pills, port rows) — Phase 6 (initial), Phase 7 (Dynamic Type stress + VO rotor refinement)
+- Theming abstraction (UnifiedTheme struct extraction) — Phase 6 (extract), Phase 7 (light mode, high contrast adjustments)
+- UI test coverage (navigation & detail flows) — Phase 7 (after mutation streaming stable)
+
+## Phase 7: Cross-Platform & Enrichment (Planned)
+- [ ] Implement mDNS provider (re-author lightweight browser using NetServiceBrowser; emit DeviceMutation events)
+- [ ] Reintroduce PortScanner (structured concurrency, cancel support, integrate into enrichment pass)
+- [ ] OUI ingestion (parse oui.csv once; build prefix map; cache)
+- [ ] Mutation AsyncStream channel from DeviceSnapshotStore
+- [ ] Accessibility pass (Dynamic Type XXL+, VoiceOver custom labels, rotor ordering)
+- [ ] Theming: extract UnifiedTheme + light mode + high contrast tokens
+- [ ] Reverse DNS enrichment provider (optional gating flag)
+- [ ] HTTP banner + SSH host key fingerprint capture (fingerprints map population)
+- [ ] FeatureFlag enum + environment overrides
+- [ ] Internationalization prep: extract strings (English only bundle)
 
 ## Immediate Next Action
 Implement Phase 1 steps 1–3 (model file, service normalization, heuristics) then add mocks & tests.

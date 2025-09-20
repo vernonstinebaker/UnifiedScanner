@@ -6,8 +6,8 @@ import XCTest
         // Arrange
         let store = DeviceSnapshotStore(persistenceKey: "auto-enum", persistence: MemoryPersistenceAE(), classification: ClassificationService.self)
         let mockEnumerator = MockEnumerator(hosts: ["10.0.0.5", "10.0.0.6"]) // deterministic
-        let mockPinger = OneShotMockPingerAE(rtt: 3.3)
-        let orchestrator = PingOrchestrator(pinger: mockPinger, store: store, maxConcurrent: 4)
+        let mockPingService = OneShotMockPingServiceAE(rtt: 3.3)
+        let orchestrator = PingOrchestrator(pingService: mockPingService, store: store, maxConcurrent: 4)
         let coordinator = DiscoveryCoordinator(store: store, pingOrchestrator: orchestrator, providers: [], hostEnumerator: mockEnumerator)
 
         var yieldedHosts: Set<String> = []
@@ -45,7 +45,7 @@ private struct MemoryPersistenceAE: DevicePersistence {
     func save(_ devices: [Device], key: String) { }
 }
 
-private struct OneShotMockPingerAE: Pinger {
+private struct OneShotMockPingServiceAE: PingService {
     let rtt: Double
     func pingStream(config: PingConfig) async -> AsyncStream<PingMeasurement> {
         AsyncStream { continuation in

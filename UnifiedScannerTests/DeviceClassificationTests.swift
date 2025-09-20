@@ -19,19 +19,20 @@ final class DeviceClassificationTests: XCTestCase {
         XCTAssertEqual(d.classification?.formFactor, .router)
     }
 
-    func testSSHOnlyLowConfidence() {
+    func testSSHOnlyLowConfidence() async {
         var d = Device(primaryIP: "192.168.1.90", services: [ServiceDeriver.makeService(fromRaw: "_ssh._tcp", port: 22)], openPorts: [])
-        d.classification = ClassificationService.classify(device: d)
+        d.classification = await ClassificationService.classify(device: d)
         XCTAssertEqual(d.classification?.formFactor, .server)
         XCTAssertEqual(d.classification?.confidence, .low)
     }
 
-    func testAirPlayVsGeneric() {
+    func testAirPlayVsGeneric() async {
         var mac = Device.mockMac
+        mac.classification = await ClassificationService.classify(device: mac)
         XCTAssertEqual(mac.classification?.formFactor, .computer)
         // Remove AirPlay to degrade classification
         mac.services = mac.services.filter { $0.type != .airplay }
-        mac.classification = ClassificationService.classify(device: mac)
+        mac.classification = await ClassificationService.classify(device: mac)
         // Might classify as computer (still ssh + vendor) but not tv
         XCTAssertNotEqual(mac.classification?.formFactor, .tv)
     }
