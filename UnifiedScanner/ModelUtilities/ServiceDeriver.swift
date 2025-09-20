@@ -30,6 +30,16 @@ public enum ServiceDeriver {
         if lower.contains("_printer.") { return (.printer, "Printer") }
         if lower.contains("_spotify.") { return (.spotify, "Spotify") }
         if lower.contains("_chromecast.") || lower.contains("_googlecast.") { return (.chromecast, "Chromecast") }
+        if lower.contains("_rfb.") { return (.vnc, "VNC") }
+        if lower.contains("_sftp-ssh.") { return (.ssh, "SFTP/SSH") }
+        if lower.contains("_afpovertcp.") { return (.other, "AFP File Sharing") }
+        if lower.contains("_workstation.") { return (.other, "Workstation") }
+        if lower.contains("_device-info.") { return (.other, "Device Info") }
+        if lower.contains("_companion-link.") { return (.other, "Companion Link") }
+        if lower.contains("_remotepairing.") { return (.other, "Remote Pairing") }
+        if lower.contains("_touch-able.") { return (.other, "Touch Able") }
+        if lower.contains("_sleep-proxy.") { return (.other, "Sleep Proxy") }
+        if lower.contains("_apple-mobdev2.") { return (.other, "Apple Dev") }
         return (.other, rawType.trimmingCharacters(in: CharacterSet(charactersIn: "_")))
     }
 

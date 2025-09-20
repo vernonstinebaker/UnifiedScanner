@@ -39,11 +39,13 @@ struct LocalSubnetEnumerator: HostEnumerator {
             guard (flags & IFF_LOOPBACK) != IFF_LOOPBACK else { continue }
             guard addrPtr.pointee.sa_family == sa_family_t(AF_INET) else { continue }
 
-            let name = String(validatingUTF8: current.ifa_name) ?? ""
+            let name = decodeCString(current.ifa_name, context: "LocalSubnetEnumerator.ifname") ?? ""
             var addr = addrPtr.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { $0.pointee.sin_addr }
             var buffer = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN))
             guard inet_ntop(AF_INET, &addr, &buffer, socklen_t(INET_ADDRSTRLEN)) != nil else { continue }
-            let ip = String(validatingUTF8: buffer) ?? ""
+            let ip = buffer.withUnsafeBufferPointer { ptr in
+                ptr.baseAddress.flatMap { decodeCString($0, context: "LocalSubnetEnumerator.ip") } ?? ""
+            }
 
             if preferred == nil && name.hasPrefix("en") { preferred = ip }
             if fallback == nil { fallback = ip }
@@ -115,6 +117,8 @@ enum IPv4Parser {
         var addr = in_addr(s_addr: value.bigEndian)
         var buffer = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN))
         inet_ntop(AF_INET, &addr, &buffer, socklen_t(INET_ADDRSTRLEN))
-        return String(validatingUTF8: buffer) ?? ""
+        return buffer.withUnsafeBufferPointer { ptr in
+            ptr.baseAddress.flatMap { decodeCString($0, context: "IPv4Parser.uint32ToAddress") }
+        } ?? ""
     }
 }

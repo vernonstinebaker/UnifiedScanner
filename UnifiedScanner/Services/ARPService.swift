@@ -139,7 +139,9 @@ public final class ARPService: @unchecked Sendable { // @unchecked because NWCon
                 var addr = sin.sin_addr
                 var buffer = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN))
                 inet_ntop(AF_INET, &addr, &buffer, socklen_t(INET_ADDRSTRLEN))
-                destinationIP = String(validatingUTF8: buffer) ?? ""
+                destinationIP = buffer.withUnsafeBufferPointer { ptr in
+                    ptr.baseAddress.flatMap { decodeCString($0, context: "ARPService.routeDump.destination") } ?? ""
+                }
             case (AF_LINK, RTAX_GATEWAY):
                 let sdl = rawPointer.withMemoryRebound(to: sockaddr_dl.self, capacity: 1) { $0.pointee }
                 interface = extractInterfaceName(from: sdl, dataPointer: rawPointer)

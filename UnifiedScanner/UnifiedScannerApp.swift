@@ -50,7 +50,7 @@ struct UnifiedScannerApp: App {
         let pingService: PingService = SimplePingKitService()
         #endif
         let orchestrator = PingOrchestrator(pingService: pingService, store: snapshotStore, maxConcurrent: 32, progress: scanProgress)
-        let providers: [DiscoveryProvider] = [] // mDNS discovery disabled until real provider implemented
+        let providers: [DiscoveryProvider] = [BonjourDiscoveryProvider()]
         let arpService = ARPService()
         let coordinator = DiscoveryCoordinator(store: snapshotStore, pingOrchestrator: orchestrator, providers: providers, arpService: arpService)
         discoveryCoordinator = coordinator

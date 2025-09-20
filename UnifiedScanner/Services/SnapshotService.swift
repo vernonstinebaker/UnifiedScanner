@@ -368,10 +368,6 @@ final class SnapshotService: ObservableObject {
 }
 
 // Backwards compatibility during migration
-@available(*, deprecated, message: "Use SnapshotService instead")
-typealias DeviceSnapshotStore = SnapshotService
-@available(*, deprecated, message: "Use SnapshotService instead")
-typealias DeviceStore = SnapshotService
 
 // MARK: - Persistence Adapter
 protocol DevicePersistence {

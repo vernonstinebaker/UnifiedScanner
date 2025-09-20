@@ -104,6 +104,9 @@ Earlier version marked this fully complete; correction: Only Ping + ARP (macOS) 
 - Provider → mutation bus & structured logger.  
 - Accessibility & theming improvements.  
 - UI test coverage.  
+- SnapshotService decomposition (DeviceStoreActor + DeviceMutationBroadcaster + facade).  
+- DeviceBuilder / factory patterns for common construction cases.  
+- Throwing/Result-based error surfaces for network/persistence services (starting with ARPService).  
 
 ## Immediate Next Action
 Implement Phase 6 logging + provider mutation bus before adding new discovery types (ensures consistent event pipeline).
