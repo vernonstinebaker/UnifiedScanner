@@ -17,6 +17,9 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.segmented)
                 }
+                Section("Detail View") {
+                    Toggle("Show Fingerprints", isOn: $settings.showFingerprints)
+                }
                 Section("Maintenance") {
                     Button(role: .destructive) {
                         store.clearAllData()
@@ -26,13 +29,11 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
-#if os(iOS)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
+                    Button("Close") { dismiss() }
                 }
             }
-#endif
         }
         .frame(minWidth: 400, minHeight: 250)
     }

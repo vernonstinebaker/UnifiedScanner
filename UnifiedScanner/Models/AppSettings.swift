@@ -33,8 +33,15 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    @Published var showFingerprints: Bool {
+        didSet {
+            persist()
+        }
+    }
+
     private let defaults = UserDefaults.standard
     private let loggingLevelKey = "unifiedscanner:settings:loggingLevel"
+    private let fingerprintsKey = "unifiedscanner:settings:showFingerprints"
 
     init() {
         if let raw = defaults.string(forKey: loggingLevelKey), let lvl = LoggingLevel(rawValue: raw) {
@@ -42,10 +49,16 @@ final class AppSettings: ObservableObject {
         } else {
             loggingLevel = .info
         }
+        if defaults.object(forKey: fingerprintsKey) != nil {
+            showFingerprints = defaults.bool(forKey: fingerprintsKey)
+        } else {
+            showFingerprints = true
+        }
         LoggingService.setMinimumLevel(loggingLevel.scanLoggerLevel)
     }
 
     private func persist() {
         defaults.set(loggingLevel.rawValue, forKey: loggingLevelKey)
+        defaults.set(showFingerprints, forKey: fingerprintsKey)
     }
 }

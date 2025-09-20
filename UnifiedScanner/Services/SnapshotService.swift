@@ -90,22 +90,23 @@ final class SnapshotService: ObservableObject {
         self.localIPv4Networks = LocalSubnetEnumerator.activeIPv4Networks()
          let env = ProcessInfo.processInfo.environment
          let disablePersistence = env["UNIFIEDSCANNER_DISABLE_PERSISTENCE"] == "1"
-         if disablePersistence {
-             self.devices = []
-         } else {
-             self.devices = self.persistence.load(key: persistenceKey)
-              if true { // forceOfflineOnRestore now always-on
-                 self.devices = self.devices.map { dev in
-                     var d = dev
-                     d.isOnlineOverride = false
-                     return d
-                 }
-             }
-              // Sort loaded devices
-              self.devices.sort { (lhs, rhs) -> Bool in
-                  let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
-                  let rhsIP = rhs.bestDisplayIP ?? rhs.primaryIP ?? "255.255.255.255"
-                  return compareIPs(lhsIP, rhsIP)
+        if disablePersistence {
+            self.devices = []
+        } else {
+            self.devices = self.persistence.load(key: persistenceKey)
+             if true { // forceOfflineOnRestore now always-on
+                self.devices = self.devices.map { dev in
+                    var d = dev
+                    d.isOnlineOverride = false
+                    return d
+                }
+            }
+            self.devices = self.devices.compactMap { sanitize(device: $0) }
+             // Sort loaded devices
+             self.devices.sort { (lhs, rhs) -> Bool in
+                 let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
+                 let rhsIP = rhs.bestDisplayIP ?? rhs.primaryIP ?? "255.255.255.255"
+                 return compareIPs(lhsIP, rhsIP)
               }
          }
          if env["UNIFIEDSCANNER_CLEAR_ON_START"] == "1" {
@@ -171,13 +172,12 @@ final class SnapshotService: ObservableObject {
     }
 
     func upsert(_ incoming: Device, source: MutationSource = .mdns) async {
-        guard shouldAccept(device: incoming) else {
+        guard var incoming = sanitize(device: incoming) else {
             let ipSummary = incoming.ips.sorted().joined(separator: ",")
-            LoggingService.debug("snapshot: skip non-local device primary=\(incoming.primaryIP ?? "nil") ips=\(ipSummary)")
+            LoggingService.debug("snapshot: skip filtered device primary=\(incoming.primaryIP ?? "nil") ips=\(ipSummary)")
             return
         }
 
-        var incoming = incoming
         if source == .mdns {
             let primary = incoming.primaryIP ?? "nil"
             let ipsCount = incoming.ips.count
@@ -197,13 +197,26 @@ final class SnapshotService: ObservableObject {
         var changedFields: Set<DeviceField> = []
         if let idx = matchIndex {
             let merged = await merge(existing: devices[idx], incoming: newDevice)
-            let old = devices[idx]
-            devices[idx] = merged
-            changedFields.formUnion(DeviceField.differences(old: old, new: merged))
+            if let cleaned = sanitize(device: merged) {
+                let old = devices[idx]
+                devices[idx] = cleaned
+                changedFields.formUnion(DeviceField.differences(old: old, new: cleaned))
+            } else {
+                devices.remove(at: idx)
+                sortDevices()
+                persist()
+                emit(.snapshot(devices))
+                return
+            }
         } else {
-            newDevice.classification = await classification.classify(device: newDevice)
-            devices.append(newDevice)
-            changedFields = Set(DeviceField.allCases)
+            if var sanitized = sanitize(device: newDevice) {
+                sanitized.classification = await classification.classify(device: sanitized)
+                newDevice = sanitized
+                devices.append(sanitized)
+                changedFields = Set(DeviceField.allCases)
+            } else {
+                return
+            }
         }
          // Sort devices after modification
          sortDevices()
@@ -221,17 +234,18 @@ final class SnapshotService: ObservableObject {
       func applyPing(_ measurement: PingMeasurement) async {
            LoggingService.debug("applyPing host=\(measurement.host) status=\(measurement.status)")
            // Find existing device by primary or secondary IP
-           if let idx = devices.firstIndex(where: { $0.primaryIP == measurement.host || $0.ips.contains(measurement.host) }) {
-              var dev = devices[idx]
-              switch measurement.status {
-              case .success(let rtt):
-                  dev.rttMillis = rtt
-                  dev.lastSeen = measurement.timestamp
-                  dev.discoverySources.insert(.ping)
-              case .timeout, .unreachable, .error:
-                  LoggingService.debug("ignore non-success existing host=\(measurement.host) status=\(measurement.status)")
-                  break
-              }
+          if let idx = devices.firstIndex(where: { $0.primaryIP == measurement.host || $0.ips.contains(measurement.host) }) {
+             var dev = devices[idx]
+             switch measurement.status {
+             case .success(let rtt):
+                 dev.rttMillis = rtt
+                 dev.lastSeen = measurement.timestamp
+                 dev.discoverySources.insert(.ping)
+                 dev.isOnlineOverride = nil
+             case .timeout, .unreachable, .error:
+                 LoggingService.debug("ignore non-success existing host=\(measurement.host) status=\(measurement.status)")
+                 break
+             }
                let old = devices[idx]
                devices[idx] = dev
                // Sort after modification
@@ -249,12 +263,15 @@ final class SnapshotService: ObservableObject {
               newDevice.rttMillis = rtt
               newDevice.firstSeen = measurement.timestamp
               newDevice.lastSeen = measurement.timestamp
-             newDevice.classification = await classification.classify(device: newDevice)
-               devices.append(newDevice)
-               // Sort after modification
-               sortDevices()
-              persist()
-              emit(.change(DeviceChange(before: nil, after: newDevice, changed: Set(DeviceField.allCases), source: .ping)))
+             if var sanitized = sanitize(device: newDevice) {
+                 sanitized.classification = await classification.classify(device: sanitized)
+                 newDevice = sanitized
+                 devices.append(sanitized)
+                 // Sort after modification
+                 sortDevices()
+                 persist()
+                 emit(.change(DeviceChange(before: nil, after: sanitized, changed: Set(DeviceField.allCases), source: .ping)))
+             }
           }
       }
 
@@ -367,6 +384,9 @@ final class SnapshotService: ObservableObject {
         result.lastSeen = incoming.lastSeen ?? Date()
         if result.firstSeen == nil { result.firstSeen = incoming.firstSeen ?? Date() }
 
+        // Online override adopts latest signal (nil clears forced-offline state)
+        result.isOnlineOverride = incoming.isOnlineOverride
+
         // Recompute classification if relevant fields changed
         let postFingerprint = classificationFingerprint(of: result)
         if postFingerprint != preClassificationFingerprint {
@@ -425,23 +445,6 @@ final class SnapshotService: ObservableObject {
 }
 
 private extension SnapshotService {
-    func shouldAccept(device: Device) -> Bool {
-        var ipCandidates = device.ips
-        if let primary = device.primaryIP { ipCandidates.insert(primary) }
-        if ipCandidates.isEmpty { return true }
-
-        for ip in ipCandidates {
-            let trimmed = ip.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty else { continue }
-            if trimmed.hasPrefix("127.") { continue }
-            if trimmed == "::1" { continue }
-            if trimmed.contains(":") { return true } // allow IPv6 (assume local network)
-            if isLocalIPv4(trimmed) { return true }
-        }
-
-        return false
-    }
-
     func isLocalIPv4(_ ip: String) -> Bool {
         guard !ip.hasPrefix("169.254.") else { return false }
         guard let value = IPv4Parser.addressToUInt32(ip) else { return false }
@@ -449,6 +452,38 @@ private extension SnapshotService {
         return localIPv4Networks.contains { network in
             (value & network.netmask) == network.networkAddress
         }
+    }
+
+    func shouldKeepIP(_ ip: String) -> Bool {
+        let trimmed = ip.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        if trimmed.hasPrefix("127.") { return false }
+        if trimmed == "::1" { return false }
+        if trimmed.contains(":") { return true }
+        return isLocalIPv4(trimmed)
+    }
+
+    func sanitize(device: Device) -> Device? {
+        var filteredIPs: Set<String> = []
+        for ip in device.ips where shouldKeepIP(ip) {
+            filteredIPs.insert(ip.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+
+        var sanitized = device
+
+        if let primary = device.primaryIP, shouldKeepIP(primary) {
+            sanitized.primaryIP = primary.trimmingCharacters(in: .whitespacesAndNewlines)
+        } else {
+            sanitized.primaryIP = filteredIPs.sorted().first
+        }
+
+        sanitized.ips = filteredIPs
+
+        if sanitized.primaryIP == nil && sanitized.ips.isEmpty {
+            return nil
+        }
+
+        return sanitized
     }
 
     func indexForDevice(_ incoming: Device) -> Int? {

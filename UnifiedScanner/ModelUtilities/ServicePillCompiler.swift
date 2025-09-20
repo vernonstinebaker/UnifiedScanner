@@ -58,7 +58,7 @@ enum ServicePillCompiler {
         let base = service.name.trimmingCharacters(in: .whitespacesAndNewlines)
         let resolvedBase = base.isEmpty ? service.type.rawValue.uppercased() : base
         guard let port = service.port else { return resolvedBase }
-        if service.isStandardPort { return resolvedBase }
+        if service.isStandardPort || service.type.matchesDefaultPort(port) { return resolvedBase }
         if resolvedBase.contains(":\(port)") { return resolvedBase }
         return "\(resolvedBase) :\(port)"
     }
@@ -71,5 +71,29 @@ enum ServicePillCompiler {
     private struct Entry {
         let key: GroupKey
         let count: Int
+    }
+}
+
+private extension NetworkService.ServiceType {
+    func matchesDefaultPort(_ port: Int) -> Bool {
+        switch self {
+        case .http where port == 80: return true
+        case .https where port == 443: return true
+        case .ssh where port == 22: return true
+        case .dns where port == 53: return true
+        case .dhcp where port == 67 || port == 68: return true
+        case .smb where port == 139 || port == 445: return true
+        case .ftp where port == 21: return true
+        case .vnc where port == 5900: return true
+        case .airplay where port == 7000: return true
+        case .airplayAudio where port == 7000: return true
+        case .homekit where (51826...51828).contains(port): return true
+        case .chromecast where port == 8008 || port == 8009 || port == 8443: return true
+        case .spotify where port == 57621: return true
+        case .printer where port == 515: return true
+        case .ipp where port == 631: return true
+        case .telnet where port == 23: return true
+        default: return false
+        }
     }
 }

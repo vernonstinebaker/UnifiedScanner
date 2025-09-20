@@ -15,15 +15,12 @@ struct DeviceRowView: View {
             VStack(alignment: .leading, spacing: Theme.space(.sm)) {
                 headerRow
                 metaRow
-                if !discoverySources.isEmpty {
-                    DiscoveryPillsView(sources: discoverySources)
-                }
                 if !device.displayServices.isEmpty {
                     ServiceTagsView(services: device.displayServices, maxVisible: 4)
                 }
             }
             Spacer()
-            onlineIndicator
+            indicatorColumn
         }
         .padding(Theme.space(.lg))
         .background(Theme.color(.bgCard))
@@ -87,14 +84,17 @@ struct DeviceRowView: View {
         }
     }
 
-    private var onlineIndicator: some View {
-        Circle()
-            .fill(device.isOnline ? Theme.color(.statusOnline) : Theme.color(.statusOffline))
-            .frame(width: 12, height: 12)
-            .shadow(color: device.isOnline ? Theme.color(.statusOnline).opacity(0.6) : .clear,
-                    radius: 3,
-                    y: 1)
-            .accessibilityLabel(device.isOnline ? "Online" : "Offline")
+    private var indicatorColumn: some View {
+        VStack(alignment: .trailing, spacing: Theme.space(.sm)) {
+            Circle()
+                .fill(device.isOnline ? Theme.color(.statusOnline) : Theme.color(.statusOffline))
+                .frame(width: 12, height: 12)
+                .shadow(color: device.isOnline ? Theme.color(.statusOnline).opacity(0.6) : .clear,
+                        radius: 3,
+                        y: 1)
+                .accessibilityLabel(device.isOnline ? "Online" : "Offline")
+            primaryDiscoveryBadge
+        }
     }
 
     private var primaryTitle: String {
@@ -130,6 +130,24 @@ struct DeviceRowView: View {
         let ri = ranking.firstIndex(of: rhs) ?? ranking.count
         if li == ri { return lhs.rawValue < rhs.rawValue }
         return li < ri
+    }
+
+    private var primaryDiscoverySource: DiscoverySource? {
+        discoverySources.first
+    }
+
+    @ViewBuilder
+    private var primaryDiscoveryBadge: some View {
+        if let source = primaryDiscoverySource {
+            let style = Theme.discoveryStyle(for: source)
+            Text(style.title)
+                .font(Theme.Typography.tag)
+                .padding(.horizontal, Theme.space(.sm))
+                .padding(.vertical, Theme.space(.xs))
+                .background(style.color.opacity(0.18))
+                .foregroundColor(style.color)
+                .clipShape(Capsule())
+        }
     }
 }
 
@@ -178,19 +196,16 @@ struct ServiceTagsView: View {
                 .padding(.vertical, Theme.space(.xs))
                 .background(Theme.color(.bgElevated))
                 .foregroundColor(Theme.color(.textSecondary))
-                .cornerRadius(Theme.radius(.sm))
+                .clipShape(Capsule())
         } else if let type = pill.type {
             let style = Theme.style(for: type)
-            HStack(spacing: Theme.space(.xs)) {
-                Image(systemName: style.icon)
-                Text(pill.label.uppercased())
-            }
-            .font(Theme.Typography.tag)
-            .padding(.horizontal, Theme.space(.sm))
-            .padding(.vertical, Theme.space(.xs))
-            .background(style.color.opacity(0.18))
-            .foregroundColor(style.color)
-            .cornerRadius(Theme.radius(.sm))
+            Text(pill.label)
+                .font(Theme.Typography.tag)
+                .padding(.horizontal, Theme.space(.sm))
+                .padding(.vertical, Theme.space(.xs))
+                .background(style.color.opacity(0.18))
+                .foregroundColor(style.color)
+                .clipShape(Capsule())
         } else {
             Text(pill.label)
                 .font(Theme.Typography.tag)
@@ -198,7 +213,7 @@ struct ServiceTagsView: View {
                 .padding(.vertical, Theme.space(.xs))
                 .background(Theme.color(.bgElevated))
                 .foregroundColor(Theme.color(.textSecondary))
-                .cornerRadius(Theme.radius(.sm))
+                .clipShape(Capsule())
         }
     }
 }

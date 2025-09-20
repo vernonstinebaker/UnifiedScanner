@@ -8,6 +8,9 @@ import AppKit
 
 struct UnifiedDeviceDetail: View {
     let device: Device
+    @ObservedObject var settings: AppSettings
+
+    private var shouldShowFingerprints: Bool { settings.showFingerprints }
 
     private var allIPs: [String] {
         var result: [String] = []
@@ -36,9 +39,9 @@ struct UnifiedDeviceDetail: View {
                 overviewSection
                 networkSection
                 if !discoverySources.isEmpty { discoverySection }
-                if let fingerprints = device.fingerprints, !fingerprints.isEmpty { fingerprintSection(fingerprints) }
                 servicesSection
                 portsSection
+                if shouldShowFingerprints, let fingerprints = device.fingerprints, !fingerprints.isEmpty { fingerprintSection(fingerprints) }
             }
             .padding(Theme.space(.xl))
         }
@@ -191,8 +194,8 @@ struct UnifiedDeviceDetail: View {
                             .padding(Theme.space(.md))
                             .background(Theme.color(.bgElevated))
                             .cornerRadius(Theme.radius(.md))
-                        }
-                    }
+    }
+}
                 }
                 .cardStyle()
             }
@@ -280,4 +283,3 @@ struct UnifiedDeviceDetail: View {
         return formatter
     }()
 }
-

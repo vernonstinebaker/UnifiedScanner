@@ -90,6 +90,7 @@ enum Theme {
 struct CardBackground: ViewModifier {
     func body(content: Content) -> some View {
         content
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(Theme.space(.lg))
             .background(Theme.color(.bgCard))
             .cornerRadius(Theme.radius(.lg))

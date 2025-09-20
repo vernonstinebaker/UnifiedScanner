@@ -79,7 +79,7 @@ struct ContentView: View {
             .sheet(isPresented: $showDetailSheet) {
                 if let id = selectedID, let device = store.devices.first(where: { $0.id == id }) {
                     NavigationStack {
-                        UnifiedDeviceDetail(device: device)
+                        UnifiedDeviceDetail(device: device, settings: settings)
                             .toolbar {
                                 ToolbarItem(placement: .cancellationAction) {
                                     Button("Done") { showDetailSheet = false }
@@ -121,7 +121,7 @@ struct ContentView: View {
             .background(Theme.color(.bgRoot))
             .navigationDestination(for: String.self) { id in
                 if let device = store.devices.first(where: { $0.id == id }) {
-                    UnifiedDeviceDetail(device: device)
+                    UnifiedDeviceDetail(device: device, settings: settings)
                 }
             }
             .navigationTitle("Devices")
@@ -135,7 +135,7 @@ struct ContentView: View {
             }
         } detail: {
             if let id = selectedID, let device = store.devices.first(where: { $0.id == id }) {
-                UnifiedDeviceDetail(device: device)
+                UnifiedDeviceDetail(device: device, settings: settings)
             } else {
                 VStack {
                     Text("Select a device")
