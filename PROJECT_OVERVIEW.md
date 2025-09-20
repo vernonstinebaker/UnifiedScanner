@@ -282,7 +282,8 @@ Planned additions to ensure mutation semantics & merging correctness.
 ### ✅ Core Discovery Pipeline - Fully Operational
 - **Multi-Port TCP Probing**: Concurrent probing of 6 common ports (HTTP/80, HTTPS/443, SSH/22, DNS/53, SMB/445, AFP/548)
 - **UDP Fallback**: Automatic fallback when TCP ports fail, expanding detection coverage
-- **ARP Integration**: System ARP table reading with MAC address capture for device identification
+- **ARP Integration**: System ARP table reading with MAC address capture for device identification (macOS uses route-dump reader inside sandbox)
+- **ARP Warmup**: UDP nudge helper to populate the ARP cache prior to reading entries
 - **Broadcast UDP**: Subnet-wide UDP broadcasting to populate ARP tables and trigger device responses
 - **Concurrent Processing**: Up to 32 simultaneous network operations for optimal performance
 - **Comprehensive Logging**: Environment variable controlled logging (`PING_INFO_LOG=1`, `ARP_INFO_LOG=1`)

@@ -46,7 +46,7 @@
 
 21. [x] Add protocol `DiscoveryProvider` (async sequence) for future network layers + mock implementation.
 22. [x] Implement `DiscoveryCoordinator` coordinating ping + ARP + broadcast UDP phases.
-23. [x] Integrate `ARPTableReader` with system ARP table parsing and MAC address capture.
+23. [x] Integrate `ARPService` with system ARP table parsing and MAC address capture.
 24. [x] Implement broadcast UDP functionality to populate ARP table subnet-wide.
 25. [x] Add comprehensive logging with `PING_INFO_LOG=1` and `ARP_INFO_LOG=1` environment variables.
 26. [x] Test complete discovery pipeline - successfully detects 1400+ devices on local network.

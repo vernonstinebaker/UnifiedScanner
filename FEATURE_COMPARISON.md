@@ -30,7 +30,7 @@ Legend: ✅ = Present / Chosen, ❌ = Absent, ⏳ = Planned / In Progress, ➕ =
 | Classification Strategies | ✅ Multi-strategy classifier | Partial (simpler) | ✅ Port core + advanced vendor/service patterns | Core + extended patterns implemented (Phase 3 expansion) | App Models Utility | ✅ |
 | Xiaomi / Vendor Parsing | ✅ Specialized patterns | ❌ | ✅ Included (hostname + vendor heuristics) | Implemented in expanded rules (plug/smart + vendor) | App Models Utility | ✅ |
 | OUI Lookup | ✅ (Vendor via file) | ✅ `OUILookupService` | ✅ Protocol hook in place; ingestion later | Hook present (`ClassificationService.ouiLookup`); data ingest deferred | Future Utility | ⏳ |
-| ARP Discovery | ✅ (`ARPService/Worker`) | ✅ separate parsers/services | ✅ Reference netscan parsing + Bonjour scheduling concepts | `ARPTableReader` + system ARP table parsing + MAC capture | App Utility | ✅ |
+| ARP Discovery | ✅ (`ARPService/Worker`) | ✅ separate parsers/services | ✅ Reference netscan parsing + Bonjour scheduling concepts | `ARPService` route-dump reader + UDP warmup + MAC capture | App Utility | ✅ |
 | Ping / Network Reachability | ❌ (light) | ✅ `PingScanner`, `SimplePing` | ➕ SimplePingKit-based ICMP with auto /24 enumeration + concurrent orchestration | `SimplePingKitService` + `PingOrchestrator` + `LocalSubnetEnumerator` + 32 concurrent ops | App Utility | ✅ |
 | Bonjour / mDNS Discovery | ✅ Strong | ✅ Basic `BonjourDiscoverer` | ✅ Port BonjourBrowser concepts | Deferred (Phase 5 provider abstraction) | Future Utility | ⏳ |
 | SSDP / UPnP | ❌ | ✅ `SSDPDiscoverer` | ✅ Optional later (Phase 5) | Deferred | Future Utility | ⏳ |

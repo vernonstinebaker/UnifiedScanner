@@ -201,16 +201,16 @@ actor DiscoveryCoordinator {
     private let pingOrchestrator: PingOrchestrator
     private let providers: [DiscoveryProvider]
     private let hostEnumerator: HostEnumerator
-    private let arpReader: ARPTableReader
+    private let arpService: ARPService
     private var tasks: [Task<Void, Never>] = []
     private var started = false
 
-    init(store: DeviceSnapshotStore, pingOrchestrator: PingOrchestrator, providers: [DiscoveryProvider], hostEnumerator: HostEnumerator = LocalSubnetEnumerator(), arpReader: ARPTableReader = ARPTableReader()) {
+    init(store: DeviceSnapshotStore, pingOrchestrator: PingOrchestrator, providers: [DiscoveryProvider], hostEnumerator: HostEnumerator = LocalSubnetEnumerator(), arpService: ARPService = ARPService()) {
         self.store = store
         self.pingOrchestrator = pingOrchestrator
         self.providers = providers
         self.hostEnumerator = hostEnumerator
-        self.arpReader = arpReader
+        self.arpService = arpService
     }
 
     func start(pingHosts: [String], pingConfig: PingConfig, mdnsWarmupSeconds: Double = 2.0, autoEnumerateIfEmpty: Bool = true, maxAutoEnumeratedHosts: Int = 256) {
@@ -281,21 +281,47 @@ actor DiscoveryCoordinator {
                 print("[Discovery] reading ARP table")
             }
 
-            let ipToMac = await self.arpReader.getMACAddresses(for: Set(hosts), delaySeconds: 0.5)
+#if os(macOS)
+            if !hosts.isEmpty {
+                await self.arpService.populateCache(for: hosts)
+            }
+#endif
+
+            let ipToMac = await self.arpService.getMACAddresses(for: Set(hosts), delaySeconds: 0.2)
 
             // Update devices with MAC addresses
             if !ipToMac.isEmpty {
                 for (ip, mac) in ipToMac {
-                    // Find device by IP and update MAC address
                     if let existingDevice = await MainActor.run(body: { self.store.devices.first(where: { $0.primaryIP == ip || $0.ips.contains(ip) }) }) {
-                        if existingDevice.macAddress == nil || existingDevice.macAddress!.isEmpty {
-                            var updatedDevice = existingDevice
+                        var updatedDevice = existingDevice
+                        if (updatedDevice.macAddress ?? "").isEmpty {
                             updatedDevice.macAddress = mac
-                            await self.store.upsert(updatedDevice, source: .ping)
-                            if ProcessInfo.processInfo.environment["PING_INFO_LOG"] == "1" {
-                                print("[Discovery] updated \(ip) with MAC \(mac)")
-                            }
                         }
+                        if !updatedDevice.discoverySources.contains(.arp) {
+                            updatedDevice.discoverySources.insert(.arp)
+                        }
+                        await self.store.upsert(updatedDevice, source: .arp)
+                        if ProcessInfo.processInfo.environment["PING_INFO_LOG"] == "1" {
+                            print("[Discovery] ARP merged host=\(ip) mac=\(mac ?? "")")
+                        }
+                    }
+                }
+            }
+
+            // Create placeholder devices for any hosts that are still missing after ARP lookup
+            for host in hosts {
+                guard let mac = ipToMac[host] else { continue }
+                let exists = await MainActor.run { self.store.devices.contains(where: { $0.primaryIP == host || $0.ips.contains(host) }) }
+                if !exists {
+                    var device = Device(primaryIP: host,
+                                        ips: [host],
+                                        macAddress: mac,
+                                        discoverySources: [.arp],
+                                        firstSeen: Date(),
+                                        lastSeen: Date())
+                    await self.store.upsert(device, source: .arp)
+                    if ProcessInfo.processInfo.environment["PING_INFO_LOG"] == "1" {
+                        print("[Discovery] created ARP-derived device host=\(host) mac=\(mac ?? "")")
                     }
                 }
             }

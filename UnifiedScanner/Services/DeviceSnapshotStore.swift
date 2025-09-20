@@ -6,7 +6,7 @@ public enum DeviceField: String, CaseIterable, Sendable {
     case hostname, vendor, modelHint, rttMillis, services, openPorts, discoverySources, classification, ips, primaryIP, lastSeen, firstSeen, macAddress, fingerprints, isOnlineOverride
 }
 
-public enum MutationSource: Sendable { case mdns, ping, classification, persistenceRestore }
+public enum MutationSource: Sendable { case mdns, ping, arp, classification, persistenceRestore }
 
 public struct DeviceChange: Sendable {
     public let before: Device?

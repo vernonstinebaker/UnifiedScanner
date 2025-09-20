@@ -17,91 +17,146 @@ struct UnifiedDeviceDetail: View {
         return result
     }
 
+    private var discoverySources: [DiscoverySource] {
+        device.discoverySources
+            .filter { $0 != .unknown }
+            .sorted { lhs, rhs in
+                let ranking: [DiscoverySource] = [.arp, .ping, .mdns, .ssdp, .portScan, .reverseDNS, .manual, .unknown]
+                let li = ranking.firstIndex(of: lhs) ?? ranking.count
+                let ri = ranking.firstIndex(of: rhs) ?? ranking.count
+                if li == ri { return lhs.rawValue < rhs.rawValue }
+                return li < ri
+            }
+    }
+
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 28) {
+            VStack(alignment: .leading, spacing: Theme.space(.xxl)) {
                 header
-                networkInfo
+                overviewSection
+                networkSection
+                if !discoverySources.isEmpty { discoverySection }
+                if let fingerprints = device.fingerprints, !fingerprints.isEmpty { fingerprintSection(fingerprints) }
                 servicesSection
                 portsSection
-                Spacer(minLength: 0)
             }
-            .padding(20)
+            .padding(Theme.space(.xl))
         }
+        .background(Theme.color(.bgRoot).ignoresSafeArea())
         .navigationTitle("Device")
     }
 
     private var header: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: Theme.space(.lg)) {
             ZStack {
-                RoundedRectangle(cornerRadius: 12).fill(Color.gray.opacity(0.15))
-                    .frame(width: 72, height: 72)
+                RoundedRectangle(cornerRadius: Theme.radius(.xl))
+                    .fill(Theme.color(.bgElevated))
+                    .frame(width: 80, height: 80)
                 Image(systemName: iconName)
-                    .font(.system(size: 30))
-                    .foregroundColor(.accentColor)
+                    .font(.system(size: 34))
+                    .foregroundColor(Theme.color(.accentPrimary))
             }
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: Theme.space(.sm)) {
                 Text(primaryTitle)
-                    .font(.title3.weight(.semibold))
-                if let vendor = device.vendor { Text(vendor).font(.subheadline).foregroundStyle(.secondary) }
-                if let host = device.hostname { Text(host).font(.caption).foregroundStyle(.secondary) }
-                if let c = device.classification {
-                    HStack(spacing: 6) {
-                        ConfidenceBadge(confidence: c.confidence)
-                        Text(c.formFactor?.rawValue.capitalized ?? "Unclassified")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    .font(Theme.Typography.title)
+                    .foregroundColor(Theme.color(.textPrimary))
+                if let vendor = device.vendor, !vendor.isEmpty {
+                    Text(vendor)
+                        .font(Theme.Typography.subheadline)
+                        .foregroundColor(Theme.color(.textSecondary))
+                }
+                if let host = device.hostname, !host.isEmpty {
+                    Text(host)
+                        .font(Theme.Typography.caption)
+                        .foregroundColor(Theme.color(.textTertiary))
+                }
+                if let classification = device.classification {
+                    HStack(spacing: Theme.space(.sm)) {
+                        ConfidenceBadge(confidence: classification.confidence)
+                        Text(classification.formFactor?.rawValue.capitalized ?? "Unclassified")
+                            .font(Theme.Typography.caption)
+                            .foregroundColor(Theme.color(.textSecondary))
                     }
-                    if !c.reason.isEmpty {
-                        Text(c.reason)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                    if !classification.reason.isEmpty {
+                        Text(classification.reason)
+                            .font(Theme.Typography.caption)
+                            .foregroundColor(Theme.color(.textTertiary))
                             .lineLimit(2)
                     }
                 }
             }
             Spacer()
             Circle()
-                .fill(device.isOnline ? Color.green : Color.red.opacity(0.8))
-                .frame(width: 16, height: 16)
+                .fill(device.isOnline ? Theme.color(.statusOnline) : Theme.color(.statusOffline))
+                .frame(width: 18, height: 18)
+                .shadow(color: device.isOnline ? Theme.color(.statusOnline).opacity(0.6) : .clear,
+                        radius: 4,
+                        y: 1)
         }
     }
 
-    private var networkInfo: some View {
-        VStack(alignment: .leading, spacing: 12) {
+    private var overviewSection: some View {
+        VStack(alignment: .leading, spacing: Theme.space(.sm)) {
+            infoRow("Device ID", device.id)
+            infoRow("Manufacturer", device.vendor)
+            infoRow("Model Hint", device.modelHint)
+            if let classification = device.classification {
+                infoRow("Classification", classification.formFactor?.rawValue.capitalized)
+                infoRow("Confidence", classification.confidence.rawValue.capitalized)
+                infoRow("Reason", classification.reason)
+            }
+            infoRow("Status", device.isOnline ? "Online" : "Offline")
+            infoRow("First Seen", formatted(device.firstSeen))
+            infoRow("Last Seen", formatted(device.lastSeen))
+        }
+        .cardStyle()
+    }
+
+    private var networkSection: some View {
+        VStack(alignment: .leading, spacing: Theme.space(.sm)) {
             infoRow("Primary IP", device.primaryIP)
             let secondary = Array(allIPs.dropFirst())
-            infoRow("Other IPs", secondary.isEmpty ? nil : secondary.joined(separator: ", "))
+            if !secondary.isEmpty {
+                VStack(alignment: .leading, spacing: Theme.space(.xxs)) {
+                    Text("Other IPs")
+                        .font(Theme.Typography.caption)
+                        .foregroundColor(Theme.color(.textSecondary))
+                    ForEach(secondary, id: \.self) { addr in
+                        Text(addr)
+                            .font(Theme.Typography.mono)
+                            .foregroundColor(Theme.color(.textPrimary))
+                    }
+                }
+            }
+            infoRow("Hostname", device.hostname)
             infoRow("MAC", device.macAddress)
-            if let rtt = device.rttMillis { infoRow("RTT (ms)", String(format: "%.1f", rtt)) }
+            if let rtt = device.rttMillis {
+                infoRow("RTT", String(format: "%.1f ms", rtt))
+            }
         }
-        .padding(16)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color.gray.opacity(0.08)))
+        .cardStyle()
+    }
+
+    private var discoverySection: some View {
+        VStack(alignment: .leading, spacing: Theme.space(.sm)) {
+            Text("Discovery Sources")
+                .font(Theme.Typography.subheadline)
+                .foregroundColor(Theme.color(.textSecondary))
+            DiscoveryPillsView(sources: discoverySources)
+        }
+        .cardStyle()
     }
 
     private var servicesSection: some View {
         Group {
             if !device.displayServices.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Services").font(.headline)
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(device.displayServices) { svc in
-                                Button { openService(svc) } label: {
-                                    HStack(spacing: 4) {
-                                        Text(serviceLabel(svc))
-                                            .font(.caption)
-                                            .foregroundStyle(.primary)
-                                    }
-                                    .padding(.vertical, 6)
-                                    .padding(.horizontal, 10)
-                                    .background(RoundedRectangle(cornerRadius: 10).fill(Color.gray.opacity(0.15)))
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    }
+                VStack(alignment: .leading, spacing: Theme.space(.sm)) {
+                    Text("Services")
+                        .font(Theme.Typography.subheadline)
+                        .foregroundColor(Theme.color(.textSecondary))
+                    ServiceTagsView(services: device.displayServices)
                 }
+                .cardStyle()
             }
         }
     }
@@ -109,42 +164,74 @@ struct UnifiedDeviceDetail: View {
     private var portsSection: some View {
         Group {
             if !device.openPorts.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Open Ports").font(.headline)
-                    VStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: Theme.space(.md)) {
+                    Text("Open Ports")
+                        .font(Theme.Typography.subheadline)
+                        .foregroundColor(Theme.color(.textSecondary))
+                    VStack(spacing: Theme.space(.sm)) {
                         ForEach(device.openPorts) { port in
-                            HStack(alignment: .top) {
-                                VStack(alignment: .leading, spacing: 4) {
+                            HStack(alignment: .center) {
+                                VStack(alignment: .leading, spacing: Theme.space(.xxs)) {
                                     Text("\(port.number)/\(port.transport)")
-                                        .font(.system(.subheadline, design: .monospaced))
+                                        .font(Theme.Typography.mono)
+                                        .foregroundColor(Theme.color(.textPrimary))
                                     Text(port.serviceName.isEmpty ? "Unknown" : port.serviceName)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                        .font(Theme.Typography.caption)
+                                        .foregroundColor(Theme.color(.textSecondary))
                                 }
                                 Spacer()
                                 Text(port.status.rawValue.uppercased())
-                                    .font(.caption2.weight(.semibold))
-                                    .padding(.vertical, 4)
-                                    .padding(.horizontal, 8)
-                                    .background(statusColor(port.status).opacity(0.15))
-                                    .foregroundStyle(statusColor(port.status))
-                                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                                    .font(Theme.Typography.tag)
+                                    .padding(.horizontal, Theme.space(.sm))
+                                    .padding(.vertical, Theme.space(.xs))
+                                    .background(statusColor(port.status).opacity(0.2))
+                                    .foregroundColor(statusColor(port.status))
+                                    .cornerRadius(Theme.radius(.sm))
                             }
-                            .padding(12)
-                            .background(RoundedRectangle(cornerRadius: 10).fill(Color.gray.opacity(0.08)))
+                            .padding(Theme.space(.md))
+                            .background(Theme.color(.bgElevated))
+                            .cornerRadius(Theme.radius(.md))
                         }
                     }
                 }
+                .cardStyle()
             }
         }
     }
 
+    private func fingerprintSection(_ fingerprints: [String: String]) -> some View {
+        VStack(alignment: .leading, spacing: Theme.space(.sm)) {
+            Text("Fingerprints")
+                .font(Theme.Typography.subheadline)
+                .foregroundColor(Theme.color(.textSecondary))
+            ForEach(fingerprints.keys.sorted(), id: \.self) { key in
+                HStack(alignment: .top, spacing: Theme.space(.md)) {
+                    Text(key)
+                        .font(Theme.Typography.caption)
+                        .foregroundColor(Theme.color(.textSecondary))
+                        .frame(width: 120, alignment: .leading)
+                    Text(fingerprints[key] ?? "")
+                        .font(Theme.Typography.body)
+                        .foregroundColor(Theme.color(.textPrimary))
+                        .multilineTextAlignment(.leading)
+                }
+            }
+        }
+        .cardStyle()
+    }
+
     // MARK: - Helpers
+
     private func infoRow(_ label: String, _ value: String?) -> some View {
-        HStack {
-            Text(label).font(.subheadline).foregroundStyle(.secondary)
-            Spacer()
-            Text(value ?? "N/A").font(.subheadline)
+        HStack(alignment: .top, spacing: Theme.space(.md)) {
+            Text(label)
+                .font(Theme.Typography.caption)
+                .foregroundColor(Theme.color(.textSecondary))
+                .frame(width: 120, alignment: .leading)
+            Text(value ?? "N/A")
+                .font(Theme.Typography.body)
+                .foregroundColor(Theme.color(.textPrimary))
+                .multilineTextAlignment(.leading)
         }
     }
 
@@ -167,7 +254,7 @@ struct UnifiedDeviceDetail: View {
             case .unknown: return "desktopcomputer"
             }
         }
-        if device.displayServices.contains(where: { $0.type == .airplay }) { return "airplayvideo" }
+        if device.displayServices.contains(where: { $0.type == .airplay || $0.type == .airplayAudio }) { return "airplayvideo" }
         if device.displayServices.contains(where: { $0.type == .printer }) { return "printer" }
         if device.displayServices.contains(where: { $0.type == .http || $0.type == .https }) { return "server.rack" }
         return "desktopcomputer"
@@ -175,46 +262,22 @@ struct UnifiedDeviceDetail: View {
 
     private func statusColor(_ status: Port.Status) -> Color {
         switch status {
-        case .open: return .green
-        case .closed: return .gray
-        case .filtered: return .orange
+        case .open: return Theme.color(.statusOnline)
+        case .closed: return Theme.color(.textTertiary)
+        case .filtered: return Theme.color(.accentWarn)
         }
     }
 
-    private func serviceLabel(_ svc: NetworkService) -> String {
-        if let p = svc.port { return "\(svc.name):\(p)" }
-        return svc.name
+    private func formatted(_ date: Date?) -> String? {
+        guard let date else { return nil }
+        return detailDateFormatter.string(from: date)
     }
 
-    private func openService(_ svc: NetworkService) {
-        guard let port = svc.port else { return }
-        switch svc.type {
-        case .http, .https:
-            let scheme = (svc.type == .https) ? "https" : "http"
-            if let host = device.bestDisplayIP ?? device.hostname, let url = URL(string: "\(scheme)://\(host):\(port)") {
-                #if canImport(UIKit)
-                UIApplication.shared.open(url)
-                #elseif canImport(AppKit)
-                NSWorkspace.shared.open(url)
-                #endif
-            }
-        case .ssh:
-            if let host = device.bestDisplayIP ?? device.hostname {
-                let cmd = "ssh user@\(host) -p \(port)"
-                #if canImport(UIKit)
-                UIPasteboard.general.string = cmd
-                #elseif canImport(AppKit)
-                let pb = NSPasteboard.general
-                pb.clearContents()
-                pb.setString(cmd, forType: .string)
-                #endif
-            }
-        default:
-            break
-        }
-    }
+    private let detailDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter
+    }()
 }
 
-#Preview("Detail") {
-    UnifiedDeviceDetail(device: .mockMac)
-}
