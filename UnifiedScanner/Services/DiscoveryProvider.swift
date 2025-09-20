@@ -301,10 +301,16 @@ actor DiscoveryCoordinator {
     private let providers: [DiscoveryProvider]
     private let hostEnumerator: HostEnumerator
     private let arpService: ARPService
-    private var tasks: [Task<Void, Never>] = []
-    private var started = false
+    private var bonjourTasks: [Task<Void, Never>] = []
+    private var scanTask: Task<Void, Never>? = nil
+    private var providersRunning = false
+    private var scanRunning = false
 
-    init(store: SnapshotService, pingOrchestrator: PingOrchestrator, providers: [DiscoveryProvider], hostEnumerator: HostEnumerator = LocalSubnetEnumerator(), arpService: ARPService = ARPService()) {
+    init(store: SnapshotService,
+         pingOrchestrator: PingOrchestrator,
+         providers: [DiscoveryProvider],
+         hostEnumerator: HostEnumerator = LocalSubnetEnumerator(),
+         arpService: ARPService = ARPService()) {
         self.store = store
         self.pingOrchestrator = pingOrchestrator
         self.providers = providers
@@ -312,44 +318,78 @@ actor DiscoveryCoordinator {
         self.arpService = arpService
     }
 
-    func start(pingHosts: [String], pingConfig: PingConfig, mdnsWarmupSeconds: Double = 2.0, autoEnumerateIfEmpty: Bool = true, maxAutoEnumeratedHosts: Int = 256) {
-        internalStart(pingHosts: pingHosts, pingConfig: pingConfig, mdnsWarmupSeconds: mdnsWarmupSeconds, autoEnumerateIfEmpty: autoEnumerateIfEmpty, maxAutoEnumeratedHosts: maxAutoEnumeratedHosts)
-    }
-
-    private func internalStart(pingHosts: [String], pingConfig: PingConfig, mdnsWarmupSeconds: Double, autoEnumerateIfEmpty: Bool, maxAutoEnumeratedHosts: Int) {
-        guard !started else { return }
-        started = true
+    func startBonjour() {
+        guard !providersRunning else { return }
+        providersRunning = true
+        bonjourTasks.removeAll()
         for provider in providers {
-            Task { await self.pingOrchestrator.currentProgress()?.setPhase(.mdnsWarmup) }
+            Task { await pingOrchestrator.currentProgress()?.setPhase(.mdnsWarmup) }
             let stream = provider.start()
-            let t = Task { for await dev in stream { await self.store.upsert(dev, source: .mdns) } }
-            tasks.append(t)
-        }
-        let t = Task { [pingHosts, pingConfig, autoEnumerateIfEmpty, maxAutoEnumeratedHosts] in
-            try? await Task.sleep(nanoseconds: UInt64(mdnsWarmupSeconds * 1_000_000_000))
-            await self.runEnumerationAndPing(pingHosts: pingHosts, pingConfig: pingConfig, autoEnumerateIfEmpty: autoEnumerateIfEmpty, maxAutoEnumeratedHosts: maxAutoEnumeratedHosts)
-        }
-        tasks.append(t)
-    }
-
-    func startAndWait(pingHosts: [String], pingConfig: PingConfig, mdnsWarmupSeconds: Double = 2.0, autoEnumerateIfEmpty: Bool = true, maxAutoEnumeratedHosts: Int = 256, waitTimeoutSeconds: Double = 5.0) async {
-        internalStart(pingHosts: pingHosts, pingConfig: pingConfig, mdnsWarmupSeconds: mdnsWarmupSeconds, autoEnumerateIfEmpty: autoEnumerateIfEmpty, maxAutoEnumeratedHosts: maxAutoEnumeratedHosts)
-        let deadline = Date().addingTimeInterval(waitTimeoutSeconds)
-        while Date() < deadline {
-            if let progress = await pingOrchestrator.currentProgress() {
-                let current = await progress.getCurrentProgress()
-                if current.finished || (current.total == 0 && current.started) { break }
+            let task = Task { [weak self] in
+                guard let self else { return }
+                for await dev in stream {
+                    if Task.isCancelled { break }
+                    await self.store.upsert(dev, source: .mdns)
+                }
+                await self.cleanupFinishedBonjourTasks()
             }
-            try? await Task.sleep(nanoseconds: 50_000_000)
+            bonjourTasks.append(task)
         }
     }
 
-    func stop() { for t in tasks { t.cancel() }; tasks.removeAll() }
+    func stopBonjour() {
+        guard providersRunning else { return }
+        providersRunning = false
+        bonjourTasks.forEach { $0.cancel() }
+        bonjourTasks.removeAll()
+        providers.forEach { $0.stop() }
+    }
+
+    func startScan(pingHosts: [String],
+                   pingConfig: PingConfig,
+                   mdnsWarmupSeconds: Double = 1.0,
+                   autoEnumerateIfEmpty: Bool = true,
+                   maxAutoEnumeratedHosts: Int = 256) {
+        guard scanTask == nil else { return }
+        scanRunning = true
+        scanTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                await self.pingOrchestrator.currentProgress()?.reset()
+                if mdnsWarmupSeconds > 0 {
+                    try await Task.sleep(nanoseconds: UInt64(mdnsWarmupSeconds * 1_000_000_000))
+                }
+                try Task.checkCancellation()
+                await self.runEnumerationAndPing(pingHosts: pingHosts,
+                                                 pingConfig: pingConfig,
+                                                 autoEnumerateIfEmpty: autoEnumerateIfEmpty,
+                                                 maxAutoEnumeratedHosts: maxAutoEnumeratedHosts)
+            } catch is CancellationError {
+                await self.pingOrchestrator.currentProgress()?.reset()
+            } catch {
+                LoggingService.warn("scan task error: \(error)")
+            }
+            await self.finishScan()
+        }
+    }
+
+    func stopScan() async {
+        guard let task = scanTask else { return }
+        scanRunning = false
+        task.cancel()
+        scanTask = nil
+        await pingOrchestrator.currentProgress()?.reset()
+    }
+
+    func currentState() -> (bonjour: Bool, scanning: Bool) {
+        (providersRunning, scanRunning)
+    }
 }
 
 // MARK: - Internal helper
 private extension DiscoveryCoordinator {
     func runEnumerationAndPing(pingHosts: [String], pingConfig: PingConfig, autoEnumerateIfEmpty: Bool, maxAutoEnumeratedHosts: Int) async {
+        guard !Task.isCancelled else { return }
         await self.pingOrchestrator.currentProgress()?.setPhase(.arpPriming)
 #if os(macOS)
         let initialArp = await self.arpService.getMACAddresses(for: [])
@@ -365,6 +405,7 @@ private extension DiscoveryCoordinator {
             hosts = enumerated.isEmpty ? [] : enumerated
             LoggingService.info("auto-enumerated hosts count=\(hosts.count)")
         } else { hosts = pingHosts }
+        guard !Task.isCancelled else { return }
         LoggingService.info("starting ping batch size=\(hosts.count)")
         if let progress = await self.pingOrchestrator.currentProgress() {
             LoggingService.debug("progress.begin total=\(hosts.count)")
@@ -405,6 +446,7 @@ private extension DiscoveryCoordinator {
         if let progress = await self.pingOrchestrator.currentProgress() {
             var current = await progress.getCurrentProgress()
             while !current.finished {
+                if Task.isCancelled { return }
                 try? await Task.sleep(nanoseconds: 500_000_000)
                 current = await progress.getCurrentProgress()
             }
@@ -435,5 +477,14 @@ private extension DiscoveryCoordinator {
                 LoggingService.debug("created ARP-derived device host=\(host) mac=\(mac)")
             }
         }
+    }
+
+    func cleanupFinishedBonjourTasks() async {
+        bonjourTasks.removeAll { $0.isCancelled }
+    }
+
+    func finishScan() async {
+        scanRunning = false
+        scanTask = nil
     }
 }

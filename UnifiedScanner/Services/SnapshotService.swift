@@ -407,6 +407,10 @@ final class SnapshotService: ObservableObject {
         persistence.save(devices, key: persistenceKey)
     }
 
+    func saveSnapshotNow() {
+        persist()
+    }
+
     private func compareIPs(_ ip1: String, _ ip2: String) -> Bool {
         // Handle IPv4 addresses with proper numerical comparison
         let ip1Parts = ip1.split(separator: ".").compactMap { Int($0) }

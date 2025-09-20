@@ -4,6 +4,13 @@ struct ContentView: View {
     @ObservedObject var store: SnapshotService
     @ObservedObject var progress: ScanProgress
     @ObservedObject var settings: AppSettings
+    @Binding var isBonjourRunning: Bool
+    @Binding var isScanRunning: Bool
+    let startBonjour: () -> Void
+    let stopBonjour: () -> Void
+    let startScan: () -> Void
+    let stopScan: () -> Void
+    let saveSnapshot: () -> Void
     @State private var selectedID: String? = nil
     @State private var showDetailSheet: Bool = false
     @State private var showSettings: Bool = false
@@ -69,8 +76,27 @@ struct ContentView: View {
             .background(Theme.color(.bgRoot))
             .navigationTitle("Devices")
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItemGroup(placement: .primaryAction) {
+                    Button(action: { isBonjourRunning ? stopBonjour() : startBonjour() }) {
+                        Label(bonjourButtonLabel, systemImage: bonjourButtonIcon)
+                    }
+#if os(macOS)
+                    .help(bonjourButtonLabel)
+#endif
+                    Button(action: { isScanRunning ? stopScan() : startScan() }) {
+                        Label(scanButtonLabel, systemImage: scanButtonIcon)
+                    }
+#if os(macOS)
+                    .help(scanButtonLabel)
+#endif
+                    Button(action: saveSnapshot) {
+                        Label("Save", systemImage: "externaldrive")
+                    }
+#if os(macOS)
+                    .help("Persist snapshot now")
+#endif
                     Button { showSettings = true } label: { Image(systemName: "gearshape") }
+                        .accessibilityLabel("Settings")
                 }
             }
             .sheet(isPresented: $showSettings) {
@@ -126,8 +152,27 @@ struct ContentView: View {
             }
             .navigationTitle("Devices")
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItemGroup(placement: .primaryAction) {
+                    Button(action: { isBonjourRunning ? stopBonjour() : startBonjour() }) {
+                        Label(bonjourButtonLabel, systemImage: bonjourButtonIcon)
+                    }
+#if os(macOS)
+                    .help(bonjourButtonLabel)
+#endif
+                    Button(action: { isScanRunning ? stopScan() : startScan() }) {
+                        Label(scanButtonLabel, systemImage: scanButtonIcon)
+                    }
+#if os(macOS)
+                    .help(scanButtonLabel)
+#endif
+                    Button(action: saveSnapshot) {
+                        Label("Save", systemImage: "externaldrive")
+                    }
+#if os(macOS)
+                    .help("Persist snapshot now")
+#endif
                     Button { showSettings = true } label: { Image(systemName: "gearshape") }
+                        .accessibilityLabel("Settings")
                 }
             }
             .sheet(isPresented: $showSettings) {
@@ -219,6 +264,11 @@ struct ContentView: View {
         .background(.ultraThinMaterial)
         .cornerRadius(Theme.radius(.xl))
     }
+
+    private var bonjourButtonLabel: String { isBonjourRunning ? "Stop Bonjour" : "Start Bonjour" }
+    private var bonjourButtonIcon: String { isBonjourRunning ? "wifi.slash" : "dot.radiowaves.left.and.right" }
+    private var scanButtonLabel: String { isScanRunning ? "Stop Scan" : "Run Scan" }
+    private var scanButtonIcon: String { isScanRunning ? "stop.circle" : "arrow.clockwise" }
 }
 
 private struct StatBlock: View {
