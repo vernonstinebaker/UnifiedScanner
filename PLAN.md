@@ -58,6 +58,15 @@
 28. [ ] Final pass test coverage review; ensure core logic (identity, service normalization, classification) has > minimal threshold. // TODO: Add new tests: ARP MAC merge, RTT update path, multi-source discovery union, classification reasoning ordering.
 29. [ ] Prepare a consolidated CHANGELOG entry for Phase 1–3 completion. // TODO: Include Phase 5 discovery achievements & performance metrics; clarify upcoming Phase 6 scope.
 
+### Upcoming Discovery Sequencing
+- [ ] Load persisted KV snapshot on launch and render stored devices as offline placeholders until refreshed by live discovery.
+- [ ] Add Bonjour (mDNS) scanning provider with start/stop controls (iOS & macOS parity).
+- [ ] Restore port scanning tiers with cancellation and UI integration.
+- [ ] Provide manual controls to trigger Ping/ARP rescans and toggle Bonjour.
+- [ ] Add a settings sheet for timeouts, concurrency, logging, and feature flags.
+- [ ] Evaluate additional discovery mechanisms (SSDP, WS-Discovery, reverse DNS) for inclusion or removal.
+- [ ] Expand service helpers (browser open, SSH copy, protocol-specific handlers).
+
 ---
 ## Design Rules (Enforced During Implementation)
 - No imports from legacy app modules; copy logic with attribution comments.

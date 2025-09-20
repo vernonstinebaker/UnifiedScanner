@@ -309,6 +309,15 @@ Phase 4: ✅ Persistence (snapshot store for devices)
 Phase 5: ✅ **Discovery Pipeline Implementation** - Multi-port TCP probing, UDP fallback, ARP table integration, broadcast UDP, concurrent processing (32 ops), comprehensive logging
 Phase 6: Polishing & advanced features (mDNS, SSDP, fingerprinting, etc.)
 
+## Next Steps
+- Load the KV snapshot at launch and treat stored devices as offline placeholders until live discovery updates arrive.
+- Reintroduce Bonjour (mDNS) scanning with user controls and merge mDNS services alongside ARP/Ping results.
+- Restore the multi-tier port scanner and surface open-port states in the detail view.
+- Add manual controls to trigger Ping/ARP rescans and toggle Bonjour providers.
+- Ship a settings sheet for discovery timeouts, concurrency, logging, and feature flags.
+- Evaluate additional discovery mechanisms (SSDP, WS-Discovery, reverse DNS, HTTP banners) for inclusion or removal.
+- Expand service helpers (browser deep links, SSH copy, protocol-specific actions).
+
 ## Testing Priorities
 - Model merging & identity stability tests
 - Service dedupe & ordering tests
