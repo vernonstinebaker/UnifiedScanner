@@ -20,7 +20,7 @@ final class ScanProgress: ObservableObject {
     }
     @Published var successHosts: Int = 0
 
-    private func log(_ message: String) { LoggingService.debug(message) }
+    private func log(_ message: String) { LoggingService.debug(message, category: .discovery) }
 
     func reset() async {
         await setPhase(.idle)
@@ -140,7 +140,7 @@ public final class BonjourDiscoveryProvider: NSObject, @unchecked Sendable, Disc
                 return
             }
             // Real network path: browse raw types then resolve
-            LoggingService.info("bonjour: provider starting curated=\(self.curatedServiceTypes.count) dynamicCap=\(self.dynamicBrowserCap) cooldown=\(self.resolveCooldown)s")
+            LoggingService.info("bonjour: provider starting curated=\(self.curatedServiceTypes.count) dynamicCap=\(self.dynamicBrowserCap) cooldown=\(self.resolveCooldown)s", category: .bonjour)
             let initBrowsers = { [weak self] in
                 guard let self else { return }
                 let browse = BonjourBrowseService(curatedServiceTypes: self.curatedServiceTypes, dynamicBrowserCap: self.dynamicBrowserCap)
@@ -155,7 +155,7 @@ public final class BonjourDiscoveryProvider: NSObject, @unchecked Sendable, Disc
                         if self.stopped { break }
                         let service = ServiceDeriver.makeService(fromRaw: rs.rawType, port: rs.port)
                         let dev = self.makeSingleServiceDevice(ips: rs.ips, hostname: rs.hostname, service: service, fingerprints: rs.txt)
-                        LoggingService.info("bonjour: yielding device primary=\(dev.primaryIP ?? "nil") hostname=\(dev.hostname ?? "nil") svcType=\(service.type.rawValue) port=\(service.port ?? -1) ips=\(dev.ips.count)")
+                        LoggingService.info("bonjour: yielding device primary=\(dev.primaryIP ?? "nil") hostname=\(dev.hostname ?? "nil") svcType=\(service.type.rawValue) port=\(service.port ?? -1) ips=\(dev.ips.count)", category: .bonjour)
                         let mutation = DeviceMutation.change(DeviceChange(before: nil, after: dev, changed: Set(DeviceField.allCases), source: .mdns))
                         continuation.yield(mutation)
                     }
@@ -207,12 +207,12 @@ public actor PingOrchestrator {
     public func enqueue(hosts: [String], config: PingConfig) async {
         if let progress = self.progress {
             let current = await progress.getCurrentProgress()
-            if !current.started { await progress.begin(total: hosts.count); LoggingService.debug("progress forcing start total=\(hosts.count)") }
-            if current.total == 0 { LoggingService.warn("enqueue before progress total set hosts=\(hosts.count)") }
-        } else { LoggingService.warn("enqueue without progress reference") }
-        LoggingService.debug("enqueue batch size=\(hosts.count)")
+            if !current.started { await progress.begin(total: hosts.count); LoggingService.debug("progress forcing start total=\(hosts.count)", category: .ping) }
+            if current.total == 0 { LoggingService.warn("enqueue before progress total set hosts=\(hosts.count)", category: .ping) }
+        } else { LoggingService.warn("enqueue without progress reference", category: .ping) }
+        LoggingService.debug("enqueue batch size=\(hosts.count)", category: .ping)
         for host in hosts {
-            LoggingService.debug("queue host=\(host)")
+            LoggingService.debug("queue host=\(host)", category: .ping)
             await throttleIfNeeded()
             await launch(host: host, baseConfig: config)
         }
@@ -222,7 +222,7 @@ public actor PingOrchestrator {
         let activeCount = active.count
         if activeCount >= maxConcurrent {
             let maxConc = maxConcurrent
-            LoggingService.debug("throttle waiting active=\(activeCount) max=\(maxConc)")
+            LoggingService.debug("throttle waiting active=\(activeCount) max=\(maxConc)", category: .ping)
         }
         while active.count >= maxConcurrent {
             try? await Task.sleep(nanoseconds: 50_000_000)
@@ -231,19 +231,19 @@ public actor PingOrchestrator {
 
     private func launch(host: String, baseConfig: PingConfig) async {
         let beforeCount = active.count
-        LoggingService.debug("launch start host=\(host) active(before)=\(beforeCount)")
+        LoggingService.debug("launch start host=\(host) active(before)=\(beforeCount)", category: .ping)
         active.insert(host)
         let mutationBusRef = mutationBus
         let progressRef = progress
         Task { [pingService] in
-            LoggingService.debug("creating stream for host=\(host)")
+            LoggingService.debug("creating stream for host=\(host)", category: .ping)
             let stream = await pingService.pingStream(config: PingConfig(host: host, count: baseConfig.count, interval: baseConfig.interval, timeoutPerPing: baseConfig.timeoutPerPing))
             var sawSuccessFlag = false
             var localMeasurementCount = 0
             for await m in stream {
                 localMeasurementCount += 1
                 let mc = localMeasurementCount
-                LoggingService.debug("measurement #\(mc) host=\(host) status=\(m.status)")
+                LoggingService.debug("measurement #\(mc) host=\(host) status=\(m.status)", category: .ping)
                 if case .success = m.status { sawSuccessFlag = true }
 
                 // Emit raw ping measurement; SnapshotService will decide on device changes
@@ -251,7 +251,7 @@ public actor PingOrchestrator {
             }
             let finalCount = localMeasurementCount
             let success = sawSuccessFlag
-            LoggingService.debug("stream complete host=\(host) sawSuccess=\(success) measurements=\(finalCount)")
+            LoggingService.debug("stream complete host=\(host) sawSuccess=\(success) measurements=\(finalCount)", category: .ping)
             await self.didFinish(host: host, sawSuccess: success)
             if let progressRef, success { await progressRef.incrementSuccess() }
         }
@@ -263,9 +263,9 @@ public actor PingOrchestrator {
         if let progress = progress {
             let current = await progress.getCurrentProgress()
             await progress.incrementCompleted()
-            LoggingService.debug("didFinish host=\(host) completed=\(current.completed + 1)/\(current.total) success=\(sawSuccess) (was \(current.completed))")
-            if current.total == 0 { LoggingService.warn("progress.totalHosts still 0 at didFinish (race condition)") }
-        } else { LoggingService.warn("didFinish with no progress reference host=\(host)") }
+            LoggingService.debug("didFinish host=\(host) completed=\(current.completed + 1)/\(current.total) success=\(sawSuccess) (was \(current.completed))", category: .ping)
+            if current.total == 0 { LoggingService.warn("progress.totalHosts still 0 at didFinish (race condition)", category: .ping) }
+        } else { LoggingService.warn("didFinish with no progress reference host=\(host)", category: .ping) }
     }
 }
 
@@ -352,7 +352,7 @@ actor DiscoveryCoordinator {
             } catch is CancellationError {
                 await self.pingOrchestrator.currentProgress()?.reset()
             } catch {
-                LoggingService.warn("scan task error: \(error)")
+                LoggingService.warn("scan task error: \(error)", category: .discovery)
             }
             await self.finishScan()
         }
@@ -404,7 +404,7 @@ actor DiscoveryCoordinator {
             } catch is CancellationError {
                 await self.pingOrchestrator.currentProgress()?.reset()
             } catch {
-                LoggingService.warn("arp-only task error: \(error)")
+                LoggingService.warn("arp-only task error: \(error)", category: .arp)
             }
             await self.finishScan()
         }
@@ -435,19 +435,19 @@ private extension DiscoveryCoordinator {
             await self.pingOrchestrator.currentProgress()?.setPhase(.enumerating)
             let enumerated = hostEnumerator.enumerate(maxHosts: maxAutoEnumeratedHosts)
             hosts = enumerated.isEmpty ? [] : enumerated
-            LoggingService.info("auto-enumerated hosts count=\(hosts.count)")
+            LoggingService.info("auto-enumerated hosts count=\(hosts.count)", category: .discovery)
         } else { hosts = pingHosts }
         guard !Task.isCancelled else { return }
-        LoggingService.info("starting ping batch size=\(hosts.count)")
+        LoggingService.info("starting ping batch size=\(hosts.count)", category: .ping)
         if let progress = await self.pingOrchestrator.currentProgress() {
-            LoggingService.debug("progress.begin total=\(hosts.count)")
+            LoggingService.debug("progress.begin total=\(hosts.count)", category: .ping)
             await progress.begin(total: hosts.count)
             let current = await progress.getCurrentProgress()
-            LoggingService.debug("progress after begin total=\(current.total) started=\(current.started)")
+            LoggingService.debug("progress after begin total=\(current.total) started=\(current.started)", category: .ping)
         }
         if hosts.isEmpty {
             await self.pingOrchestrator.currentProgress()?.setPhase(.arpPriming)
-            LoggingService.info("no hosts enumerated; attempting ARP-only population")
+            LoggingService.info("no hosts enumerated; attempting ARP-only population", category: .arp)
 #if os(macOS)
             let arpMap = await self.arpService.getMACAddresses(for: [])
             for (ip, mac) in arpMap {
@@ -455,14 +455,14 @@ private extension DiscoveryCoordinator {
                 let mutation = DeviceMutation.change(DeviceChange(before: nil, after: device, changed: Set(DeviceField.allCases), source: .arp))
                 await self.mutationBus.emit(mutation)
             }
-            LoggingService.info("ARP-only population count=\(arpMap.count)")
+            LoggingService.info("ARP-only population count=\(arpMap.count)", category: .arp)
 #endif
             if let progress = await self.pingOrchestrator.currentProgress() { await MainActor.run { progress.finished = true } }
             return
         }
 #if os(macOS)
         await self.pingOrchestrator.currentProgress()?.setPhase(.arpPriming)
-        LoggingService.info("ARP-first seeding enabled")
+        LoggingService.info("ARP-first seeding enabled", category: .arp)
         let preMap = await self.arpService.getMACAddresses(for: Set(hosts))
         for (ip, mac) in preMap {
             if let existing = await MainActor.run(body: { self.store.devices.first(where: { $0.primaryIP == ip || $0.ips.contains(ip) }) }) {
@@ -477,7 +477,7 @@ private extension DiscoveryCoordinator {
 #endif
         await self.pingOrchestrator.currentProgress()?.setPhase(.pinging)
         await self.pingOrchestrator.enqueue(hosts: hosts, config: pingConfig)
-        LoggingService.debug("ping operations enqueued, waiting for completion before ARP table read")
+        LoggingService.debug("ping operations enqueued, waiting for completion before ARP table read", category: .ping)
         if let progress = await self.pingOrchestrator.currentProgress() {
             var current = await progress.getCurrentProgress()
             while !current.finished {
@@ -486,7 +486,7 @@ private extension DiscoveryCoordinator {
                 current = await progress.getCurrentProgress()
             }
         }
-        LoggingService.debug("reading ARP table")
+        LoggingService.debug("reading ARP table", category: .arp)
 #if os(macOS)
         await self.pingOrchestrator.currentProgress()?.setPhase(.arpRefresh)
         if !hosts.isEmpty { await self.arpService.populateCache(for: hosts) }
@@ -501,7 +501,7 @@ private extension DiscoveryCoordinator {
                     let changedFields: Set<DeviceField> = [.macAddress, .discoverySources]
                     let mutation = DeviceMutation.change(DeviceChange(before: existingDevice, after: updatedDevice, changed: changedFields, source: .arp))
                     await self.mutationBus.emit(mutation)
-                    LoggingService.debug("ARP merged host=\(ip) mac=\(mac)")
+                    LoggingService.debug("ARP merged host=\(ip) mac=\(mac)", category: .arp)
                 }
             }
         }
@@ -512,7 +512,7 @@ private extension DiscoveryCoordinator {
                 let device = Device(primaryIP: host, ips: [host], macAddress: mac, discoverySources: [.arp], firstSeen: Date(), lastSeen: Date())
                 let mutation = DeviceMutation.change(DeviceChange(before: nil, after: device, changed: Set(DeviceField.allCases), source: .arp))
                 await self.mutationBus.emit(mutation)
-                LoggingService.debug("created ARP-derived device host=\(host) mac=\(mac)")
+                LoggingService.debug("created ARP-derived device host=\(host) mac=\(mac)", category: .arp)
             }
         }
     }

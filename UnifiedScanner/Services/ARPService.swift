@@ -39,7 +39,7 @@ public final class ARPService: @unchecked Sendable { // @unchecked because NWCon
         do {
             return try await Self.loadRouteDump()
         } catch {
-            if Self.loggingEnabled { LoggingService.warn("route dump failed: \(error)") }
+            if Self.loggingEnabled { LoggingService.warn("route dump failed: \(error)", category: .arp) }
             return []
         }
         #else
@@ -63,7 +63,7 @@ public final class ARPService: @unchecked Sendable { // @unchecked because NWCon
             }
         }
         if Self.loggingEnabled {
-            let addressCountMessage = "resolved \(map.count)/\(ips.isEmpty ? entries.count : ips.count) ARP addresses"; LoggingService.debug(addressCountMessage)
+            let addressCountMessage = "resolved \(map.count)/\(ips.isEmpty ? entries.count : ips.count) ARP addresses"; LoggingService.debug(addressCountMessage, category: .arp)
         }
         return map
     }

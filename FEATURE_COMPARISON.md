@@ -41,7 +41,7 @@ Legend: ✅ = Present, ❌ = Absent, ⏳ = Planned / Not Yet Implemented, ☑️
 | MAC Vendor Source File | ✅ `oui.csv` | ✅ `oui.csv` | ✅ Single copy bundled | Parsed by `OUILookupService` at runtime | App Resource | ✅ |
 | Persistence (Snapshot Store) | Partial | ✅ KV store | ✅ Unified snapshot store | iCloud KVS + UserDefaults | App Models | ✅ |
 | Mutation Event Stream | ✅ Events | Partial | ✅ Async mutation stream | `SnapshotService.mutationStream` implemented | App Models | ✅ |
-| Logging Infrastructure | LoggingService | Debug prints | Minimal cohesive logger | `LoggingService` actor w/ levels; runtime toggles pending | App Utility | ☑️ |
+| Logging Infrastructure | LoggingService | Debug prints | Runtime-level + category toggles | `LoggingService` actor w/ level + category controls (persisted in AppSettings) | App Utility | ✅ |
 | Concurrency (actors) | Light | Mixed | ✅ Actor store + orchestrators | Store + PingOrchestrator + ARP route dump bridging | App Models/Utility | ✅ |
 | Provider Architecture (decoupled) | Browser + streams | Mixed | ✅ DeviceMutation bus | Providers emit `DeviceMutation` via `DeviceMutationBus` | App Models/Utility | ✅ |
 | Adaptive Navigation (SplitView) | Basic | ✅ | ✅ Adopt netscan pattern | Implemented | App UI | ✅ |
@@ -68,7 +68,6 @@ Legend: ✅ = Present, ❌ = Absent, ⏳ = Planned / Not Yet Implemented, ☑️
 - Documented rationale for deferring Reverse DNS enrichment (low value vs latency)
 - HTTP banner capture (for additional vendor hints) – under evaluation
 - SSH host key fingerprint extraction (strong identity signal) – planned
-- Logging runtime controls (category toggles, persistence of minimum level)
 - Accessibility audit (Dynamic Type, VoiceOver labeling, rotor grouping)
 - Theming abstraction (UnifiedTheme + light / high-contrast variants)
 - UI tests (navigation + detail flows)

@@ -18,7 +18,7 @@ struct LocalSubnetEnumerator: HostEnumerator {
         if let limit = maxHosts, limit > 0, hosts.count > limit {
             hosts = Array(hosts.prefix(limit))
         }
-        let totalHosts = hosts.count; LoggingService.debug("enumerate baseIP=\(ip) totalHosts=\(totalHosts)")
+        let totalHosts = hosts.count; LoggingService.debug("enumerate baseIP=\(ip) totalHosts=\(totalHosts)", category: .discovery)
         return hosts
     }
 

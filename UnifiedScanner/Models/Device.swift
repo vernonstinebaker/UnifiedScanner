@@ -107,6 +107,17 @@ public struct Device: Identifiable, Hashable, Codable, Sendable {
             .map { String($0).paddingLeft(to: 2, with: "0") }
             .joined(separator: ":")
     }
+
+    // MARK: - Mutation helpers
+    public func withDiscoverySources(_ sources: Set<DiscoverySource>) -> Device {
+        var copy = self
+        copy.discoverySources = sources
+        return copy
+    }
+
+    public func withDiscoverySources(_ sources: [DiscoverySource]) -> Device {
+        return withDiscoverySources(Set(sources))
+    }
 }
 
 // MARK: - Supporting Types
@@ -129,6 +140,9 @@ public struct NetworkService: Identifiable, Hashable, Codable, Sendable {
         self.rawType = rawType
         self.port = port
         self.isStandardPort = isStandardPort
+    }
+    public init(id: UUID = UUID(), name: String, type: ServiceType, port: Int?, isStandardPort: Bool) {
+        self.init(id: id, name: name, type: type, rawType: nil, port: port, isStandardPort: isStandardPort)
     }
 }
 

@@ -94,12 +94,12 @@ No premature SPM modularization; iterate locally until discovery providers stabi
 - Planned Enhancements:
   - SSH host-key fingerprint capture (for strong identity/confidence signals).
   - Additional protocol fingerprints as justified (e.g. HTTP response body banners).
-- Logging runtime toggles & category controls (logger exists).
+- Runtime logging controls via `AppSettings` (level + category toggles backed by `LoggingService`).
 - Feature flags for discovery/logging toggles.
 
 ## Planned Enhancements
 **Short-Term:**
-- Logging runtime controls + feature flag surface.
+- Feature flag surface (beyond logging) and diagnostics toggles.
 - Accessibility improvements (VoiceOver labels, Dynamic Type audit).
 - Port scanning tier expansion & cancellation controls.
 
@@ -119,8 +119,8 @@ No premature SPM modularization; iterate locally until discovery providers stabi
 - Structured task groups in PingOrchestrator.
 - DiscoveryCoordinator shutdown / cancellation polish.
 
-## Logging (Next Improvements)
-- Extend `LoggingService` with runtime category toggles & persisted minimum level.
+## Logging
+- `LoggingService` (actor) exposes runtime-adjustable minimum level and per-category toggles persisted via `AppSettings` / Settings UI.
 - Align logging categories with discovery services (ping / arp / mdns).
 
 ## Accessibility (Planned)

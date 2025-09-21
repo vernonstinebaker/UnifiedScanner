@@ -6,20 +6,38 @@ import Foundation
 // Level changes and log emission occur on an internal actor.
 actor LoggingService {
     enum Level: Int, CaseIterable { case off = 0, error = 1, warn = 2, info = 3, debug = 4 }
+    enum Category: String, CaseIterable, Identifiable, Codable { case general, discovery, ping, arp, bonjour, snapshot, fingerprint, vendor, classification
+        var id: String { rawValue }
+        var displayName: String {
+            switch self {
+            case .general: return "General"
+            case .discovery: return "Discovery"
+            case .ping: return "Ping"
+            case .arp: return "ARP"
+            case .bonjour: return "Bonjour"
+            case .snapshot: return "Snapshot"
+            case .fingerprint: return "Fingerprint"
+            case .vendor: return "Vendor"
+            case .classification: return "Classification"
+            }
+        }
+    }
 
     static let shared = LoggingService()
 
     private var minimumLevel: Level = .info
+    private var enabledCategories: Set<Category> = Set(Category.allCases)
 
     // MARK: - Instance (actor isolated)
-    private func isEnabled(_ level: Level) -> Bool {
+    private func isEnabled(_ level: Level, category: Category) -> Bool {
         if minimumLevel == .off { return false }
+        guard enabledCategories.contains(category) else { return false }
         return level.rawValue <= minimumLevel.rawValue
     }
 
-    private func emit(_ level: Level, _ message: @autoclosure @Sendable () -> String) {
+    private func emit(_ level: Level, category: Category, _ message: @autoclosure @Sendable () -> String) {
         #if DEBUG
-        guard isEnabled(level) else { return }
+        guard isEnabled(level, category: category) else { return }
         let label: String
         switch level {
         case .off: label = "OFF"
@@ -28,11 +46,12 @@ actor LoggingService {
         case .info: label = "INFO"
         case .debug: label = "DEBUG"
         }
-        print("[Scan][\(label)] \(message())")
+        print("[Scan][\(label)][\(category.rawValue.uppercased())] \(message())")
         #endif
     }
 
     private func setLevel(_ new: Level) { minimumLevel = new }
+    private func setCategories(_ categories: Set<Category>) { enabledCategories = categories.isEmpty ? [.general] : categories }
 
     // MARK: - Static Wrappers (nonisolated; fire-and-forget)
     // These spawn a Task to hop onto the actor. Side effects are asynchronous.
@@ -40,32 +59,36 @@ actor LoggingService {
         Task { await shared.setLevel(level) }
     }
 
-    static func debug(_ message: @autoclosure @escaping @Sendable () -> String) {
+    static func setEnabledCategories(_ categories: Set<Category>) {
+        Task { await shared.setCategories(categories) }
+    }
+
+    static func debug(_ message: @autoclosure @escaping @Sendable () -> String, category: Category = .general) {
         #if DEBUG
-        Task { await shared.emit(.debug, message()) }
+        Task { await shared.emit(.debug, category: category, message()) }
         #endif
     }
-    static func info(_ message: @autoclosure @escaping @Sendable () -> String) {
+    static func info(_ message: @autoclosure @escaping @Sendable () -> String, category: Category = .general) {
         #if DEBUG
-        Task { await shared.emit(.info, message()) }
+        Task { await shared.emit(.info, category: category, message()) }
         #endif
     }
-    static func warn(_ message: @autoclosure @escaping @Sendable () -> String) {
+    static func warn(_ message: @autoclosure @escaping @Sendable () -> String, category: Category = .general) {
         #if DEBUG
-        Task { await shared.emit(.warn, message()) }
+        Task { await shared.emit(.warn, category: category, message()) }
         #endif
     }
-    static func error(_ message: @autoclosure @escaping @Sendable () -> String) {
+    static func error(_ message: @autoclosure @escaping @Sendable () -> String, category: Category = .general) {
         #if DEBUG
-        Task { await shared.emit(.error, message()) }
+        Task { await shared.emit(.error, category: category, message()) }
         #endif
     }
 
     // MARK: - Optional synchronous API (if ever needed by tests)
     // Callers can await these for deterministic ordering.
     static func setMinimumLevelSync(_ level: Level) async { await shared.setLevel(level) }
-    static func debugSync(_ message: @autoclosure @Sendable () -> String) async { await shared.emit(.debug, message()) }
-    static func infoSync(_ message: @autoclosure @Sendable () -> String) async { await shared.emit(.info, message()) }
-    static func warnSync(_ message: @autoclosure @Sendable () -> String) async { await shared.emit(.warn, message()) }
-    static func errorSync(_ message: @autoclosure @Sendable () -> String) async { await shared.emit(.error, message()) }
+    static func debugSync(_ message: @autoclosure @Sendable () -> String, category: Category = .general) async { await shared.emit(.debug, category: category, message()) }
+    static func infoSync(_ message: @autoclosure @Sendable () -> String, category: Category = .general) async { await shared.emit(.info, category: category, message()) }
+    static func warnSync(_ message: @autoclosure @Sendable () -> String, category: Category = .general) async { await shared.emit(.warn, category: category, message()) }
+    static func errorSync(_ message: @autoclosure @Sendable () -> String, category: Category = .general) async { await shared.emit(.error, category: category, message()) }
 }

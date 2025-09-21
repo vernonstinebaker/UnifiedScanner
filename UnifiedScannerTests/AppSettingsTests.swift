@@ -14,6 +14,7 @@ import XCTest
         super.tearDown()
         // Clear test keys
         UserDefaults.standard.removeObject(forKey: "unifiedscanner:settings:loggingLevel")
+        UserDefaults.standard.removeObject(forKey: "unifiedscanner:settings:loggingCategories")
         UserDefaults.standard.removeObject(forKey: "unifiedscanner:settings:showFingerprints")
         UserDefaults.standard.synchronize()
     }
@@ -21,12 +22,14 @@ import XCTest
     func testInitUsesDefaultValuesWhenNoStored() {
         // Clear any existing
         UserDefaults.standard.removeObject(forKey: "unifiedscanner:settings:loggingLevel")
+        UserDefaults.standard.removeObject(forKey: "unifiedscanner:settings:loggingCategories")
         UserDefaults.standard.removeObject(forKey: "unifiedscanner:settings:showFingerprints")
 
         let settings = AppSettings()
 
         XCTAssertEqual(settings.loggingLevel, .info)
         XCTAssertTrue(settings.showFingerprints)
+        XCTAssertEqual(settings.enabledLogCategories, Set(LoggingService.Category.allCases))
     }
 
     func testInitLoadsStoredLoggingLevel() {
@@ -35,6 +38,14 @@ import XCTest
         let settings = AppSettings()
 
         XCTAssertEqual(settings.loggingLevel, .debug)
+    }
+
+    func testInitLoadsStoredLoggingCategories() {
+        UserDefaults.standard.set(["ping", "arp"], forKey: "unifiedscanner:settings:loggingCategories")
+
+        let settings = AppSettings()
+
+        XCTAssertEqual(settings.enabledLogCategories, Set([.ping, .arp]))
     }
 
     func testInitLoadsStoredShowFingerprints() {
@@ -46,8 +57,6 @@ import XCTest
     }
 
     func testLoggingLevelDidSetPersistsAndSetsLoggerLevel() {
-        let expectation = XCTestExpectation(description: "Persist called")
-
         // Since LoggingService.setMinimumLevel is static, hard to mock, but we can check persistence
         let settings = AppSettings()
         let key = "unifiedscanner:settings:loggingLevel"
@@ -57,6 +66,16 @@ import XCTest
 
         XCTAssertEqual(UserDefaults.standard.string(forKey: key), "error")
         XCTAssertNotEqual(settings.loggingLevel, oldValue)
+    }
+
+    func testLoggingCategoryTogglePersists() {
+        let settings = AppSettings()
+        let key = "unifiedscanner:settings:loggingCategories"
+
+        settings.enabledLogCategories = [.general, .ping]
+
+        let stored = UserDefaults.standard.array(forKey: key) as? [String]
+        XCTAssertEqual(Set(stored ?? []), Set(["general", "ping"]))
     }
 
     func testShowFingerprintsDidSetPersists() {

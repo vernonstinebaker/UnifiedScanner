@@ -34,7 +34,7 @@ final class BonjourResolveService: NSObject, @unchecked Sendable {
         let normalizedType = candidate
         // Some callers might accidentally omit protocol segment; guard to avoid useless browsers
         if !normalizedType.contains("._tcp.") && !normalizedType.contains("._udp.") {
-            LoggingService.debug("resolve: reject non-canonical type=\(type) normalized=\(normalizedType)")
+            LoggingService.debug("resolve: reject non-canonical type=\(type) normalized=\(normalizedType)", category: .bonjour)
             return
         }
         let lower = normalizedType
@@ -43,16 +43,16 @@ final class BonjourResolveService: NSObject, @unchecked Sendable {
             if !activeTypes.contains(lower) { activeTypes.insert(lower); shouldStart = true }
         }
         guard shouldStart else {
-            LoggingService.debug("resolve: skip duplicate browser type=\(normalizedType)")
+            LoggingService.debug("resolve: skip duplicate browser type=\(normalizedType)", category: .bonjour)
             return
         }
         let create = { [weak self] in
             guard let self else { return }
             let browser = NetServiceBrowser()
-            LoggingService.info("resolve: launching browser type=\(normalizedType) original=\(type) onMain=\(Thread.isMainThread)")
+            LoggingService.info("resolve: launching browser type=\(normalizedType) original=\(type) onMain=\(Thread.isMainThread)", category: .bonjour)
             browser.delegate = self
             browser.searchForServices(ofType: normalizedType, inDomain: "local.")
-            LoggingService.info("resolve: started browser type=\(normalizedType)")
+            LoggingService.info("resolve: started browser type=\(normalizedType)", category: .bonjour)
             self.activeBrowsers.append(browser)
         }
         create()
@@ -122,12 +122,12 @@ extension BonjourResolveService: NetServiceBrowserDelegate, NetServiceDelegate {
     func netServiceBrowser(_ browser: NetServiceBrowser, didFind service: NetService, moreComing: Bool) {
         service.delegate = self
         let name = service.name; let type = service.type; let domain = service.domain
-        LoggingService.info("resolve: discovered service name=\(name) type=\(type) domain=\(domain) moreComing=\(moreComing)")
+        LoggingService.info("resolve: discovered service name=\(name) type=\(type) domain=\(domain) moreComing=\(moreComing)", category: .bonjour)
         let key = serviceKey(service)
         let retainedService = service
         stateQueue.sync { resolvingServices[key] = retainedService }
         if shouldResolve(service) {
-            LoggingService.debug("resolve: initiating resolve name=\(name) type=\(type)")
+            LoggingService.debug("resolve: initiating resolve name=\(name) type=\(type)", category: .bonjour)
             service.resolve(withTimeout: 5.0)
             let key = self.serviceKey(service)
             stateQueue.sync { _ = pendingResolveKeys.insert(key) }
@@ -135,15 +135,15 @@ extension BonjourResolveService: NetServiceBrowserDelegate, NetServiceDelegate {
                 guard let self else { return }
                 let stillPending = self.stateQueue.sync { self.pendingResolveKeys.contains(key) }
                 if stillPending && !self.stopped {
-                    LoggingService.debug("resolve: timeout pending key=\(key) name=\(name) type=\(type)")
+                    LoggingService.debug("resolve: timeout pending key=\(key) name=\(name) type=\(type)", category: .bonjour)
                 }
             }
         } else {
-            LoggingService.debug("resolve: cooldown skip name=\(name) type=\(type)")
+            LoggingService.debug("resolve: cooldown skip name=\(name) type=\(type)", category: .bonjour)
         }
     }
     func netServiceBrowser(_ browser: NetServiceBrowser, didNotSearch errorDict: [String : NSNumber]) {
-        LoggingService.warn("resolve: browser failed error=\(errorDict)")
+        LoggingService.warn("resolve: browser failed error=\(errorDict)", category: .bonjour)
     }
     func netService(_ sender: NetService, didNotResolve errorDict: [String : NSNumber]) {
         let name = sender.name
@@ -153,7 +153,7 @@ extension BonjourResolveService: NetServiceBrowserDelegate, NetServiceDelegate {
             _ = pendingResolveKeys.remove(key)
             resolvingServices.removeValue(forKey: key)
         }
-        LoggingService.warn("resolve: didNotResolve name=\(name) type=\(type) error=\(errorDict)")
+        LoggingService.warn("resolve: didNotResolve name=\(name) type=\(type) error=\(errorDict)", category: .bonjour)
     }
     func netServiceDidResolveAddress(_ sender: NetService) {
         guard !stopped else { return }
@@ -162,7 +162,7 @@ extension BonjourResolveService: NetServiceBrowserDelegate, NetServiceDelegate {
         let port = sender.port
         let txtSize = sender.txtRecordData()?.count ?? 0
         let ips = extractIPs(from: sender)
-        LoggingService.info("resolve: didResolve name=\(name) type=\(type) ips=\(ips) port=\(port) txtBytes=\(txtSize)")
+        LoggingService.info("resolve: didResolve name=\(name) type=\(type) ips=\(ips) port=\(port) txtBytes=\(txtSize)", category: .bonjour)
         if ips.isEmpty { return }
         var txt: [String:String] = [:]
         if let data = sender.txtRecordData() {

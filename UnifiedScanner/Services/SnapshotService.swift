@@ -207,7 +207,7 @@ private func startMutationListener() {
     func upsert(_ incoming: Device, source: MutationSource = .mdns) async {
         guard var incoming = sanitize(device: incoming) else {
             let ipSummary = incoming.ips.sorted().joined(separator: ",")
-            LoggingService.debug("snapshot: skip filtered device primary=\(incoming.primaryIP ?? "nil") ips=\(ipSummary)")
+            LoggingService.debug("snapshot: skip filtered device primary=\(incoming.primaryIP ?? "nil") ips=\(ipSummary)", category: .snapshot)
             return
         }
 
@@ -217,7 +217,7 @@ private func startMutationListener() {
             let hostname = incoming.hostname ?? "nil"
             let servicesSummary = incoming.services.map { "\($0.type.rawValue):\($0.port ?? -1)" }.joined(separator: ",")
             let message = "snapshot: upsert mdns incoming primary=\(primary) ips=\(ipsCount) hostname=\(hostname) services=\(servicesSummary)"
-            LoggingService.info(message)
+            LoggingService.info(message, category: .snapshot)
         }
         // Clear offline override if we have fresh activity
         if incoming.isOnlineOverride == false { incoming.isOnlineOverride = nil }
@@ -265,7 +265,7 @@ private func startMutationListener() {
     }
 
       func applyPing(_ measurement: PingMeasurement) async {
-           LoggingService.debug("applyPing host=\(measurement.host) status=\(measurement.status)")
+           LoggingService.debug("applyPing host=\(measurement.host) status=\(measurement.status)", category: .snapshot)
            // Find existing device by primary or secondary IP
           if let idx = devices.firstIndex(where: { $0.primaryIP == measurement.host || $0.ips.contains(measurement.host) }) {
              var dev = devices[idx]
@@ -276,7 +276,7 @@ private func startMutationListener() {
                  dev.discoverySources.insert(.ping)
                  dev.isOnlineOverride = nil
              case .timeout, .unreachable, .error:
-                 LoggingService.debug("ignore non-success existing host=\(measurement.host) status=\(measurement.status)")
+                 LoggingService.debug("ignore non-success existing host=\(measurement.host) status=\(measurement.status)", category: .snapshot)
                  break
              }
                let old = devices[idx]
@@ -289,7 +289,7 @@ private func startMutationListener() {
           } else {
               // Only create a new device on successful ping to avoid cluttering UI with non-responsive hosts.
               guard case .success(let rtt) = measurement.status else {
-                   LoggingService.debug("suppress creation host=\(measurement.host) status=\(measurement.status)")
+                   LoggingService.debug("suppress creation host=\(measurement.host) status=\(measurement.status)", category: .snapshot)
                   return
               }
               var newDevice = Device(primaryIP: measurement.host, ips: [measurement.host], discoverySources: [.ping])

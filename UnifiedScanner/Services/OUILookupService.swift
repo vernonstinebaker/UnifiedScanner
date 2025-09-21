@@ -28,7 +28,7 @@ final class OUILookupService: OUILookupProviding, @unchecked Sendable {
         if loaded { return }
 
         guard let url = resourceURL(named: "oui", extension: "csv") else {
-            LoggingService.warn("OUILookupService: oui.csv not found in bundle resources")
+            LoggingService.warn("OUILookupService: oui.csv not found in bundle resources", category: .vendor)
             loaded = true
             return
         }
@@ -38,7 +38,7 @@ final class OUILookupService: OUILookupProviding, @unchecked Sendable {
             let normalized = raw.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(of: "\r", with: "\n")
             let lines = normalized.split(separator: "\n")
             guard !lines.isEmpty else {
-            LoggingService.warn("OUILookupService: oui.csv is empty")
+                LoggingService.warn("OUILookupService: oui.csv is empty", category: .vendor)
                 loaded = true
                 return
             }
@@ -59,9 +59,9 @@ final class OUILookupService: OUILookupProviding, @unchecked Sendable {
             }
             vendorCache = cache
             loaded = true
-            LoggingService.info("OUILookupService: loaded \(self.vendorCache.count) OUI entries")
+            LoggingService.info("OUILookupService: loaded \(self.vendorCache.count) OUI entries", category: .vendor)
         } catch {
-            LoggingService.warn("OUILookupService: failed to load oui.csv — \(error.localizedDescription)")
+            LoggingService.warn("OUILookupService: failed to load oui.csv — \(error.localizedDescription)", category: .vendor)
             loaded = true
         }
     }

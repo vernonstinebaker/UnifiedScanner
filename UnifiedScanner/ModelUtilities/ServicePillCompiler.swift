@@ -7,6 +7,15 @@ struct ServicePill: Identifiable, Hashable {
     let isOverflow: Bool
     let serviceID: UUID?
     let port: Int?
+
+    init(id: String, label: String, type: NetworkService.ServiceType?, isOverflow: Bool, serviceID: UUID? = nil, port: Int? = nil) {
+        self.id = id
+        self.label = label
+        self.type = type
+        self.isOverflow = isOverflow
+        self.serviceID = serviceID
+        self.port = port
+    }
 }
 
 enum ServicePillCompiler {
@@ -61,7 +70,7 @@ enum ServicePillCompiler {
         return min(maxVisible, total)
     }
 
-    private static func displayLabel(for service: NetworkService) -> String {
+    static func displayLabel(for service: NetworkService) -> String {
         let base = service.name.trimmingCharacters(in: .whitespacesAndNewlines)
         let resolvedBase = base.isEmpty ? service.type.rawValue.uppercased() : base
         guard let port = service.port else { return resolvedBase }
@@ -83,7 +92,7 @@ enum ServicePillCompiler {
     }
 }
 
-private extension NetworkService.ServiceType {
+extension NetworkService.ServiceType {
     func matchesDefaultPort(_ port: Int) -> Bool {
         switch self {
         case .http where port == 80: return true

@@ -3,12 +3,13 @@ import XCTest
 
 final class ServiceDeriverTests: XCTestCase {
     func testWellKnownPortsMapping() {
-        XCTAssertEqual(ServiceDeriver.wellKnownPorts[80], (.http, "HTTP"))
-        XCTAssertEqual(ServiceDeriver.wellKnownPorts[443], (.https, "HTTPS"))
-        XCTAssertEqual(ServiceDeriver.wellKnownPorts[22], (.ssh, "SSH"))
-        XCTAssertEqual(ServiceDeriver.wellKnownPorts[53], (.dns, "DNS"))
-        XCTAssertEqual(ServiceDeriver.wellKnownPorts[139], (.smb, "SMB"))
-        XCTAssertEqual(ServiceDeriver.wellKnownPorts[3689], (.airplayAudio, "DAAP"))
+        if let entry = ServiceDeriver.wellKnownPorts[80] { XCTAssertEqual(entry.0, .http); XCTAssertEqual(entry.1, "HTTP") } else { XCTFail("missing entry for 80") }
+        if let entry = ServiceDeriver.wellKnownPorts[443] { XCTAssertEqual(entry.0, .https); XCTAssertEqual(entry.1, "HTTPS") } else { XCTFail("missing entry for 443") }
+        if let entry = ServiceDeriver.wellKnownPorts[22] { XCTAssertEqual(entry.0, .ssh); XCTAssertEqual(entry.1, "SSH") } else { XCTFail("missing entry for 22") }
+        if let entry = ServiceDeriver.wellKnownPorts[53] { XCTAssertEqual(entry.0, .dns); XCTAssertEqual(entry.1, "DNS") } else { XCTFail("missing entry for 53") }
+        if let entry = ServiceDeriver.wellKnownPorts[139] { XCTAssertEqual(entry.0, .smb); XCTAssertEqual(entry.1, "SMB") } else { XCTFail("missing entry for 139") }
+        if let entry = ServiceDeriver.wellKnownPorts[3689] { XCTAssertEqual(entry.0, .airplayAudio); XCTAssertEqual(entry.1, "DAAP") } else { XCTFail("missing entry for 3689") }
+
         XCTAssertNil(ServiceDeriver.wellKnownPorts[9999])
     }
 

@@ -47,7 +47,7 @@ Ping via SimplePingKit on iOS, ARP-only sweeps on macOS, and Bonjour browse/reso
 23. [x] `DiscoveryCoordinator` (auto /24 enumeration, orchestrates ping + ARP).  
 24. [x] `ARPService` route dump reader + MAC merge (macOS only).  
 25. [x] UDP warmup / broadcast population (macOS) before ARP read.  
-26. [~] Logging: `LoggingService` actor with level filtering; needs runtime toggles / categories.  
+26. [x] Logging: `LoggingService` actor with level + category filtering (runtime toggles + persistence).  
 27. [~] Port scanning engine (tier 0 ports 22/80/443 implemented; expand tiers + cancellation pending).  
 28. [x] Real mDNS provider (NetServiceBrowser) — integrated with toolbar controls and sanitisation.  
 29. [x] Mutation bus decoupling (providers emit `DeviceMutation` events via `DeviceMutationBus`).  

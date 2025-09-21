@@ -16,6 +16,9 @@ struct SettingsView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                    ForEach(LoggingService.Category.allCases) { category in
+                        Toggle(category.displayName, isOn: settings.binding(for: category))
+                    }
                 }
                 Section("Detail View") {
                     Toggle("Show Fingerprints", isOn: $settings.showFingerprints)

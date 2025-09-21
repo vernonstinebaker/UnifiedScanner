@@ -111,7 +111,7 @@ private actor SimplePingStreamCoordinator {
             return (client, description)
         }
 
-        if logging { LoggingService.debug(configurationDescription) }
+        if logging { LoggingService.debug(configurationDescription, category: .ping) }
         self.client = client
     }
 
@@ -129,7 +129,7 @@ private actor SimplePingStreamCoordinator {
     private func handleStateChange(_ state: PingState) async {
         switch state {
         case .failed(let error):
-            if logging { LoggingService.error("ping failed host=\(self.config.host) error=\(error)") }
+            if logging { LoggingService.error("ping failed host=\(self.config.host) error=\(error)", category: .ping) }
             let measurement = PingMeasurement(host: self.config.host,
                                              sequence: 0,
                                              status: .error(error.errorDescription),
@@ -137,7 +137,7 @@ private actor SimplePingStreamCoordinator {
             continuation.yield(measurement)
             await finish()
         case .finished:
-            if logging { LoggingService.debug("ping finished host=\(self.config.host)") }
+            if logging { LoggingService.debug("ping finished host=\(self.config.host)", category: .ping) }
             await finish()
         default:
             break
@@ -149,7 +149,7 @@ private actor SimplePingStreamCoordinator {
         case .received(let roundTrip, _, _):
             let millis = roundTrip * 1000.0
             if logging {
-                LoggingService.debug("received host=\(self.config.host) seq=\(event.sequence) rtt=\(String(format: "%.2f", millis))ms")
+                LoggingService.debug("received host=\(self.config.host) seq=\(event.sequence) rtt=\(String(format: "%.2f", millis))ms", category: .ping)
             }
             let measurement = PingMeasurement(host: self.config.host,
                                              sequence: Int(event.sequence),
@@ -157,14 +157,14 @@ private actor SimplePingStreamCoordinator {
                                              timestamp: event.timestamp)
             continuation.yield(measurement)
         case .timeout:
-            if logging { LoggingService.debug("timeout host=\(self.config.host) seq=\(event.sequence)") }
+            if logging { LoggingService.debug("timeout host=\(self.config.host) seq=\(event.sequence)", category: .ping) }
             let measurement = PingMeasurement(host: self.config.host,
                                              sequence: Int(event.sequence),
                                              status: .timeout,
                                              timestamp: event.timestamp)
             continuation.yield(measurement)
         case .failed(let error):
-            if logging { LoggingService.error("error host=\(self.config.host) seq=\(event.sequence) error=\(error)") }
+            if logging { LoggingService.error("error host=\(self.config.host) seq=\(event.sequence) error=\(error)", category: .ping) }
             let measurement = PingMeasurement(host: self.config.host,
                                              sequence: Int(event.sequence),
                                              status: .error(error.errorDescription),
@@ -172,7 +172,7 @@ private actor SimplePingStreamCoordinator {
             continuation.yield(measurement)
             await finish()
         case .sent:
-            if logging { LoggingService.debug("sent host=\(self.config.host) seq=\(event.sequence)") }
+            if logging { LoggingService.debug("sent host=\(self.config.host) seq=\(event.sequence)", category: .ping) }
         }
     }
 }
