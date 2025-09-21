@@ -388,6 +388,25 @@ actor DiscoveryCoordinator {
         }
     }
 
+#if os(macOS)
+    func startDiscoveryPipeline(maxAutoEnumeratedHosts: Int) async {
+        await startBonjour()
+        await startARPOnly(maxAutoEnumeratedHosts: maxAutoEnumeratedHosts)
+    }
+#else
+    func startDiscoveryPipeline(pingHosts: [String],
+                                pingConfig: PingConfig,
+                                mdnsWarmupSeconds: Double,
+                                autoEnumerateIfEmpty: Bool,
+                                maxAutoEnumeratedHosts: Int) async {
+        await startScan(pingHosts: pingHosts,
+                         pingConfig: pingConfig,
+                         mdnsWarmupSeconds: mdnsWarmupSeconds,
+                         autoEnumerateIfEmpty: autoEnumerateIfEmpty,
+                         maxAutoEnumeratedHosts: maxAutoEnumeratedHosts)
+    }
+#endif
+
     func stopScan() async {
         guard let task = scanTask else { return }
         scanRunning = false

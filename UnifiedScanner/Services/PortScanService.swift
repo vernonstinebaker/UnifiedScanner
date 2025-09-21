@@ -135,11 +135,11 @@ actor PortScanService {
         return true
     }
 
-    private func enqueueScan(for host: String, device: Device) async {
+    private func enqueueScan(for host: String, device: Device, force: Bool = false) async {
         let key = HostScanKey(id: device.id, host: host)
         if inFlight.contains(key) { return }
         let now = Date()
-        if let last = lastScan[key], now.timeIntervalSince(last) < rescanInterval { return }
+        if !force, let last = lastScan[key], now.timeIntervalSince(last) < rescanInterval { return }
         inFlight.insert(key)
         lastScan[key] = now
         Task { [weak self] in
@@ -211,6 +211,15 @@ actor PortScanService {
         let change = DeviceChange(before: nil, after: update, changed: changed, source: .portScan)
         await MainActor.run {
             mutationBus.emit(.change(change))
+        }
+    }
+
+    func rescan(devices: [Device]) async {
+        for device in devices {
+            let hosts = hostsToScan(from: device)
+            for host in hosts {
+                await enqueueScan(for: host, device: device, force: true)
+            }
         }
     }
 }
