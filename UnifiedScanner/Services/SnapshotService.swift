@@ -411,6 +411,13 @@ private func startMutationListener() {
             var fp = result.fingerprints ?? [:]
             for (k,v) in incFP where !v.isEmpty { fp[k] = v }
             result.fingerprints = fp
+            let extracted = VendorModelExtractorService.extract(from: fp)
+            if (result.vendor == nil || result.vendor?.isEmpty == true), let derivedVendor = extracted.vendor, !derivedVendor.isEmpty {
+                result.vendor = derivedVendor
+            }
+            if (result.modelHint == nil || result.modelHint?.isEmpty == true), let derivedModel = extracted.model, !derivedModel.isEmpty {
+                result.modelHint = derivedModel
+            }
         }
 
         // Timestamps

@@ -24,4 +24,11 @@ final class VendorModelExtractorServiceTests: XCTestCase {
         // vendorKeys order: vendor, manufacturer, brand, manu, mf, company
         XCTAssertEqual(result.vendor, "Globex")
     }
+
+    func testAppleExtendedVendorKeys() {
+        let fp = ["ACL": "Apple Inc.", "MD": "MacBookPro16,1"]
+        let result = VendorModelExtractorService.extract(from: fp)
+        XCTAssertEqual(result.vendor, "Apple")
+        XCTAssertEqual(result.model, "MacBookPro16,1")
+    }
 }

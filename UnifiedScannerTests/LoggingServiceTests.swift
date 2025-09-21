@@ -52,13 +52,20 @@ final class LoggingServiceTests: XCTestCase {
         XCTAssertTrue(s1 === s2)
     }
 
-    func testSetMinimumLevelAffectsEmits() {
-        // To test, we'd need to capture print, but for now, call sequence
-        Task {
-            await LoggingService.setMinimumLevelSync(.debug)
-            await LoggingService.debugSync("enabled")
-            await LoggingService.setMinimumLevelSync(.off)
-            await LoggingService.debugSync("disabled")
-        }
+    func testCategoryEnum() {
+        let categories = LoggingService.Category.allCases
+        XCTAssertTrue(categories.contains(.discovery))
+        XCTAssertTrue(categories.contains(.ping))
+        XCTAssertTrue(categories.contains(.arp))
+        XCTAssertTrue(categories.contains(.portScan))
+        XCTAssertTrue(categories.contains(.mutation))
+        XCTAssertTrue(categories.contains(.persistence))
+        XCTAssertTrue(categories.contains(.general))
     }
-}
+
+    func testLogWithCategory() async {
+        await LoggingService.setMinimumLevelSync(.debug)
+        // Test that logging with category doesn't crash and presumably logs
+        await LoggingService.logSync(level: .info, category: .discovery, message: "Test discovery log")
+        await LoggingService.logSync(level: .debug, category: .ping, message: "Test ping log")
+    }

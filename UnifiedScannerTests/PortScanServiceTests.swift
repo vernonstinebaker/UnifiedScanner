@@ -52,13 +52,79 @@ final class PortScanServiceTests: XCTestCase {
         XCTAssertTrue(portChange.changed.contains(.services))
         XCTAssertTrue(portChange.after.openPorts.contains(where: { $0.number == 22 && $0.status == .open }))
         XCTAssertTrue(portChange.after.services.contains(where: { $0.port == 22 && $0.type == .ssh }))
+    func testPortScanUpdatesExistingDeviceUnionsDiscoverySources() async {
+        let bus = await MainActor.run { DeviceMutationBus() }
+        let prober = StubPortProber(results: [22: .open])
+        let service = PortScanService(mutationBus: bus,
+                                      ports: [22],
+                                      timeout: 0.01,
+                                      rescanInterval: 0,
+                                      prober: prober)
+
+        await service.start()
+
+        let mutationStream = await MainActor.run { bus.mutationStream(includeBuffered: false) }
+        let expectation = expectation(description: "Port scan update mutation received")
+        var capturedChange: DeviceChange?
+
+        let collectTask = Task {
+            for await mutation in mutationStream {
+                if case .change(let change) = mutation, change.source == .portScan {
+                    capturedChange = change
+                    expectation.fulfill()
+                    break
+                }
+            }
+        }
+
+        // First, emit an existing device with mdns source
+        let existingDevice = Device(primaryIP: "192.168.1.50",
+                                    ips: ["192.168.1.50"],
+                                    hostname: "test-device",
+                                    discoverySources: [.mdns])
+        let initialChange = DeviceChange(before: nil,
+                                         after: existingDevice,
+                                         changed: Set(DeviceField.allCases),
+                                         source: .mdns)
+        await MainActor.run {
+            bus.emit(.change(initialChange))
+        }
+
+        // Then emit an update for the same device (simulating another source adding info)
+        let updatedDevice = existingDevice.withDiscoverySources([.arp]) // but port scan should union
+        let updateChange = DeviceChange(before: existingDevice,
+                                        after: updatedDevice,
+                                        changed: [.discoverySources],
+                                        source: .arp)
+        await MainActor.run {
+            bus.emit(.change(updateChange))
+        }
+
+        await fulfillment(of: [expectation], timeout: 1.0)
+        collectTask.cancel()
+
+        guard let portChange = capturedChange else {
+            XCTFail("Expected port scan change mutation")
+            return
+        }
+
+        XCTAssertEqual(portChange.source, .portScan)
+        XCTAssertTrue(portChange.changed.contains(.openPorts))
+        XCTAssertTrue(portChange.changed.contains(.services))
+        XCTAssertTrue(portChange.changed.contains(.discoverySources))
+        XCTAssertTrue(portChange.after.openPorts.contains(where: { $0.number == 22 && $0.status == .open }))
+        XCTAssertTrue(portChange.after.services.contains(where: { $0.port == 22 && $0.type == .ssh }))
+        // Check union: should have mdns, arp, portScan
+        XCTAssertTrue(portChange.after.discoverySources.contains(.mdns))
+        XCTAssertTrue(portChange.after.discoverySources.contains(.arp))
         XCTAssertTrue(portChange.after.discoverySources.contains(.portScan))
+        XCTAssertEqual(portChange.after.discoverySources.count, 3)
     }
-}
 
 private struct StubPortProber: PortProbing {
     let results: [UInt16: PortProbeResult]
     func probe(host: String, port: UInt16, timeout: TimeInterval) async -> PortProbeResult {
         results[port] ?? .closed
     }
+}
 }

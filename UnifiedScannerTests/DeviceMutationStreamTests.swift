@@ -73,7 +73,7 @@ import XCTest
         guard case .snapshot(let empty) = events[1] else { return XCTFail("Expected second event to be snapshot") }
         XCTAssertTrue(empty.isEmpty)
     }
-}
+
 
 // MARK: - Ephemeral Persistence
 struct EphemeralPersistenceDM: DevicePersistence {

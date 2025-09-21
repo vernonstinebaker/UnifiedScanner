@@ -68,36 +68,6 @@ public protocol DiscoveryProvider: AnyObject, Sendable {
     func stop()
 }
 
-// MARK: - Mock Provider (used in tests/demo)
-public final class MockMDNSProvider: @unchecked Sendable, DiscoveryProvider {
-    public let name = "mock-mdns"
-    private let cancelledLock = NSLock()
-    private var _cancelled = false
-    public init() {}
-    private var cancelled: Bool { get { cancelledLock.lock(); defer { cancelledLock.unlock() }; return _cancelled } set { cancelledLock.lock(); defer { cancelledLock.unlock() }; _cancelled = newValue } }
-
-    public func start(mutationBus: DeviceMutationBus) -> AsyncStream<DeviceMutation> {
-        cancelled = false
-        return AsyncStream { continuation in
-            Task { [weak self] in
-                guard let self else { return }
-                let samples = [
-                    Device(primaryIP: "192.168.1.50", ips: ["192.168.1.50"], hostname: "apple-tv.local", discoverySources: [.mdns], services: []),
-                    Device(primaryIP: "192.168.1.51", ips: ["192.168.1.51"], hostname: "printer.local", discoverySources: [.mdns], services: [])
-                ]
-                for dev in samples {
-                    if Task.isCancelled || self.cancelled { break }
-                    let mutation = DeviceMutation.change(DeviceChange(before: nil, after: dev, changed: Set(DeviceField.allCases), source: .mdns))
-                    continuation.yield(mutation)
-                    try? await Task.sleep(nanoseconds: 300_000_000)
-                }
-                continuation.finish()
-            }
-        }
-    }
-    public func stop() { cancelled = true }
-}
-
 // MARK: - BonjourDiscoveryProvider
 public final class BonjourDiscoveryProvider: NSObject, @unchecked Sendable, DiscoveryProvider {
     public let name = "bonjour-mdns"

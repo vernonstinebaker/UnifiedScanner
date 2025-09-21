@@ -110,6 +110,50 @@ import XCTest
         let after = store.devices.first!.classification
         XCTAssertEqual(initial, after, "Classification should not recompute when only fingerprints change")
     }
+
+    func testFingerprintVendorPopulatesManufacturer() async {
+        let store = SnapshotService(persistence: EphemeralPersistence())
+        var dev = Device(primaryIP: "192.168.0.5",
+                         ips: ["192.168.0.5"],
+                         services: [],
+                         openPorts: [])
+        await store.upsert(dev)
+        var update = dev
+        update.fingerprints = ["acl": "Apple Inc.", "md": "MacBookPro16,1"]
+        await store.upsert(update)
+        let result = store.devices.first!
+        XCTAssertEqual(result.vendor, "Apple")
+        XCTAssertEqual(result.modelHint, "MacBookPro16,1")
+    }
+
+    func testMultiSourceUnionMaintainsClassificationStability() async {
+        let store = SnapshotService(persistence: EphemeralPersistence())
+        // Start with mdns discovery
+        var dev = Device(primaryIP: "10.0.0.30",
+                         ips: ["10.0.0.30"],
+                         hostname: "apple-tv",
+                         discoverySources: [.mdns],
+                         services: [NetworkService(id: UUID(), name: "AirPlay", type: .airplay, rawType: "_airplay._tcp", port: 7000, isStandardPort: true)])
+        await store.upsert(dev)
+        let initialClass = store.devices.first!.classification
+        XCTAssertEqual(initialClass?.formFactor, .tv)
+
+        // Add ping source with RTT
+        var pingUpdate = dev
+        pingUpdate.discoverySources = [.mdns, .ping]
+        pingUpdate.rttMillis = 10.0
+        await store.upsert(pingUpdate)
+        let afterPing = store.devices.first!.classification
+        XCTAssertEqual(initialClass, afterPing)
+
+        // Add ARP source with MAC
+        var arpUpdate = pingUpdate
+        arpUpdate.discoverySources = [.mdns, .ping, .arp]
+        arpUpdate.macAddress = "AA:BB:CC:DD:EE:FF"
+        await store.upsert(arpUpdate)
+        let afterArp = store.devices.first!.classification
+        XCTAssertEqual(initialClass, afterArp)
+    }
 }
 
 // MARK: - Ephemeral Persistence (no disk/iCloud writes)

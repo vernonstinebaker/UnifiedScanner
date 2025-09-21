@@ -339,8 +339,13 @@ enum DeviceIconResolver {
         case .router:
             return "wifi.router"
         case .computer:
-            return context.contains(where: { $0.contains("laptop") }) ? "laptopcomputer" : "desktopcomputer"
+            if context.contains(where: { $0.contains("macstudio") }) { return "desktopcomputer" }
+            if context.contains(where: { $0.contains("macmini") || $0.contains("mac mini") }) { return "macmini" }
+            if context.contains(where: { $0.contains("imac") }) { return "desktopcomputer" }
+            if context.contains(where: { $0.contains("macbook") || $0.contains("laptop") }) { return "laptopcomputer" }
+            return "desktopcomputer"
         case .laptop:
+            if context.contains(where: { $0.contains("macbook") }) { return "laptopcomputer" }
             return "laptopcomputer"
         case .tv:
             return "tv"

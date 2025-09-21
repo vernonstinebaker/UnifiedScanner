@@ -69,6 +69,7 @@ struct ClassificationService {
         fingerprintRules(vendor: vendor,
                          fingerprintModel: fingerprintModel,
                          fingerprintCorpus: fingerprintCorpus,
+                         fingerprintValues: fingerprintValues,
                          add: add)
 
         // MARK: - Service Combination Rules (medium/high)
@@ -164,12 +165,13 @@ struct ClassificationService {
     private static func fingerprintRules(vendor: String,
                                          fingerprintModel: String,
                                          fingerprintCorpus: String,
+                                         fingerprintValues: [String],
                                          add: (_ form: DeviceFormFactor?, _ raw: String?, _ conf: ClassificationConfidence, _ reason: String, _ sources: [String]) -> Void) {
         let hasFingerprintData = !fingerprintModel.isEmpty || !fingerprintCorpus.isEmpty
         guard hasFingerprintData else { return }
         let modelSources = fingerprintModel.isEmpty ? [] : ["fingerprint:model"]
         let httpSources = fingerprintCorpus.isEmpty ? [] : ["fingerprint:http"]
-        let appleContext = vendor.contains("apple") || fingerprintCorpus.contains("apple") || fingerprintModel.contains("apple")
+        let appleContext = vendor.contains("apple") || fingerprintCorpus.contains("apple") || fingerprintModel.contains("apple") || fingerprintModel.hasPrefix("mac") || fingerprintModel.hasPrefix("appletv")
 
         if appleContext && (fingerprintModel.contains("appletv") || fingerprintCorpus.contains("appletv")) {
             add(.tv, "apple_tv", .high, "Fingerprint model indicates Apple TV", !modelSources.isEmpty ? modelSources : httpSources)
@@ -179,23 +181,68 @@ struct ClassificationService {
             add(.speaker, "homepod", .high, "Fingerprint model indicates HomePod", !modelSources.isEmpty ? modelSources : httpSources)
         }
 
+        if appleContext && fingerprintModel.hasPrefix("macbook") {
+            let sources = !modelSources.isEmpty ? modelSources : httpSources
+            add(.laptop, "macbook", .high, "Model identifier indicates MacBook", sources)
+        }
+        if appleContext && (fingerprintModel.hasPrefix("macmini") || fingerprintModel.contains("mac mini")) {
+            let sources = !modelSources.isEmpty ? modelSources : httpSources
+            add(.computer, "mac_mini", .high, "Model identifier indicates Mac mini", sources)
+        }
+        if appleContext && fingerprintModel.hasPrefix("imac") {
+            let sources = !modelSources.isEmpty ? modelSources : httpSources
+            add(.computer, "imac", .high, "Model identifier indicates iMac", sources)
+        }
+        if appleContext && fingerprintModel.hasPrefix("macpro") {
+            let sources = !modelSources.isEmpty ? modelSources : httpSources
+            add(.computer, "mac_pro", .high, "Model identifier indicates Mac Pro", sources)
+        }
+        if appleContext && fingerprintModel.hasPrefix("macstudio") {
+            let sources = !modelSources.isEmpty ? modelSources : httpSources
+            add(.computer, "mac_studio", .high, "Model identifier indicates Mac Studio", sources)
+        }
+        if appleContext && (fingerprintModel.hasPrefix("iphone") || fingerprintModel.hasPrefix("ipod")) {
+            let sources = !modelSources.isEmpty ? modelSources : httpSources
+            add(.phone, "iphone", .high, "Model identifier indicates iPhone/iPod", sources)
+        }
+        if appleContext && fingerprintModel.hasPrefix("ipad") {
+            let sources = !modelSources.isEmpty ? modelSources : httpSources
+            add(.tablet, "ipad", .high, "Model identifier indicates iPad", sources)
+        }
+        if appleContext && (fingerprintModel.hasPrefix("watch") || fingerprintModel.contains("watch")) {
+            let sources = !modelSources.isEmpty ? modelSources : httpSources
+            add(.accessory, "apple_watch", .medium, "Model identifier indicates Apple Watch", sources)
+        }
+        if appleContext && fingerprintModel.hasPrefix("mac") &&
+            !fingerprintModel.hasPrefix("macbook") &&
+            !fingerprintModel.hasPrefix("macmini") &&
+            !fingerprintModel.hasPrefix("macpro") &&
+            !fingerprintModel.hasPrefix("macstudio") {
+            let sources = !modelSources.isEmpty ? modelSources : httpSources
+            add(.computer, "mac_computer", .high, "Model identifier indicates Mac", sources)
+        }
+
         let httpText = fingerprintCorpus
-        if containsAny(httpText, ["routeros"]) {
+        let httpValues = fingerprintValues
+        if containsAny(httpText, ["routeros"]) || httpValues.contains(where: { $0.contains("routeros") }) {
             add(.router, "routeros", .high, "HTTP fingerprint indicates RouterOS", httpSources)
         }
-        if containsAny(httpText, ["tp-link", "tplink", "archer"]) {
+        if containsAny(httpText, ["tp-link", "tplink", "archer"]) || httpValues.contains(where: { $0.contains("tp-link") || $0.contains("tplink") || $0.contains("archer") }) {
             add(.router, "tplink_router", .high, "HTTP fingerprint indicates TP-Link router", httpSources)
         }
-        if containsAny(httpText, ["asus"]) {
+        if containsAny(httpText, ["asus"]) || httpValues.contains(where: { $0.contains("asus") }) {
             add(.router, "asus_router", .high, "HTTP fingerprint indicates ASUS router", httpSources)
         }
-        if containsAny(httpText, ["d-link", "dlink"]) {
+        if containsAny(httpText, ["d-link", "dlink"]) || httpValues.contains(where: { $0.contains("d-link") || $0.contains("dlink") }) {
             add(.router, "dlink_router", .high, "HTTP fingerprint indicates D-Link router", httpSources)
         }
-        if containsAny(httpText, ["netgear"]) {
+        if containsAny(httpText, ["netgear"]) || httpValues.contains(where: { $0.contains("netgear") }) {
             add(.router, "netgear_router", .high, "HTTP fingerprint indicates Netgear router", httpSources)
         }
-        if containsAny(httpText, ["synology"]) {
+        if containsAny(httpText, ["miwifi"]) || httpValues.contains(where: { $0.contains("miwifi") }) {
+            add(.router, "xiaomi_router", .high, "HTTP fingerprint indicates Xiaomi MIWIFI router", httpSources)
+        }
+        if containsAny(httpText, ["synology"]) || httpValues.contains(where: { $0.contains("synology") }) {
             add(.server, "synology_nas", .high, "HTTP fingerprint indicates Synology", httpSources)
         }
         if containsAny(httpText, ["airport", "time capsule"]) {

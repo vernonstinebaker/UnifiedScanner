@@ -87,4 +87,26 @@ final class DeviceClassificationTests: XCTestCase {
         XCTAssertEqual(d.classification?.formFactor, .router)
         XCTAssertEqual(d.classification?.confidence, .high)
     }
+
+    func testMacBookIdentifierClassifiesLaptop() async {
+        var d = Device(primaryIP: "192.168.1.30",
+                       discoverySources: [.mdns],
+                       services: [],
+                       openPorts: [],
+                       fingerprints: ["model": "MacBookPro16,1"])
+        d.classification = await ClassificationService.classify(device: d)
+        XCTAssertEqual(d.classification?.formFactor, .laptop)
+        XCTAssertEqual(d.classification?.confidence, .high)
+    }
+
+    func testMIWIFIFingerprintClassifiesRouter() async {
+        var d = Device(primaryIP: "192.168.1.40",
+                       discoverySources: [.portScan],
+                       services: [],
+                       openPorts: [Port(number: 443, serviceName: "https", description: "UI", status: .open, lastSeenOpen: Date())],
+                       fingerprints: ["https.cert.cn": "MIWIFI SERVER CERT"])
+        d.classification = await ClassificationService.classify(device: d)
+        XCTAssertEqual(d.classification?.formFactor, .router)
+        XCTAssertEqual(d.classification?.confidence, .high)
+    }
 }
