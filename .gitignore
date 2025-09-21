@@ -1,1 +1,45 @@
+# Build artifacts
 .build/
+DerivedData/
+build/
+
+# Swift Package Manager
+.swiftpm/
+
+# Xcode user data
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+*.moved-aside
+
+# Debug symbols and archives
+*.dSYM
+*.dSYM.zip
+*.ipa
+*.appex
+
+# macOS Finder
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Swift Playgrounds
+timeline.xctimeline
+playground.xcworkspace/
+
+# VS Code
+.vscode/
+
+# Misc
+*.swp
+*.swo
+*~
