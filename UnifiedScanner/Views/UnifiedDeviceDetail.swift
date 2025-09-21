@@ -25,7 +25,7 @@ struct UnifiedDeviceDetail: View {
         device.discoverySources
             .filter { $0 != .unknown }
             .sorted { lhs, rhs in
-                let ranking: [DiscoverySource] = [.arp, .ping, .mdns, .ssdp, .portScan, .reverseDNS, .manual, .unknown]
+                let ranking: [DiscoverySource] = [.arp, .ping, .mdns, .ssdp, .portScan, .httpProbe, .reverseDNS, .manual, .unknown]
                 let li = ranking.firstIndex(of: lhs) ?? ranking.count
                 let ri = ranking.firstIndex(of: rhs) ?? ranking.count
                 if li == ri { return lhs.rawValue < rhs.rawValue }

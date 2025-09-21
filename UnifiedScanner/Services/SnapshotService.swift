@@ -6,7 +6,7 @@ public enum DeviceField: String, CaseIterable, Sendable {
     case hostname, vendor, modelHint, rttMillis, services, openPorts, discoverySources, classification, ips, primaryIP, lastSeen, firstSeen, macAddress, fingerprints, isOnlineOverride
 }
 
-public enum MutationSource: Sendable { case mdns, ping, arp, portScan, classification, persistenceRestore, offline }
+public enum MutationSource: Sendable { case mdns, ping, arp, portScan, httpFingerprint, classification, persistenceRestore, offline }
 
 public struct DeviceChange: Sendable {
     public let before: Device?
@@ -432,7 +432,11 @@ private func startMutationListener() {
     private func classificationFingerprint(of d: Device) -> String {
         let svcKey = d.services.map { $0.type.rawValue + ("|\($0.port ?? -1)") }.sorted().joined(separator: ",")
         let portKey = d.openPorts.map { "\($0.number)/\($0.transport)" }.sorted().joined(separator: ",")
-        return "host=\(d.hostname ?? "")|vendor=\(d.vendor ?? "")|model=\(d.modelHint ?? "")|svc=\(svcKey)|ports=\(portKey)"
+        let fingerprintKey = (d.fingerprints ?? [:])
+            .map { "\($0.key)=\($0.value)" }
+            .sorted()
+            .joined(separator: ",")
+        return "host=\(d.hostname ?? "")|vendor=\(d.vendor ?? "")|model=\(d.modelHint ?? "")|svc=\(svcKey)|ports=\(portKey)|fp=\(fingerprintKey)"
     }
 
     // MARK: - Persistence

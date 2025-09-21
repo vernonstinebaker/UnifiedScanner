@@ -112,7 +112,7 @@ public struct Device: Identifiable, Hashable, Codable, Sendable {
 // MARK: - Supporting Types
 public enum DeviceFormFactor: String, Codable, CaseIterable, Sendable { case router, computer, laptop, tv, printer, gameConsole, phone, tablet, accessory, iot, server, camera, speaker, hub, unknown }
 public enum ClassificationConfidence: String, Codable, CaseIterable, Sendable { case unknown, low, medium, high }
-public enum DiscoverySource: String, Codable, CaseIterable, Sendable { case mdns, arp, ping, ssdp, portScan, reverseDNS, manual, unknown }
+public enum DiscoverySource: String, Codable, CaseIterable, Sendable { case mdns, arp, ping, ssdp, portScan, httpProbe, reverseDNS, manual, unknown }
 
 public struct NetworkService: Identifiable, Hashable, Codable, Sendable {
     public enum ServiceType: String, Codable, CaseIterable, Sendable { case http, https, ssh, dns, dhcp, smb, ftp, vnc, airplay, airplayAudio, homekit, chromecast, spotify, printer, ipp, telnet, other }

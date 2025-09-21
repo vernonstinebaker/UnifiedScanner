@@ -65,4 +65,26 @@ final class DeviceClassificationTests: XCTestCase {
         XCTAssertEqual(d.classification?.formFactor, .speaker)
         XCTAssertEqual(d.classification?.confidence, .high)
     }
+
+    func testHTTPRealmIdentifiesTplinkRouter() async {
+        var d = Device(primaryIP: "192.168.1.20",
+                       discoverySources: [.portScan],
+                       services: [],
+                       openPorts: [Port(number: 80, serviceName: "http", description: "UI", status: .open, lastSeenOpen: Date())],
+                       fingerprints: ["http.realm": "TP-LINK Wireless N Router WR841N"])
+        d.classification = await ClassificationService.classify(device: d)
+        XCTAssertEqual(d.classification?.formFactor, .router)
+        XCTAssertEqual(d.classification?.confidence, .high)
+    }
+
+    func testHTTPServerIdentifiesRouterOS() async {
+        var d = Device(primaryIP: "192.168.1.21",
+                       discoverySources: [.portScan],
+                       services: [],
+                       openPorts: [Port(number: 80, serviceName: "http", description: "UI", status: .open, lastSeenOpen: Date())],
+                       fingerprints: ["http.server": "RouterOS v6.45"])
+        d.classification = await ClassificationService.classify(device: d)
+        XCTAssertEqual(d.classification?.formFactor, .router)
+        XCTAssertEqual(d.classification?.confidence, .high)
+    }
 }

@@ -167,15 +167,39 @@ struct ClassificationService {
                                          add: (_ form: DeviceFormFactor?, _ raw: String?, _ conf: ClassificationConfidence, _ reason: String, _ sources: [String]) -> Void) {
         let hasFingerprintData = !fingerprintModel.isEmpty || !fingerprintCorpus.isEmpty
         guard hasFingerprintData else { return }
-        let fingerprintSources = ["fingerprint:model"]
+        let modelSources = fingerprintModel.isEmpty ? [] : ["fingerprint:model"]
+        let httpSources = fingerprintCorpus.isEmpty ? [] : ["fingerprint:http"]
         let appleContext = vendor.contains("apple") || fingerprintCorpus.contains("apple") || fingerprintModel.contains("apple")
 
         if appleContext && (fingerprintModel.contains("appletv") || fingerprintCorpus.contains("appletv")) {
-            add(.tv, "apple_tv", .high, "Fingerprint model indicates Apple TV", fingerprintSources)
+            add(.tv, "apple_tv", .high, "Fingerprint model indicates Apple TV", !modelSources.isEmpty ? modelSources : httpSources)
         }
 
         if appleContext && (fingerprintModel.contains("homepod") || fingerprintModel.contains("audioaccessory") || fingerprintCorpus.contains("homepod")) {
-            add(.speaker, "homepod", .high, "Fingerprint model indicates HomePod", fingerprintSources)
+            add(.speaker, "homepod", .high, "Fingerprint model indicates HomePod", !modelSources.isEmpty ? modelSources : httpSources)
+        }
+
+        let httpText = fingerprintCorpus
+        if containsAny(httpText, ["routeros"]) {
+            add(.router, "routeros", .high, "HTTP fingerprint indicates RouterOS", httpSources)
+        }
+        if containsAny(httpText, ["tp-link", "tplink", "archer"]) {
+            add(.router, "tplink_router", .high, "HTTP fingerprint indicates TP-Link router", httpSources)
+        }
+        if containsAny(httpText, ["asus"]) {
+            add(.router, "asus_router", .high, "HTTP fingerprint indicates ASUS router", httpSources)
+        }
+        if containsAny(httpText, ["d-link", "dlink"]) {
+            add(.router, "dlink_router", .high, "HTTP fingerprint indicates D-Link router", httpSources)
+        }
+        if containsAny(httpText, ["netgear"]) {
+            add(.router, "netgear_router", .high, "HTTP fingerprint indicates Netgear router", httpSources)
+        }
+        if containsAny(httpText, ["synology"]) {
+            add(.server, "synology_nas", .high, "HTTP fingerprint indicates Synology", httpSources)
+        }
+        if containsAny(httpText, ["airport", "time capsule"]) {
+            add(.router, "airport", .medium, "HTTP fingerprint indicates AirPort base station", httpSources)
         }
     }
 

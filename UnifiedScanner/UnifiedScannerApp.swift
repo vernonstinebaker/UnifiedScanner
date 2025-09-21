@@ -15,6 +15,7 @@ struct UnifiedScannerApp: App {
 
     private let mutationBus = DeviceMutationBus.shared
     private let portScanService = PortScanService(mutationBus: DeviceMutationBus.shared)
+    private let httpFingerprintService = HTTPFingerprintService(mutationBus: DeviceMutationBus.shared)
     @StateObject private var snapshotStore = SnapshotService()
     @State private var discoveryCoordinator: DiscoveryCoordinator? = nil
     @State private var coordinatorStarted = false
@@ -24,6 +25,7 @@ struct UnifiedScannerApp: App {
     @State private var isScanRunning = false
     @State private var scanMonitorTask: Task<Void, Never>? = nil
     @State private var portScannerStarted = false
+    @State private var httpFingerprintStarted = false
 
     private let defaultPingConfig = PingConfig(host: "placeholder",
                                                count: 2,
@@ -89,6 +91,11 @@ var body: some Scene {
             portScannerStarted = true
             Task { await portScanService.start() }
         }
+        if !httpFingerprintStarted {
+            httpFingerprintStarted = true
+            httpFingerprintService.start()
+            httpFingerprintService.rescan(devices: snapshotStore.devices, force: false)
+        }
         let maxHosts = defaultMaxHosts
         Task {
             await coordinator.startBonjour()
@@ -106,6 +113,7 @@ var body: some Scene {
             startScanMonitor()
             let devices = await MainActor.run { snapshotStore.devices }
             await portScanService.rescan(devices: devices)
+            await MainActor.run { httpFingerprintService.rescan(devices: devices, force: true) }
         }
     }
 
@@ -134,6 +142,7 @@ var body: some Scene {
             await coordinator.startDiscoveryPipeline(maxAutoEnumeratedHosts: defaultMaxHosts)
             let devices = await MainActor.run { snapshotStore.devices }
             await portScanService.rescan(devices: devices)
+            await MainActor.run { httpFingerprintService.rescan(devices: devices, force: true) }
 #else
             await coordinator.startBonjour()
             await coordinator.startDiscoveryPipeline(pingHosts: [],
@@ -143,6 +152,7 @@ var body: some Scene {
                                                       maxAutoEnumeratedHosts: defaultMaxHosts)
             let devices = await MainActor.run { snapshotStore.devices }
             await portScanService.rescan(devices: devices)
+            await MainActor.run { httpFingerprintService.rescan(devices: devices, force: true) }
 #endif
             await updateCoordinatorState()
             startScanMonitor()

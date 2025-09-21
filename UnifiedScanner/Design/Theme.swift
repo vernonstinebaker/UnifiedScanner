@@ -80,6 +80,7 @@ enum Theme {
         case .mdns: return ("MDNS", color(.accentPrimary))
         case .ssdp: return ("SSDP", color(.accentSecondary))
         case .portScan: return ("SCAN", color(.accentWarn))
+        case .httpProbe: return ("HTTP", color(.accentSecondary))
         case .reverseDNS: return ("RDNS", color(.accentMuted))
         case .manual: return ("MANUAL", color(.accentMuted))
         case .unknown: return ("UNKNOWN", color(.accentMuted))
