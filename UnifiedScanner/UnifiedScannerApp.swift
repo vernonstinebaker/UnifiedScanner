@@ -14,6 +14,7 @@ struct UnifiedScannerApp: App {
     }
 
     private let mutationBus = DeviceMutationBus.shared
+    private let portScanService = PortScanService(mutationBus: DeviceMutationBus.shared)
     @StateObject private var snapshotStore = SnapshotService()
     @State private var discoveryCoordinator: DiscoveryCoordinator? = nil
     @State private var coordinatorStarted = false
@@ -22,6 +23,7 @@ struct UnifiedScannerApp: App {
     @State private var isBonjourRunning = false
     @State private var isScanRunning = false
     @State private var scanMonitorTask: Task<Void, Never>? = nil
+    @State private var portScannerStarted = false
 
     private let defaultPingConfig = PingConfig(host: "placeholder",
                                                count: 2,
@@ -62,6 +64,7 @@ var body: some Scene {
         UserDefaults.standard.removeObject(forKey: key)
         snapshotStore.removeAll()
         Task { await scanProgress.reset() }
+        restartDiscovery()
     }
 
     private func startDiscoveryIfNeeded() {
@@ -72,24 +75,29 @@ var body: some Scene {
         }
         coordinatorStarted = true
 
-#if os(macOS)
-        // macOS build: currently disable active pinging by providing no hosts in scan (SimplePingKitService still available if later enabled)
         let pingService: PingService = SimplePingKitService()
-#else
-        let pingService: PingService = SimplePingKitService()
-#endif
         let orchestrator = PingOrchestrator(pingService: pingService, mutationBus: DeviceMutationBus.shared, maxConcurrent: 32, progress: scanProgress)
         let providers: [DiscoveryProvider] = [BonjourDiscoveryProvider()]
         let arpService = ARPService()
         let coordinator = DiscoveryCoordinator(store: snapshotStore, pingOrchestrator: orchestrator, mutationBus: DeviceMutationBus.shared, providers: providers, arpService: arpService)
         discoveryCoordinator = coordinator
+        if !portScannerStarted {
+            portScannerStarted = true
+            Task { await portScanService.start() }
+        }
+        let maxHosts = defaultMaxHosts
         Task {
+            await coordinator.startBonjour()
             // Auto Bonjour start is coordinated inside DiscoveryCoordinator based on platform sequencing.
+            #if os(macOS)
+            await coordinator.startARPOnly(maxAutoEnumeratedHosts: maxHosts)
+            #else
             await coordinator.startScan(pingHosts: [],
                                         pingConfig: defaultPingConfig,
                                         mdnsWarmupSeconds: 1.0,
                                         autoEnumerateIfEmpty: true,
-                                        maxAutoEnumeratedHosts: defaultMaxHosts)
+                                        maxAutoEnumeratedHosts: maxHosts)
+            #endif
             await updateCoordinatorState()
             startScanMonitor()
         }
@@ -130,6 +138,35 @@ var body: some Scene {
             await coordinator.stopScan()
             await updateCoordinatorState()
             cancelScanMonitor()
+        }
+    }
+
+    private func restartDiscovery() {
+        let maxHosts = defaultMaxHosts
+        Task { @MainActor in
+#if os(macOS)
+            if let coordinator = discoveryCoordinator {
+                await coordinator.stopScan()
+                await coordinator.stopBonjour()
+                await coordinator.startBonjour()
+                await coordinator.startARPOnly(maxAutoEnumeratedHosts: maxHosts)
+                await updateCoordinatorState()
+                startScanMonitor()
+            }
+#else
+            if let coordinator = discoveryCoordinator {
+                await coordinator.stopScan()
+                await coordinator.stopBonjour()
+                await coordinator.startBonjour()
+                await coordinator.startScan(pingHosts: [],
+                                            pingConfig: defaultPingConfig,
+                                            mdnsWarmupSeconds: 1.0,
+                                            autoEnumerateIfEmpty: true,
+                                            maxAutoEnumeratedHosts: maxHosts)
+                await updateCoordinatorState()
+                startScanMonitor()
+            }
+#endif
         }
     }
 

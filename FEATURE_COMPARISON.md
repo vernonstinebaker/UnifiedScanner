@@ -21,7 +21,7 @@ Legend: ✅ = Present, ❌ = Absent, ⏳ = Planned / Not Yet Implemented, ☑️
 | Services Representation | Set raw types | Normalized enum | ➕ Enum + rawType | Implemented | App Models | ✅ |
 | Service Display Name Formatting | Label compiler | Mapper | ✅ Merge approaches | `ServiceDeriver` utility | App Models Utility | ✅ |
 | Service Deduplication | Limited | Port/service merge | ✅ Enhanced dedupe | Implemented (type+port) | App Models Utility | ✅ |
-| Port Scanning Engine | ❌ | ✅ Engine + model | Rebuild later | Model fields only; no scanner yet | Future Utility | ⏳ |
+| Port Scanning Engine | ❌ | ✅ Engine + model | Rebuild later | Tier-0 async scanner (22/80/443) via `PortScanService` | App Utility | ☑️ |
 | Port Model Richness | ❌ | ✅ | ✅ Keep richness | Struct present | App Models | ✅ |
 | Service Pills UI | ✅ | ✅ | ✅ Simplified | Implemented | App UI | ✅ |
 | Device Row UI | ✅ | ✅ | ✅ Local rebuild | Implemented Phase 2 | App UI | ✅ |
@@ -31,7 +31,7 @@ Legend: ✅ = Present, ❌ = Absent, ⏳ = Planned / Not Yet Implemented, ☑️
 | Xiaomi / Vendor Parsing | ✅ | ❌ | ✅ Include selective rules | Implemented | App Models Utility | ✅ |
 | OUI Lookup (data ingest) | ✅ File-based | ✅ File-based | ✅ Single `oui.csv` asset | `OUILookupService` lazily parses + caches prefixes | App Utility | ✅ |
 | ARP Discovery | ✅ | ✅ | ✅ Route dump + MAC capture | macOS only (iOS returns empty) + UDP warmup | App Utility | ☑️ |
-| Ping / Reachability | Light | ✅ SimplePing + orchestrator | ➕ Orchestrated concurrent ICMP | SimplePingKitService + PingOrchestrator + /24 auto enumeration | App Utility | ✅ |
+| Ping / Reachability | Light | ✅ SimplePing + orchestrator | ➕ Orchestrated concurrent ICMP (iOS only) | SimplePingKitService + PingOrchestrator + /24 auto enumeration; macOS relies on ARP merge only | App Utility | ✅ |
 | Bonjour / mDNS Discovery | Strong | Basic | ✅ Rebuilt browse + resolve pipeline | `BonjourBrowseService` + `BonjourResolveService` + provider emission | App Utility | ✅ |
 | SSDP / UPnP | ❌ | ✅ | Evaluate later | Deferred | Future Utility | ⏳ |
 | WS-Discovery | ❌ | ✅ | Evaluate later | Deferred | Future Utility | ⏳ |
@@ -60,14 +60,14 @@ Legend: ✅ = Present, ❌ = Absent, ⏳ = Planned / Not Yet Implemented, ☑️
 - Fingerprints Map: Structure exists; no active population layer (HTTP / SSH) yet.
 - Theme / Design Tokens: Inline styling only; no extracted token system or light mode.
 - ARP Discovery: Includes route dump + UDP warmup on macOS, absent on iOS.
+- Port Scanning Engine: Tier-0 (22/80/443) only; broader tiers and cancellation controls pending.
 
 ## Deferred / Backlog Items (Updated)
-- Port scanning engine reimplementation (tiered design, mutation emission)
+- Tiered port scanning expansion (broader port lists, cancellation)
 - SSDP / WS-Discovery evaluation & possible providers
 - Reverse DNS enrichment
 - HTTP banner + SSH host key fingerprint extraction (populate `fingerprints`)
 - Logging runtime controls (category toggles, persistence of minimum level)
-- Cross-platform ICMP parity (macOS replacement for `SimplePingKit` / entitlement path)
 - Accessibility audit (Dynamic Type, VoiceOver labeling, rotor grouping)
 - Theming abstraction (UnifiedTheme + light / high-contrast variants)
 - UI tests (navigation + detail flows)
@@ -87,17 +87,18 @@ Local-first approach keeps prior package concepts (design/UI) collapsed into loc
 
 ## Current Accuracy Audit vs Previous Version
 Removed or corrected prior overstatements:
-- (REMOVED) Claims of multi-port TCP probing & UDP fallback layer — no port scanning engine implemented yet.
-- (REMOVED) Network framework ping replacement — current implementation uses SimplePingKit on iOS and `NoopPingService` on macOS.
+- (REMOVED) Claims of multi-port TCP probing & UDP fallback layer — the new tier-0 port scanner currently targets 22/80/443 only.
+- (REMOVED) Network framework ping replacement — current implementation uses SimplePingKit on iOS and relies on ARP-only discovery on macOS.
 - (REMOVED) Unverified performance claim of detecting "1400+ devices".
 - (UPDATED) Mutation event stream + provider bus now ✅ (DeviceMutationBus in production path).
 - (UPDATED) Bonjour provider now ✅ (browse + resolve services live) rather than "mock only".
 - (UPDATED) OUI ingestion now ✅ (OUILookupService populates vendor/model hints).
 - (UPDATED) Logging marked ☑️ — actor-based logger exists but lacks runtime category toggles.
+- (UPDATED) Port scanning marked ☑️ — tier-0 scanner emits mutations and marks devices online.
 - (UPDATED) ARP feature marked partial (macOS-only) rather than fully complete.
 
 ## Immediate Adjustments Recommended for PLAN.md
-- Keep Phase 5 labelled "Partial" but annotate that macOS currently uses `NoopPingService` (ICMP parity outstanding).
+- Keep Phase 5 labelled "Partial" but note macOS discovery depends on ARP-only signals (ICMP remains disabled in sandboxed builds).
 - Mark task 29 (provider → mutation bus) as complete.
 - Update logging tasks to reference `LoggingService` follow-up work (runtime controls, categories).
 - Remove unverified large-scale performance test claim or move to future validation task.

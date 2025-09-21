@@ -38,8 +38,8 @@
 20. [x] Integrate store with ContentView observable state.  
 
 ## Phase 5: Discovery Pipeline (PARTIAL)
-Ping (SimplePingKit on iOS; `NoopPingService` placeholder on macOS), ARP (macOS route dump), and Bonjour browse/resolve now feed the store via the `DeviceMutationBus` with start/stop controls. Port scanning and richer logging controls remain outstanding.
-21a. [x] `PingService` protocol + `PingMeasurement`.  
+Ping via SimplePingKit on iOS, ARP-only sweeps on macOS, and Bonjour browse/resolve now feed the store via the `DeviceMutationBus` with start/stop controls. Tier-0 port scanning runs for both platforms; richer logging controls and extended port tiers remain outstanding.
+21a. [x] `PingService` protocol + `PingMeasurement` (iOS only)  
 21b. [x] `SimplePingKitService` ICMP implementation.  
 21c. [x] `PingOrchestrator` (32 concurrent hosts throttle).  
 21d. [x] RTT updates via `SnapshotService.applyPing`.  
@@ -47,12 +47,14 @@ Ping (SimplePingKit on iOS; `NoopPingService` placeholder on macOS), ARP (macOS 
 23. [x] `DiscoveryCoordinator` (auto /24 enumeration, orchestrates ping + ARP).  
 24. [x] `ARPService` route dump reader + MAC merge (macOS only).  
 25. [x] UDP warmup / broadcast population (macOS) before ARP read.  
+26. [~] Logging: `LoggingService` actor with level filtering; needs runtime toggles / categories.  
+27. [~] Port scanning engine (tier 0 ports 22/80/443 implemented; expand tiers + cancellation pending).  
 28. [x] Real mDNS provider (NetServiceBrowser) — integrated with toolbar controls and sanitisation.  
 29. [x] Mutation bus decoupling (providers emit `DeviceMutation` events via `DeviceMutationBus`).  
-30. [~] Logging: `LoggingService` actor with level filtering; needs runtime toggles / categories. 
-31.  [ ] Port scanning engine (tiered) — NOT IMPLEMENTED.  
+30. [ ] Large-scale performance validation (synthetic > /24) — NOT RUN.  
 
 ## Phase 6: Polishing, Expansion & Docs (macOS + iOS + iPadOS)
+31. [ ] Inline doc comments for public model types & derived properties.  
 32. [x] Update `PROJECT_OVERVIEW.md` with concurrency + discovery corrections.  
 33. [ ] (If needed) Add architecture notes section (no new file unless required).  
 34. [ ] Add tests: ARP MAC merge, RTT update path, multi-source discovery union, classification reasoning ordering.  
@@ -62,13 +64,12 @@ Ping (SimplePingKit on iOS; `NoopPingService` placeholder on macOS), ARP (macOS 
 38. [ ] Settings runtime toggles (logging, discovery providers, port tiers).  
 39. [x] OUI ingestion (`OUILookupService` parses `oui.csv`, provides vendor prefixes).  
 40. [x] mDNS provider (service discovery + TXT parsing).  
-41. [ ] Port scanner tier 0/1 implementation (22,80,443 first).  
+41. [x] Port scanner tier 0/1 implementation (22,80,443 first).  
 42. [ ] Reverse DNS enrichment (optional).  
-43. [ ] HTTP / SSH fingerprint population (fill `fingerprints`). 
-44. [ ] Enhance information using Fingerprints, particularly device type.
+43. [ ] HTTP / SSH fingerprint population (fill `fingerprints`).  
 44. [ ] Accessibility pass (labels for row/pills/ports, Dynamic Type audit).  
 45. [ ] Theming extraction (UnifiedTheme struct + light mode tokens).  
-46. [ ] UI tests (navigation + detail). 
+46. [ ] UI tests (navigation + detail).  
 
 ## Phase 7: Cross-Platform & Enrichment (Planned)
 47. [ ] Extended port scanner tiers (configurable list + cancellation).  
@@ -89,25 +90,23 @@ Ping (SimplePingKit on iOS; `NoopPingService` placeholder on macOS), ARP (macOS 
 - Avoid premature package modularization (revisit after stable discovery providers).  
 
 ## General logic and flow
-- On start, application loads KV store and populates Device list, with devices listed offline 
-- On macOS (only), ARP service reads the ARP table and mutates the Device add devices -- don't toggle online) 
-- On iOS (only) Ping scans and mutates the device list (add devices, toggle online)
-- On both iOS and macOS, Bonjour scanning starts. Bonjour scan mutates the device list (add devices, add servicess, toggle online).
-- On both iOS and macOS, common ports are scanned which mutate the device list (adding services, toggling online if not already online)
-- Pending: do we want to enrich with other services?
+- On launch the `SnapshotService` restores any persisted devices, forces them offline (`isOnlineOverride = false`), and begins listening to the `DeviceMutationBus` stream.
+- `DiscoveryCoordinator` wires providers into the shared mutation bus so all discovery signals are merged asynchronously by the store.
+- On macOS the `ARPService` seeds MAC data (and creates devices when none exist) using the route table and UDP warmups; ICMP is skipped entirely.
+- On iOS the `PingOrchestrator` backed by `SimplePingKitService` enumerates hosts, emits RTT updates, and marks devices online when successful.
+- `BonjourDiscoveryProvider` (browse + resolve) runs on both platforms and contributes service-annotated devices through the mutation bus.
+- `PortScanService` probes tier-0 ports (22/80/443) as soon as devices are discovered, emitting mutations that add services/open ports and mark responsive devices online.
 
 ## Open Questions (Still Relevant)
 - IPv6 prioritization adjustments beyond current heuristic?  
 - Historical RTT sample window vs latest-only field?  
 - Classification reasons: single concatenated vs structured array (future)?  
 
-## Deferred Backlog (Refined)
-- Large-scale performance validation (synthetic > /24) — NOT RUN.  (optional)
-- Tiered port scanner & mutation emission.  
+- Large-scale performance validation (synthetic > /24) — NOT RUN (still optional).  
+- Tiered port scanner expansion (additional tiers, cancellation) & mutation emission tuning.
 - HTTP/SSH fingerprint enrichment.  
 - Reverse DNS provider.  
 - Structured logging runtime controls & feature flag surface.  
-- Cross-platform ping parity (macOS-friendly PingService).  
 - Accessibility & theming improvements.  
 - UI test coverage.  
 - SnapshotService decomposition (DeviceStoreActor + DeviceMutationBroadcaster + facade).  
@@ -115,7 +114,7 @@ Ping (SimplePingKit on iOS; `NoopPingService` placeholder on macOS), ARP (macOS 
 - Throwing/Result-based error surfaces for network/persistence services (starting with ARPService).  
 
 ## Immediate Next Action
-41. [ ] Port scanner tier 0/1 implementation (22,80,443 first).  
+Add runtime logging controls (category toggles, persisted minimum level) and surface them via settings so discovery (ping/ARP/port scan) chatter can be tuned without rebuilds.
 
 ---
 (End of PLAN.md)

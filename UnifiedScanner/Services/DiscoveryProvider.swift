@@ -399,6 +399,28 @@ actor DiscoveryCoordinator {
     func currentState() -> (bonjour: Bool, scanning: Bool) {
         (providersRunning, scanRunning)
     }
+#if os(macOS)
+    func startARPOnly(maxAutoEnumeratedHosts: Int) async {
+        guard scanTask == nil else { return }
+        scanRunning = true
+        scanTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                await self.pingOrchestrator.currentProgress()?.reset()
+                try Task.checkCancellation()
+                await self.runEnumerationAndPing(pingHosts: [],
+                                                 pingConfig: PingConfig(host: "arp-only", count: 1, interval: 1.0, timeoutPerPing: 1.0),
+                                                 autoEnumerateIfEmpty: false,
+                                                 maxAutoEnumeratedHosts: maxAutoEnumeratedHosts)
+            } catch is CancellationError {
+                await self.pingOrchestrator.currentProgress()?.reset()
+            } catch {
+                LoggingService.warn("arp-only task error: \(error)")
+            }
+            await self.finishScan()
+        }
+    }
+#endif
 }
 
 // MARK: - Internal helper

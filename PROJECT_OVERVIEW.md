@@ -5,7 +5,7 @@ UnifiedScanner is a greenfield consolidation of network scanning capabilities fr
 
 ## Vision (Pragmatic Scope)
 Build a single app that:
-- Discovers devices using implemented mechanisms (ICMP ping via SimplePingKit on iOS, `NoopPingService` placeholder on macOS, ARP table on macOS, mDNS/Bonjour browsing) and planned extensions (port scanning, reverse DNS, SSDP, WS-Discovery).
+- Discovers devices using implemented mechanisms (ICMP ping via SimplePingKit on iOS, ARP table on macOS, mDNS/Bonjour browsing) and planned extensions (port scanning, reverse DNS, SSDP, WS-Discovery). macOS deliberately omits ICMP because sandboxed apps cannot issue raw pings without elevated entitlements.
 - Normalizes discovery signals into a canonical `Device` model supporting multi-IP, services, ports, vendor info, and classification.
 - Classifies devices (form factor, confidence, rationale) using heuristics from hostname, vendor, services, and ports.
 - Provides actionable views of services (HTTP/SSH/AirPlay) with contextual interactions.
@@ -79,28 +79,26 @@ No premature SPM modularization; iterate locally until discovery providers stabi
 - netscan: Service/port normalization, ping orchestration.
 
 ## Implemented Discovery
-- **ICMP Ping:** SimplePingKitService in async stream with PingOrchestrator throttling (iOS builds). macOS currently uses a `NoopPingService` pending an entitlement-friendly replacement.
+- **ICMP Ping:** SimplePingKitService in async stream with PingOrchestrator throttling (iOS builds). macOS intentionally omits ICMP (sandboxed apps lack the required entitlements) and instead relies on ARP presence.
 - **Auto-Enumeration:** LocalSubnetEnumerator for /24 hosts when no list provided.
 - **ARP (macOS):** Route table dump + UDP warmup; merges MACs into devices.
 - **Bonjour / mDNS:** `BonjourBrowseService` + `BonjourResolveService` feed `BonjourDiscoveryProvider`, emitting devices through the mutation bus.
 - **Mutation Bus & Store:** Discovery providers emit `DeviceMutation` events via `DeviceMutationBus`; `SnapshotService` applies them and exposes `mutationStream`.
 - **Persistence:** iCloud KVS + UserDefaults mirror with environment flag for clearing on launch.
+- **Port Scanning (Tier 0):** `PortScanService` listens to mutation events and probes ports 22/80/443, adding services/open ports and marking hosts online when responsive.
 
 Not Implemented (Planned):
-- Port scanning (TCP multi-port tiers).
 - SSDP / WS-Discovery.
 - Reverse DNS enrichment.
 - HTTP/SSH fingerprinting pipeline.
-- Network framework / exec-based ping fallback for macOS.
 - Logging runtime toggles & category controls (logger exists).
 - Feature flags for discovery/logging toggles.
 
 ## Planned Enhancements
 **Short-Term:**
-- Mac-compatible PingService (replace `NoopPingService`).
-- Tier-0 port scanner (22/80/443) feeding DeviceMutationBus.
 - Logging runtime controls + feature flag surface.
 - Accessibility improvements (VoiceOver labels, Dynamic Type audit).
+- Port scanning tier expansion & cancellation controls.
 
 **Medium-Term:**
 - SSDP/WS-Discovery.
@@ -131,17 +129,16 @@ Not Implemented (Planned):
 - DeviceMutationBus buffering/backpressure (multi-subscriber + late subscriber scenarios).
 - Bonjour browse/resolve integration with simulated NetServiceBrowser streams.
 - Classification regression for OUI + fingerprint vendor inference combinations.
-- Port scanner scheduling/cancellation (once feature lands).
+- Port scanner tier scheduling/cancellation (beyond tier 0).
 
 ## Reference Policy
 Legacy projects read-only; adapt with attribution. Modularize post-stabilization.
 
 ## Next Steps
-1. Ship a macOS-compatible PingService (Network framework or privileged helper) to replace `NoopPingService`.
-2. Add runtime logging controls (categories, minimum level persistence) & expose as feature flags.
-3. Implement tier-0 port scanner (22/80/443) feeding DeviceMutationBus.
-4. Expand tests for DeviceMutationBus buffering & Bonjour browse/resolve integration.
-5. Kick off accessibility audit (VoiceOver labels, Dynamic Type stress).
+1. Add runtime logging controls (categories, minimum level persistence) & expose as feature flags.
+2. Expand port scanning to additional tiers with cancellation/backoff controls.
+3. Expand tests for DeviceMutationBus buffering & Bonjour browse/resolve integration.
+4. Kick off accessibility audit (VoiceOver labels, Dynamic Type stress).
 
 ---
 Synchronized with PLAN.md and FEATURE_COMPARISON.md; resolve discrepancies on feature landing.
