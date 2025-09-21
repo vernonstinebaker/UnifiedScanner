@@ -276,9 +276,8 @@ public actor PingOrchestrator {
                 LoggingService.debug("measurement #\(mc) host=\(host) status=\(m.status)")
                 if case .success = m.status { sawSuccessFlag = true }
 
-                // Create a mutation for this ping measurement
-                let mutation = await createPingMutation(for: m)
-                await mutationBusRef.emit(mutation)
+                // Emit raw ping measurement; SnapshotService will decide on device changes
+                await mutationBusRef.emit(.ping(m))
             }
             let finalCount = localMeasurementCount
             let success = sawSuccessFlag
@@ -288,25 +287,6 @@ public actor PingOrchestrator {
         }
     }
 
-    private func createPingMutation(for measurement: PingMeasurement) async -> DeviceMutation {
-        // Create a minimal device for the mutation
-        let device = Device(primaryIP: measurement.host, ips: [measurement.host], discoverySources: [.ping])
-
-        // Create the mutation based on the measurement status
-        switch measurement.status {
-        case .success(let rtt):
-            var deviceWithRTT = device
-            deviceWithRTT.rttMillis = rtt
-            deviceWithRTT.lastSeen = measurement.timestamp
-            deviceWithRTT.isOnlineOverride = nil
-            let changedFields: Set<DeviceField> = [.rttMillis, .lastSeen, .isOnlineOverride, .discoverySources]
-            return .change(DeviceChange(before: nil, after: deviceWithRTT, changed: changedFields, source: .ping))
-        case .timeout, .unreachable, .error:
-            // For non-success cases, we don't create mutations as they would clutter the UI
-            // The store will handle filtering these out
-            return .change(DeviceChange(before: nil, after: device, changed: [], source: .ping))
-        }
-    }
 
     private func didFinish(host: String, sawSuccess: Bool) async {
         active.remove(host)
@@ -321,6 +301,7 @@ public actor PingOrchestrator {
 
 // MARK: - DiscoveryCoordinator
 actor DiscoveryCoordinator {
+    private var autoBonjourStarted = false
     private let store: SnapshotService
     private let pingOrchestrator: PingOrchestrator
     private let mutationBus: DeviceMutationBus
@@ -426,6 +407,11 @@ private extension DiscoveryCoordinator {
         guard !Task.isCancelled else { return }
         await self.pingOrchestrator.currentProgress()?.setPhase(.arpPriming)
 #if os(macOS)
+        // macOS: start Bonjour immediately after initial ARP seed if not already started
+        if !providersRunning && !autoBonjourStarted {
+            autoBonjourStarted = true
+            await startBonjour()
+        }
         let initialArp = await self.arpService.getMACAddresses(for: [])
         for (ip, mac) in initialArp {
             let device = Device(primaryIP: ip, ips: [ip], macAddress: mac, discoverySources: [.arp], firstSeen: Date(), lastSeen: Date())
@@ -525,6 +511,13 @@ private extension DiscoveryCoordinator {
     }
 
     func finishScan() async {
+        // iOS/iPadOS: if Bonjour not started yet, auto start now after ping cycle
+#if os(iOS) || os(tvOS) || os(watchOS) || os(visionOS) || os(macCatalyst)
+        if !providersRunning && !autoBonjourStarted {
+            autoBonjourStarted = true
+            await startBonjour()
+        }
+#endif
         scanRunning = false
         scanTask = nil
     }

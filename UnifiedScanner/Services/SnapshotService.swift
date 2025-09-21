@@ -24,6 +24,7 @@ public struct DeviceChange: Sendable {
 public enum DeviceMutation: Sendable {
     case snapshot([Device])
     case change(DeviceChange)
+    case ping(PingMeasurement)
 }
 
 extension DeviceField {
@@ -148,6 +149,9 @@ private func startMutationListener() {
          case .change(let change):
              // Apply the change using existing upsert logic
              await self.upsert(change.after, source: change.source)
+         case .ping(let measurement):
+             // Delegate to ping logic (creates device only on success)
+             await self.applyPing(measurement)
          }
      }
      
@@ -493,6 +497,13 @@ private extension SnapshotService {
         if trimmed.hasPrefix("127.") { return false }
         if trimmed == "::1" { return false }
         if trimmed.contains(":") { return true }
+        // Exclude IPv4 broadcast addresses for detected local networks
+        if let value = IPv4Parser.addressToUInt32(trimmed) {
+            for net in localIPv4Networks {
+                let broadcast = (net.networkAddress & net.netmask) | (~net.netmask)
+                if value == broadcast { return false }
+            }
+        }
         return isLocalIPv4(trimmed)
     }
 

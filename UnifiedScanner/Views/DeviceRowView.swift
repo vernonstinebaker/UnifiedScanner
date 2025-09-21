@@ -2,7 +2,7 @@ import SwiftUI
 
 struct DeviceRowView: View {
     let device: Device
-    // // let isSelected: Bool = false
+    var isSelected: Bool = false
 
     private var discoverySources: [DiscoverySource] {
         device.discoverySources
@@ -24,11 +24,18 @@ struct DeviceRowView: View {
             indicatorColumn
         }
 .padding(Theme.space(.lg))
-.background(Theme.color(.bgCard))
+.background(
+    RoundedRectangle(cornerRadius: Theme.radius(.xl), style: .continuous)
+        .fill(Theme.color(.bgCard))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.radius(.xl), style: .continuous)
+                .fill(Color.white.opacity(isSelected ? 0.035 : 0))
+        )
+)
 .cornerRadius(Theme.radius(.xl))
 .overlay(
     RoundedRectangle(cornerRadius: Theme.radius(.xl))
-        .stroke(Theme.color(.separator), lineWidth: 1)
+        .stroke(Theme.color(.separator), lineWidth: isSelected ? 2 : 1)
 )
     }
 

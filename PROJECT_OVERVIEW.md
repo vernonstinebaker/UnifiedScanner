@@ -5,7 +5,7 @@ UnifiedScanner is a greenfield consolidation of network scanning capabilities fr
 
 ## Vision (Pragmatic Scope)
 Build a single app that:
-- Discovers devices using implemented mechanisms (ICMP ping via SimplePingKit, ARP table on macOS, mDNS/Bonjour browsing) and planned extensions (port scanning, reverse DNS, SSDP, WS-Discovery).
+- Discovers devices using implemented mechanisms (ICMP ping via SimplePingKit on iOS, `NoopPingService` placeholder on macOS, ARP table on macOS, mDNS/Bonjour browsing) and planned extensions (port scanning, reverse DNS, SSDP, WS-Discovery).
 - Normalizes discovery signals into a canonical `Device` model supporting multi-IP, services, ports, vendor info, and classification.
 - Classifies devices (form factor, confidence, rationale) using heuristics from hostname, vendor, services, and ports.
 - Provides actionable views of services (HTTP/SSH/AirPlay) with contextual interactions.
@@ -59,6 +59,8 @@ public struct Device: Identifiable, Hashable, Codable, Sendable {
 ```
 (See source for enums/structs like `NetworkService`, `Port`, `DiscoverySource`.)
 
+Vendor enrichment pulls from multiple signals: explicit vendor values, fingerprint extraction (TXT records), and OUI prefix lookup via `OUILookupService` (default-initialised at app launch).
+
 ### Identity Resolution
 Merge priority for `Device.id`:
 1. Normalized MAC address
@@ -77,28 +79,28 @@ No premature SPM modularization; iterate locally until discovery providers stabi
 - netscan: Service/port normalization, ping orchestration.
 
 ## Implemented Discovery
-- **ICMP Ping:** SimplePingKitService in async stream; PingOrchestrator throttles to 32 concurrent.
+- **ICMP Ping:** SimplePingKitService in async stream with PingOrchestrator throttling (iOS builds). macOS currently uses a `NoopPingService` pending an entitlement-friendly replacement.
 - **Auto-Enumeration:** LocalSubnetEnumerator for /24 hosts when no list provided.
 - **ARP (macOS):** Route table dump + UDP warmup; merges MACs into devices.
-- **Mutation Stream:** SnapshotService.mutationStream for snapshots and DeviceChange events.
-- **Persistence:** iCloud KVS + UserDefaults; env var for clearing.
+- **Bonjour / mDNS:** `BonjourBrowseService` + `BonjourResolveService` feed `BonjourDiscoveryProvider`, emitting devices through the mutation bus.
+- **Mutation Bus & Store:** Discovery providers emit `DeviceMutation` events via `DeviceMutationBus`; `SnapshotService` applies them and exposes `mutationStream`.
+- **Persistence:** iCloud KVS + UserDefaults mirror with environment flag for clearing on launch.
 
 Not Implemented (Planned):
-- Port scanning (TCP multi-port).
-- Real mDNS/Bonjour (mock only).
-- Reverse DNS, SSDP, WS-Discovery.
-- HTTP/SSH fingerprinting.
-- Network framework ping fallback.
-- Structured logging (ad-hoc prints).
-- Provider event bus (direct upserts).
+- Port scanning (TCP multi-port tiers).
+- SSDP / WS-Discovery.
+- Reverse DNS enrichment.
+- HTTP/SSH fingerprinting pipeline.
+- Network framework / exec-based ping fallback for macOS.
+- Logging runtime toggles & category controls (logger exists).
+- Feature flags for discovery/logging toggles.
 
 ## Planned Enhancements
 **Short-Term:**
-- Port scanning (tiers: 80/443/22).
-- OUI vendor lookup (oui.csv ingestion).
-- Structured logging (categories: ping, mDNS).
-- Provider decoupling (mutation events).
-- Accessibility (VoiceOver, Dynamic Type).
+- Mac-compatible PingService (replace `NoopPingService`).
+- Tier-0 port scanner (22/80/443) feeding DeviceMutationBus.
+- Logging runtime controls + feature flag surface.
+- Accessibility improvements (VoiceOver labels, Dynamic Type audit).
 
 **Medium-Term:**
 - SSDP/WS-Discovery.
@@ -114,11 +116,11 @@ Not Implemented (Planned):
 
 ## Concurrency & Cancellation (Planned)
 - Structured task groups in PingOrchestrator.
-- DiscoveryCoordinator shutdown.
-- Provider emissions to mutation bus.
+- DiscoveryCoordinator shutdown / cancellation polish.
 
-## Logging (Planned)
-ScanLogger with categories (ping, ARP, mDNS); FeatureFlag gating.
+## Logging (Next Improvements)
+- Extend `LoggingService` with runtime category toggles & persisted minimum level.
+- Align logging categories with discovery services (ping / arp / mdns).
 
 ## Accessibility (Planned)
 - Row labels: "<FormFactor>, <Hostname/Vendor>, IP <BestIP>, <n> services, RTT <x>ms".
@@ -126,20 +128,20 @@ ScanLogger with categories (ping, ARP, mDNS); FeatureFlag gating.
 - Dynamic Type to XXXL; macOS Large Content Viewer.
 
 ## Testing Priorities
-- Merge: Multi-source (ping+ARP), RTT updates, re-classification.
-- mDNS: Service/TXT parsing.
-- Port scanner: Scheduling, cancellation.
-- OUI: Lookup accuracy.
+- DeviceMutationBus buffering/backpressure (multi-subscriber + late subscriber scenarios).
+- Bonjour browse/resolve integration with simulated NetServiceBrowser streams.
+- Classification regression for OUI + fingerprint vendor inference combinations.
+- Port scanner scheduling/cancellation (once feature lands).
 
 ## Reference Policy
 Legacy projects read-only; adapt with attribution. Modularize post-stabilization.
 
 ## Next Steps
-1. Logging facade + flags.
-2. Provider mutation bus.
-3. mDNS provider + TXT.
-4. Tier-0 ports.
-5. OUI + vendor tests.
+1. Ship a macOS-compatible PingService (Network framework or privileged helper) to replace `NoopPingService`.
+2. Add runtime logging controls (categories, minimum level persistence) & expose as feature flags.
+3. Implement tier-0 port scanner (22/80/443) feeding DeviceMutationBus.
+4. Expand tests for DeviceMutationBus buffering & Bonjour browse/resolve integration.
+5. Kick off accessibility audit (VoiceOver labels, Dynamic Type stress).
 
 ---
 Synchronized with PLAN.md and FEATURE_COMPARISON.md; resolve discrepancies on feature landing.

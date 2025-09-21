@@ -73,7 +73,8 @@ var body: some Scene {
         coordinatorStarted = true
 
 #if os(macOS)
-        let pingService: PingService = NoopPingService()
+        // macOS build: currently disable active pinging by providing no hosts in scan (SimplePingKitService still available if later enabled)
+        let pingService: PingService = SimplePingKitService()
 #else
         let pingService: PingService = SimplePingKitService()
 #endif
@@ -83,7 +84,7 @@ var body: some Scene {
         let coordinator = DiscoveryCoordinator(store: snapshotStore, pingOrchestrator: orchestrator, mutationBus: DeviceMutationBus.shared, providers: providers, arpService: arpService)
         discoveryCoordinator = coordinator
         Task {
-            await coordinator.startBonjour()
+            // Auto Bonjour start is coordinated inside DiscoveryCoordinator based on platform sequencing.
             await coordinator.startScan(pingHosts: [],
                                         pingConfig: defaultPingConfig,
                                         mdnsWarmupSeconds: 1.0,

@@ -59,11 +59,11 @@ ForEach(store.devices, id: \.id) { device in
         selectedID = device.id
         showDetailSheet = true
     } label: {
-        DeviceRowView(device: device)
+        DeviceRowView(device: device, isSelected: false)
     }
     .buttonStyle(.plain)
-    .listRowInsets(EdgeInsets())
-    .listRowBackground(Color.clear)
+.listRowInsets(EdgeInsets())
+                        .listRowBackground(Theme.color(.bgRoot))
 }
                     }
                     .scrollContentBackground(.hidden)
@@ -125,68 +125,79 @@ ForEach(store.devices, id: \.id) { device in
 
     private var regularLayout: some View {
         NavigationSplitView {
-            VStack(alignment: .leading, spacing: Theme.space(.md)) {
-                progressSection
-                    .padding(.horizontal, Theme.space(.lg))
-                    .padding(.top, Theme.space(.lg))
-                ZStack(alignment: .bottom) {
-                    List(selection: $selectedID) {
-ForEach(store.devices, id: \.id) { device in
-    NavigationLink(value: device.id) {
-        DeviceRowView(device: device)
-    }
-    .listRowInsets(EdgeInsets())
-    .listRowBackground(Color.clear)
-}
-                    }
-                    .scrollContentBackground(.hidden)
-                    .listStyle(.plain)
-                    .background(Theme.color(.bgRoot))
-                    .padding(.bottom, Theme.space(.xxxl))
-
-                    summaryFooter
-                        .padding(.horizontal, Theme.space(.lg))
-                        .padding(.bottom, Theme.space(.lg))
-                }
-            }
-            .background(Theme.color(.bgRoot))
-            .navigationDestination(for: String.self) { id in
-                if let device = store.devices.first(where: { $0.id == id }) {
-                    UnifiedDeviceDetail(device: device, settings: settings)
-                }
-            }
-            .navigationTitle("Devices")
-            .toolbar {
-                ToolbarItemGroup(placement: .primaryAction) {
-                    Button(action: { isBonjourRunning ? stopBonjour() : startBonjour() }) {
-                        Label(bonjourButtonLabel, systemImage: bonjourButtonIcon)
-                    }
-#if os(macOS)
-                    .help(bonjourButtonLabel)
-#endif
-                    Button(action: { isScanRunning ? stopScan() : startScan() }) {
-                        Label(scanButtonLabel, systemImage: scanButtonIcon)
-                    }
-#if os(macOS)
-                    .help(scanButtonLabel)
-#endif
-                    Button(action: saveSnapshot) {
-                        Label("Save", systemImage: "externaldrive")
-                    }
-#if os(macOS)
-                    .help("Persist snapshot now")
-#endif
-                    Button { showSettings = true } label: { Image(systemName: "gearshape") }
-                        .accessibilityLabel("Settings")
-                }
-            }
-            .sheet(isPresented: $showSettings) {
-                SettingsView(settings: settings, store: store)
-            }
-#if os(macOS)
-            .toolbarColorScheme(.dark)
-#endif
+            sidebar
         } detail: {
+            detail
+        }
+        .background(Theme.color(.bgRoot))
+    }
+
+    private var sidebar: some View {
+        VStack(alignment: .leading, spacing: Theme.space(.md)) {
+            progressSection
+                .padding(.horizontal, Theme.space(.lg))
+                .padding(.top, Theme.space(.lg))
+            ZStack(alignment: .bottom) {
+                List(selection: $selectedID) {
+                    ForEach(store.devices, id: \.id) { device in
+                        NavigationLink(value: device.id) {
+                            DeviceRowView(device: device, isSelected: selectedID == device.id)
+                        }
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Theme.color(.bgRoot))
+                    }
+                }
+                .scrollContentBackground(.hidden)
+                .listStyle(.plain)
+                .background(Theme.color(.bgRoot))
+                .padding(.bottom, Theme.space(.xxxl))
+
+                summaryFooter
+                    .padding(.horizontal, Theme.space(.lg))
+                    .padding(.bottom, Theme.space(.lg))
+            }
+        }
+        .background(Theme.color(.bgRoot))
+        .navigationDestination(for: String.self) { id in
+            if let device = store.devices.first(where: { $0.id == id }) {
+                UnifiedDeviceDetail(device: device, settings: settings)
+            }
+        }
+        .navigationTitle("Devices")
+        .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button(action: { isBonjourRunning ? stopBonjour() : startBonjour() }) {
+                    Label(bonjourButtonLabel, systemImage: bonjourButtonIcon)
+                }
+#if os(macOS)
+                .help(bonjourButtonLabel)
+#endif
+                Button(action: { isScanRunning ? stopScan() : startScan() }) {
+                    Label(scanButtonLabel, systemImage: scanButtonIcon)
+                }
+#if os(macOS)
+                .help(scanButtonLabel)
+#endif
+                Button(action: saveSnapshot) {
+                    Label("Save", systemImage: "externaldrive")
+                }
+#if os(macOS)
+                .help("Persist snapshot now")
+#endif
+                Button { showSettings = true } label: { Image(systemName: "gearshape") }
+                    .accessibilityLabel("Settings")
+            }
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView(settings: settings, store: store)
+        }
+#if os(macOS)
+        .toolbarColorScheme(.dark)
+#endif
+    }
+
+    private var detail: some View {
+        Group {
             if let id = selectedID, let device = store.devices.first(where: { $0.id == id }) {
                 UnifiedDeviceDetail(device: device, settings: settings)
             } else {
@@ -199,7 +210,6 @@ ForEach(store.devices, id: \.id) { device in
                 .background(Theme.color(.bgRoot))
             }
         }
-        .background(Theme.color(.bgRoot))
     }
 
     private var progressText: String {

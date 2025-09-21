@@ -48,16 +48,7 @@ public protocol PingService: Sendable {
     func pingStream(config: PingConfig) async -> AsyncStream<PingMeasurement>
 }
 
-#if os(macOS)
-public final class NoopPingService: PingService {
-    public init() {}
-    public func pingStream(config: PingConfig) async -> AsyncStream<PingMeasurement> {
-        AsyncStream { continuation in
-            continuation.finish()
-        }
-    }
-}
-#endif
+
 
 public final class SimplePingKitService: PingService {
     public init() {}

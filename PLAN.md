@@ -14,7 +14,7 @@
 2. [x] Implement `Device.swift` unified model & supporting enums / structs.  
 3. [x] Add `ServiceDeriver` & port/service normalization utilities.  
 4. [x] Add `IPHeuristics` best display IP logic.  
-5. [x] Provide `Device+Mock.swift` mock devices.  
+5. [x] Provide `Device+Mock.swift` mock devices (in/for Tests and testing only).
 6. [x] Unit tests: identity selection, online status, service dedupe ordering, mock generation.  
 
 ## Phase 2: UI Integration (List & Detail)
@@ -38,39 +38,37 @@
 20. [x] Integrate store with ContentView observable state.  
 
 ## Phase 5: Discovery Pipeline (PARTIAL)
-Ping, ARP (macOS), and Bonjour browsing/resolution are now wired through the unified store with start/stop controls. Port scanning and structured logging remain outstanding.
+Ping (SimplePingKit on iOS; `NoopPingService` placeholder on macOS), ARP (macOS route dump), and Bonjour browse/resolve now feed the store via the `DeviceMutationBus` with start/stop controls. Port scanning and richer logging controls remain outstanding.
 21a. [x] `PingService` protocol + `PingMeasurement`.  
 21b. [x] `SimplePingKitService` ICMP implementation.  
 21c. [x] `PingOrchestrator` (32 concurrent hosts throttle).  
-21d. [ ] Network framework or exec-based alternate PingService (currently none; SimplePingKit only).  
-21e. [x] RTT updates via `SnapshotService.applyPing`.  
+21d. [x] RTT updates via `SnapshotService.applyPing`.  
 22. [x] Define `DiscoveryProvider` protocol + mock mDNS provider.  
 23. [x] `DiscoveryCoordinator` (auto /24 enumeration, orchestrates ping + ARP).  
 24. [x] `ARPService` route dump reader + MAC merge (macOS only).  
 25. [x] UDP warmup / broadcast population (macOS) before ARP read.  
-26. [~] Logging: env-var gated prints (`PING_INFO_LOG`, `ARP_INFO_LOG`) — structured logger pending.  
-27. [ ] Port scanning engine (tiered) — NOT IMPLEMENTED.  
 28. [x] Real mDNS provider (NetServiceBrowser) — integrated with toolbar controls and sanitisation.  
-29. [ ] Mutation bus decoupling (providers emit events, not direct store upserts).  
-30. [ ] Large-scale performance validation (synthetic > /24) — NOT RUN.  
+29. [x] Mutation bus decoupling (providers emit `DeviceMutation` events via `DeviceMutationBus`).  
+30. [~] Logging: `LoggingService` actor with level filtering; needs runtime toggles / categories. 
+31.  [ ] Port scanning engine (tiered) — NOT IMPLEMENTED.  
 
 ## Phase 6: Polishing, Expansion & Docs (macOS + iOS + iPadOS)
-31. [ ] Inline doc comments for public model types & derived properties.  
-32. [ ] Update `PROJECT_OVERVIEW.md` with concurrency + discovery corrections.  
+32. [x] Update `PROJECT_OVERVIEW.md` with concurrency + discovery corrections.  
 33. [ ] (If needed) Add architecture notes section (no new file unless required).  
 34. [ ] Add tests: ARP MAC merge, RTT update path, multi-source discovery union, classification reasoning ordering.  
 35. [ ] CHANGELOG style summary covering Phases 1–5 partial.  
 36. [ ] Introduce `ScanLogger` abstraction (category-based, env/flag controlled).  
-37. [ ] Provider → mutation bus refactor (`DeviceMutation` events).  
-38. [ ] FeatureFlag enum & runtime toggles (logging, discovery providers, port tiers).  
-39. [ ] OUI ingestion (parse `oui.csv`, build prefix map).  
+37. [x] Provider → mutation bus refactor (`DeviceMutation` events).  
+38. [ ] Settings runtime toggles (logging, discovery providers, port tiers).  
+39. [x] OUI ingestion (`OUILookupService` parses `oui.csv`, provides vendor prefixes).  
 40. [x] mDNS provider (service discovery + TXT parsing).  
 41. [ ] Port scanner tier 0/1 implementation (22,80,443 first).  
 42. [ ] Reverse DNS enrichment (optional).  
-43. [ ] HTTP / SSH fingerprint population (fill `fingerprints`).  
+43. [ ] HTTP / SSH fingerprint population (fill `fingerprints`). 
+44. [ ] Enhance information using Fingerprints, particularly device type.
 44. [ ] Accessibility pass (labels for row/pills/ports, Dynamic Type audit).  
 45. [ ] Theming extraction (UnifiedTheme struct + light mode tokens).  
-46. [ ] UI tests (navigation + detail).  
+46. [ ] UI tests (navigation + detail). 
 
 ## Phase 7: Cross-Platform & Enrichment (Planned)
 47. [ ] Extended port scanner tiers (configurable list + cancellation).  
@@ -90,17 +88,26 @@ Ping, ARP (macOS), and Bonjour browsing/resolution are now wired through the uni
 - Prefer value semantics for domain (structs) & actor isolation for stateful services.  
 - Avoid premature package modularization (revisit after stable discovery providers).  
 
+## General logic and flow
+- On start, application loads KV store and populates Device list, with devices listed offline 
+- On macOS (only), ARP service reads the ARP table and mutates the Device add devices -- don't toggle online) 
+- On iOS (only) Ping scans and mutates the device list (add devices, toggle online)
+- On both iOS and macOS, Bonjour scanning starts. Bonjour scan mutates the device list (add devices, add servicess, toggle online).
+- On both iOS and macOS, common ports are scanned which mutate the device list (adding services, toggling online if not already online)
+- Pending: do we want to enrich with other services?
+
 ## Open Questions (Still Relevant)
 - IPv6 prioritization adjustments beyond current heuristic?  
 - Historical RTT sample window vs latest-only field?  
 - Classification reasons: single concatenated vs structured array (future)?  
 
 ## Deferred Backlog (Refined)
+- Large-scale performance validation (synthetic > /24) — NOT RUN.  (optional)
 - Tiered port scanner & mutation emission.  
-- OUI ingestion + vendor lookup caching.  
 - HTTP/SSH fingerprint enrichment.  
 - Reverse DNS provider.  
-- Provider → mutation bus & structured logger.  
+- Structured logging runtime controls & feature flag surface.  
+- Cross-platform ping parity (macOS-friendly PingService).  
 - Accessibility & theming improvements.  
 - UI test coverage.  
 - SnapshotService decomposition (DeviceStoreActor + DeviceMutationBroadcaster + facade).  
@@ -108,7 +115,7 @@ Ping, ARP (macOS), and Bonjour browsing/resolution are now wired through the uni
 - Throwing/Result-based error surfaces for network/persistence services (starting with ARPService).  
 
 ## Immediate Next Action
-Implement mutation bus decoupling so discovery providers emit `DeviceMutation` events rather than mutating the snapshot directly (lays groundwork for structured logging).
+41. [ ] Port scanner tier 0/1 implementation (22,80,443 first).  
 
 ---
 (End of PLAN.md)
