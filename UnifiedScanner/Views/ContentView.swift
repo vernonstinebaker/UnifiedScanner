@@ -39,7 +39,11 @@ struct ContentView: View {
                 regularLayout
             }
         }
+#if os(macOS)
+        .background(Theme.color(.bgRoot))
+#else
         .background(Theme.color(.bgRoot).ignoresSafeArea())
+#endif
     }
 
     private var compactLayout: some View {
@@ -48,8 +52,7 @@ struct ContentView: View {
                 progressSection
                     .padding(.horizontal, Theme.space(.lg))
                     .padding(.top, Theme.space(.lg))
-
-                ZStack(alignment: .bottom) {
+				ZStack(alignment: .bottom) {
                     List {
                         ForEach(store.devices, id: \.id) { device in
                             Button {
@@ -114,6 +117,9 @@ struct ContentView: View {
                     }
                 }
             }
+#if os(macOS)
+            .toolbarColorScheme(.dark)
+#endif
         }
     }
 
@@ -123,7 +129,6 @@ struct ContentView: View {
                 progressSection
                     .padding(.horizontal, Theme.space(.lg))
                     .padding(.top, Theme.space(.lg))
-
                 ZStack(alignment: .bottom) {
                     List(selection: $selectedID) {
                         ForEach(store.devices, id: \.id) { device in
@@ -178,6 +183,9 @@ struct ContentView: View {
             .sheet(isPresented: $showSettings) {
                 SettingsView(settings: settings, store: store)
             }
+#if os(macOS)
+            .toolbarColorScheme(.dark)
+#endif
         } detail: {
             if let id = selectedID, let device = store.devices.first(where: { $0.id == id }) {
                 UnifiedDeviceDetail(device: device, settings: settings)
@@ -269,6 +277,19 @@ struct ContentView: View {
     private var bonjourButtonIcon: String { isBonjourRunning ? "wifi.slash" : "dot.radiowaves.left.and.right" }
     private var scanButtonLabel: String { isScanRunning ? "Stop Scan" : "Run Scan" }
     private var scanButtonIcon: String { isScanRunning ? "stop.circle" : "arrow.clockwise" }
+
+    private func toolbarButton(title: String,
+                               systemImage: String,
+                               isActive: Bool,
+                               help: String,
+                               action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
+        }
+#if os(macOS)
+        .help(help)
+#endif
+    }
 }
 
 private struct StatBlock: View {

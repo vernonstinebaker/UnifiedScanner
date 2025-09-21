@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "1600"
+   LastUpgradeVersion = "2600"
    version = "1.3">
    <BuildAction
       parallelizeBuildables = "YES"
@@ -47,16 +47,16 @@
                ReferencedContainer = "container:UnifiedScanner.xcodeproj">
             </BuildableReference>
          </TestableReference>
-<TestableReference
-             skipped = "YES">
-             <BuildableReference
-                BuildableIdentifier = "primary"
-                BlueprintIdentifier = "3DD1FD4E2E7B131400D3AF15"
-                BuildableName = "UnifiedScannerUITests.xctest"
-                BlueprintName = "UnifiedScannerUITests"
-                ReferencedContainer = "container:UnifiedScanner.xcodeproj">
-             </BuildableReference>
-          </TestableReference>
+         <TestableReference
+            skipped = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "3DD1FD4E2E7B131400D3AF15"
+               BuildableName = "UnifiedScannerUITests.xctest"
+               BlueprintName = "UnifiedScannerUITests"
+               ReferencedContainer = "container:UnifiedScanner.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

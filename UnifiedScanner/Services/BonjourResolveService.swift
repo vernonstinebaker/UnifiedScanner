@@ -155,7 +155,10 @@ extension BonjourResolveService: NetServiceBrowserDelegate, NetServiceDelegate {
     }
     func netServiceDidResolveAddress(_ sender: NetService) {
         guard !stopped else { return }
-        let name = sender.name; let type = sender.type; let port = sender.port; let txtSize = sender.txtRecordData()?.count ?? 0
+        let name = sender.name
+        let type = sender.type
+        let port = sender.port
+        let txtSize = sender.txtRecordData()?.count ?? 0
         let ips = extractIPs(from: sender)
         LoggingService.info("resolve: didResolve name=\(name) type=\(type) ips=\(ips) port=\(port) txtBytes=\(txtSize)")
         if ips.isEmpty { return }

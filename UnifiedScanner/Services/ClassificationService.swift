@@ -22,6 +22,12 @@ private actor OUILookupManager {
 
 private let ouiLookupManager = OUILookupManager()
 
+extension ClassificationService {
+    static func setOUILookupProvider(_ provider: OUILookupProviding?) {
+        Task { await ouiLookupManager.setLookup(provider) }
+    }
+}
+
 // MARK: - Classification Service
 
 // ClassificationService: expanded, modular rule groups with optional OUI (vendor prefix) hook.
@@ -38,9 +44,11 @@ struct ClassificationService {
         var candidates: [MatchResult] = []
         let lowerHost = device.hostname?.lowercased() ?? ""
         let explicitVendor = device.vendor?.lowercased() ?? ""
-        let inferredVendor = await inferVendorFromOUI(mac: device.macAddress)
-        // Prefer explicit vendor, else fallback to OUI inferred
-        let vendor = explicitVendor.isEmpty ? (inferredVendor ?? "") : explicitVendor
+        let fingerprintResult = device.fingerprints.flatMap { VendorModelExtractorService.extract(from: $0) }
+        let fingerprintVendor = fingerprintResult?.vendor?.lowercased() ?? ""
+        let inferredVendor = (await inferVendorFromOUI(mac: device.macAddress))?.lowercased() ?? ""
+        // Prefer explicit vendor, then fingerprint, then OUI
+        let vendor = [explicitVendor, fingerprintVendor, inferredVendor].first(where: { !$0.isEmpty }) ?? ""
         let services = device.services
         let serviceTypes = Set(services.map { $0.type })
         let ports = Set(device.openPorts.map { $0.number })

@@ -64,7 +64,7 @@ final class ScanProgress: ObservableObject {
 // MARK: - DiscoveryProvider Protocol
 public protocol DiscoveryProvider: AnyObject, Sendable {
     var name: String { get }
-    func start() -> AsyncStream<Device>
+    func start(mutationBus: DeviceMutationBus) -> AsyncStream<DeviceMutation>
     func stop()
 }
 
@@ -76,7 +76,7 @@ public final class MockMDNSProvider: @unchecked Sendable, DiscoveryProvider {
     public init() {}
     private var cancelled: Bool { get { cancelledLock.lock(); defer { cancelledLock.unlock() }; return _cancelled } set { cancelledLock.lock(); defer { cancelledLock.unlock() }; _cancelled = newValue } }
 
-    public func start() -> AsyncStream<Device> {
+    public func start(mutationBus: DeviceMutationBus) -> AsyncStream<DeviceMutation> {
         cancelled = false
         return AsyncStream { continuation in
             Task { [weak self] in
@@ -87,7 +87,8 @@ public final class MockMDNSProvider: @unchecked Sendable, DiscoveryProvider {
                 ]
                 for dev in samples {
                     if Task.isCancelled || self.cancelled { break }
-                    continuation.yield(dev)
+                    let mutation = DeviceMutation.change(DeviceChange(before: nil, after: dev, changed: Set(DeviceField.allCases), source: .mdns))
+                    continuation.yield(mutation)
                     try? await Task.sleep(nanoseconds: 300_000_000)
                 }
                 continuation.finish()
@@ -151,10 +152,9 @@ public final class BonjourDiscoveryProvider: NSObject, @unchecked Sendable, Disc
         return Device(primaryIP: primary, ips: ipSet, hostname: hostname, vendor: vendor, modelHint: model, discoverySources: [.mdns], services: [service], fingerprints: fingerprints, firstSeen: Date(), lastSeen: Date())
     }
 
-    public func start() -> AsyncStream<Device> {
+    public func start(mutationBus: DeviceMutationBus) -> AsyncStream<DeviceMutation> {
         stopped = false
         return AsyncStream { continuation in
-            self.continuation = continuation
             if let simulated = self.simulated {
                 Task { [weak self] in
                     guard let self else { return }
@@ -162,7 +162,8 @@ public final class BonjourDiscoveryProvider: NSObject, @unchecked Sendable, Disc
                         if self.stopped { break }
                         let svc = ServiceDeriver.makeService(fromRaw: sim.type, port: sim.port)
                         let dev = self.makeSingleServiceDevice(ips: [sim.ip], hostname: sim.hostname, service: svc, fingerprints: sim.txt)
-                        continuation.yield(dev)
+                        let mutation = DeviceMutation.change(DeviceChange(before: nil, after: dev, changed: Set(DeviceField.allCases), source: .mdns))
+                        continuation.yield(mutation)
                     }
                     continuation.finish()
                 }
@@ -185,7 +186,8 @@ public final class BonjourDiscoveryProvider: NSObject, @unchecked Sendable, Disc
                         let service = ServiceDeriver.makeService(fromRaw: rs.rawType, port: rs.port)
                         let dev = self.makeSingleServiceDevice(ips: rs.ips, hostname: rs.hostname, service: service, fingerprints: rs.txt)
                         LoggingService.info("bonjour: yielding device primary=\(dev.primaryIP ?? "nil") hostname=\(dev.hostname ?? "nil") svcType=\(service.type.rawValue) port=\(service.port ?? -1) ips=\(dev.ips.count)")
-                        continuation.yield(dev)
+                        let mutation = DeviceMutation.change(DeviceChange(before: nil, after: dev, changed: Set(DeviceField.allCases), source: .mdns))
+                        continuation.yield(mutation)
                     }
                     continuation.finish()
                 }
@@ -215,14 +217,14 @@ extension BonjourDiscoveryProvider {
 // MARK: - PingOrchestrator
 public actor PingOrchestrator {
     private let pingService: PingService
-    private let store: SnapshotService
+    private let mutationBus: DeviceMutationBus
     private let maxConcurrent: Int
     private var active: Set<String> = []
     private var progress: ScanProgress?
 
-    init(pingService: PingService, store: SnapshotService, maxConcurrent: Int = 32, progress: ScanProgress? = nil) {
+    init(pingService: PingService, mutationBus: DeviceMutationBus, maxConcurrent: Int = 32, progress: ScanProgress? = nil) {
         self.pingService = pingService
-        self.store = store
+        self.mutationBus = mutationBus
         self.maxConcurrent = maxConcurrent
         self.progress = progress
     }
@@ -261,7 +263,7 @@ public actor PingOrchestrator {
         let beforeCount = active.count
         LoggingService.debug("launch start host=\(host) active(before)=\(beforeCount)")
         active.insert(host)
-        let storeRef = store
+        let mutationBusRef = mutationBus
         let progressRef = progress
         Task { [pingService] in
             LoggingService.debug("creating stream for host=\(host)")
@@ -273,13 +275,36 @@ public actor PingOrchestrator {
                 let mc = localMeasurementCount
                 LoggingService.debug("measurement #\(mc) host=\(host) status=\(m.status)")
                 if case .success = m.status { sawSuccessFlag = true }
-                await storeRef.applyPing(m)
+
+                // Create a mutation for this ping measurement
+                let mutation = await createPingMutation(for: m)
+                await mutationBusRef.emit(mutation)
             }
             let finalCount = localMeasurementCount
             let success = sawSuccessFlag
             LoggingService.debug("stream complete host=\(host) sawSuccess=\(success) measurements=\(finalCount)")
             await self.didFinish(host: host, sawSuccess: success)
             if let progressRef, success { await progressRef.incrementSuccess() }
+        }
+    }
+
+    private func createPingMutation(for measurement: PingMeasurement) async -> DeviceMutation {
+        // Create a minimal device for the mutation
+        let device = Device(primaryIP: measurement.host, ips: [measurement.host], discoverySources: [.ping])
+
+        // Create the mutation based on the measurement status
+        switch measurement.status {
+        case .success(let rtt):
+            var deviceWithRTT = device
+            deviceWithRTT.rttMillis = rtt
+            deviceWithRTT.lastSeen = measurement.timestamp
+            deviceWithRTT.isOnlineOverride = nil
+            let changedFields: Set<DeviceField> = [.rttMillis, .lastSeen, .isOnlineOverride, .discoverySources]
+            return .change(DeviceChange(before: nil, after: deviceWithRTT, changed: changedFields, source: .ping))
+        case .timeout, .unreachable, .error:
+            // For non-success cases, we don't create mutations as they would clutter the UI
+            // The store will handle filtering these out
+            return .change(DeviceChange(before: nil, after: device, changed: [], source: .ping))
         }
     }
 
@@ -298,6 +323,7 @@ public actor PingOrchestrator {
 actor DiscoveryCoordinator {
     private let store: SnapshotService
     private let pingOrchestrator: PingOrchestrator
+    private let mutationBus: DeviceMutationBus
     private let providers: [DiscoveryProvider]
     private let hostEnumerator: HostEnumerator
     private let arpService: ARPService
@@ -308,28 +334,34 @@ actor DiscoveryCoordinator {
 
     init(store: SnapshotService,
          pingOrchestrator: PingOrchestrator,
+         mutationBus: DeviceMutationBus,
          providers: [DiscoveryProvider],
          hostEnumerator: HostEnumerator = LocalSubnetEnumerator(),
          arpService: ARPService = ARPService()) {
         self.store = store
         self.pingOrchestrator = pingOrchestrator
+        self.mutationBus = mutationBus
         self.providers = providers
         self.hostEnumerator = hostEnumerator
         self.arpService = arpService
     }
 
-    func startBonjour() {
+    func startBonjour() async {
         guard !providersRunning else { return }
         providersRunning = true
         bonjourTasks.removeAll()
+
+        // Providers now emit mutations directly to the mutation bus
+
         for provider in providers {
             Task { await pingOrchestrator.currentProgress()?.setPhase(.mdnsWarmup) }
-            let stream = provider.start()
+            let mutationStream = provider.start(mutationBus: mutationBus)
             let task = Task { [weak self] in
                 guard let self else { return }
-                for await dev in stream {
+                for await mutation in mutationStream {
                     if Task.isCancelled { break }
-                    await self.store.upsert(dev, source: .mdns)
+                    // Forward the mutation to the mutation bus
+                    await self.mutationBus.emit(mutation)
                 }
                 await self.cleanupFinishedBonjourTasks()
             }
@@ -337,7 +369,9 @@ actor DiscoveryCoordinator {
         }
     }
 
-    func stopBonjour() {
+
+
+    func stopBonjour() async {
         guard providersRunning else { return }
         providersRunning = false
         bonjourTasks.forEach { $0.cancel() }
@@ -349,7 +383,7 @@ actor DiscoveryCoordinator {
                    pingConfig: PingConfig,
                    mdnsWarmupSeconds: Double = 1.0,
                    autoEnumerateIfEmpty: Bool = true,
-                   maxAutoEnumeratedHosts: Int = 256) {
+                   maxAutoEnumeratedHosts: Int = 256) async {
         guard scanTask == nil else { return }
         scanRunning = true
         scanTask = Task { [weak self] in
@@ -395,7 +429,8 @@ private extension DiscoveryCoordinator {
         let initialArp = await self.arpService.getMACAddresses(for: [])
         for (ip, mac) in initialArp {
             let device = Device(primaryIP: ip, ips: [ip], macAddress: mac, discoverySources: [.arp], firstSeen: Date(), lastSeen: Date())
-            await self.store.upsert(device, source: .arp)
+            let mutation = DeviceMutation.change(DeviceChange(before: nil, after: device, changed: Set(DeviceField.allCases), source: .arp))
+            await self.mutationBus.emit(mutation)
         }
 #endif
         let hosts: [String]
@@ -420,7 +455,8 @@ private extension DiscoveryCoordinator {
             let arpMap = await self.arpService.getMACAddresses(for: [])
             for (ip, mac) in arpMap {
                 let device = Device(primaryIP: ip, ips: [ip], macAddress: mac, discoverySources: [.arp], firstSeen: Date(), lastSeen: Date())
-                await self.store.upsert(device, source: .arp)
+                let mutation = DeviceMutation.change(DeviceChange(before: nil, after: device, changed: Set(DeviceField.allCases), source: .arp))
+                await self.mutationBus.emit(mutation)
             }
             LoggingService.info("ARP-only population count=\(arpMap.count)")
 #endif
@@ -436,7 +472,9 @@ private extension DiscoveryCoordinator {
                 var updated = existing
                 if (updated.macAddress ?? "").isEmpty { updated.macAddress = mac }
                 updated.discoverySources.insert(.arp)
-                await self.store.upsert(updated, source: .arp)
+                let changedFields: Set<DeviceField> = [.macAddress, .discoverySources]
+                let mutation = DeviceMutation.change(DeviceChange(before: existing, after: updated, changed: changedFields, source: .arp))
+                await self.mutationBus.emit(mutation)
             }
         }
 #endif
@@ -463,7 +501,9 @@ private extension DiscoveryCoordinator {
                     var updatedDevice = existingDevice
                     if (updatedDevice.macAddress ?? "").isEmpty { updatedDevice.macAddress = mac }
                     if !updatedDevice.discoverySources.contains(.arp) { updatedDevice.discoverySources.insert(.arp) }
-                    await self.store.upsert(updatedDevice, source: .arp)
+                    let changedFields: Set<DeviceField> = [.macAddress, .discoverySources]
+                    let mutation = DeviceMutation.change(DeviceChange(before: existingDevice, after: updatedDevice, changed: changedFields, source: .arp))
+                    await self.mutationBus.emit(mutation)
                     LoggingService.debug("ARP merged host=\(ip) mac=\(mac)")
                 }
             }
@@ -473,7 +513,8 @@ private extension DiscoveryCoordinator {
             let exists = await MainActor.run { self.store.devices.contains(where: { $0.primaryIP == host || $0.ips.contains(host) }) }
             if !exists {
                 let device = Device(primaryIP: host, ips: [host], macAddress: mac, discoverySources: [.arp], firstSeen: Date(), lastSeen: Date())
-                await self.store.upsert(device, source: .arp)
+                let mutation = DeviceMutation.change(DeviceChange(before: nil, after: device, changed: Set(DeviceField.allCases), source: .arp))
+                await self.mutationBus.emit(mutation)
                 LoggingService.debug("created ARP-derived device host=\(host) mac=\(mac)")
             }
         }

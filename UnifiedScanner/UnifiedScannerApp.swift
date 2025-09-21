@@ -9,6 +9,11 @@ import SwiftUI
 
 @main
 struct UnifiedScannerApp: App {
+    init() {
+        ClassificationService.setOUILookupProvider(OUILookupService.shared)
+    }
+
+    private let mutationBus = DeviceMutationBus.shared
     @StateObject private var snapshotStore = SnapshotService()
     @State private var discoveryCoordinator: DiscoveryCoordinator? = nil
     @State private var coordinatorStarted = false
@@ -60,7 +65,7 @@ struct UnifiedScannerApp: App {
 
     private func startDiscoveryIfNeeded() {
         guard !coordinatorStarted else {
-            updateCoordinatorState()
+            Task { await updateCoordinatorState() }
             startScanMonitor()
             return
         }
@@ -71,10 +76,10 @@ struct UnifiedScannerApp: App {
 #else
         let pingService: PingService = SimplePingKitService()
 #endif
-        let orchestrator = PingOrchestrator(pingService: pingService, store: snapshotStore, maxConcurrent: 32, progress: scanProgress)
+        let orchestrator = PingOrchestrator(pingService: pingService, mutationBus: DeviceMutationBus.shared, maxConcurrent: 32, progress: scanProgress)
         let providers: [DiscoveryProvider] = [BonjourDiscoveryProvider()]
         let arpService = ARPService()
-        let coordinator = DiscoveryCoordinator(store: snapshotStore, pingOrchestrator: orchestrator, providers: providers, arpService: arpService)
+        let coordinator = DiscoveryCoordinator(store: snapshotStore, pingOrchestrator: orchestrator, mutationBus: DeviceMutationBus.shared, providers: providers, arpService: arpService)
         discoveryCoordinator = coordinator
         Task {
             await coordinator.startBonjour()
@@ -126,18 +131,16 @@ struct UnifiedScannerApp: App {
         }
     }
 
-    private func updateCoordinatorState() {
+    private func updateCoordinatorState() async {
         guard let coordinator = discoveryCoordinator else {
             isBonjourRunning = false
             isScanRunning = false
             return
         }
-        Task {
-            let state = await coordinator.currentState()
-            await MainActor.run {
-                isBonjourRunning = state.bonjour
-                isScanRunning = state.scanning
-            }
+        let state = await coordinator.currentState()
+        await MainActor.run {
+            isBonjourRunning = state.bonjour
+            isScanRunning = state.scanning
         }
     }
 

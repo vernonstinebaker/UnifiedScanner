@@ -7,8 +7,8 @@ import XCTest
         let providerDevice = Device(primaryIP: "192.168.1.10", ips: ["192.168.1.10"], hostname: "apple-tv.local", discoverySources: [.mdns])
         let provider = TestProvider(devices: [providerDevice], perDeviceDelay: 0.05)
         let mockPingService = OneShotMockPingService(rtt: 7.0)
-        let orchestrator = PingOrchestrator(pingService: mockPingService, store: store, maxConcurrent: 4)
-        let coordinator = DiscoveryCoordinator(store: store, pingOrchestrator: orchestrator, providers: [provider])
+        let orchestrator = PingOrchestrator(pingService: mockPingService, mutationBus: DeviceMutationBus.shared, maxConcurrent: 4)
+        let coordinator = DiscoveryCoordinator(store: store, pingOrchestrator: orchestrator, mutationBus: DeviceMutationBus.shared, providers: [provider])
 
         // Collect first two change events (mdns upsert, ping device creation with RTT)
         var changes: [DeviceChange] = []

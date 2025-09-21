@@ -72,22 +72,23 @@ final class SnapshotService: ObservableObject {
      private let offlineCheckInterval: TimeInterval
      private let onlineGraceInterval: TimeInterval
 
-     private let persistence: DevicePersistence
-    private let classification: ClassificationService.Type
-    private let persistenceKey: String
-    private let localIPv4Networks: [IPv4Network]
+      private let persistence: DevicePersistence
+     private let classification: ClassificationService.Type
+     private let persistenceKey: String
+     private let localIPv4Networks: [IPv4Network]
+     private var mutationListenerTask: Task<Void, Never>? = nil
 
-     init(persistenceKey: String = "unifiedscanner:devices:v1",
-         persistence: DevicePersistence? = nil,
-         classification: ClassificationService.Type = ClassificationService.self,
-         offlineCheckInterval: TimeInterval = 60,
-         onlineGraceInterval: TimeInterval = DeviceConstants.onlineGraceInterval) {
-         self.persistenceKey = persistenceKey
-         self.persistence = persistence ?? LiveDevicePersistence()
-         self.classification = classification
-         self.offlineCheckInterval = offlineCheckInterval
-         self.onlineGraceInterval = onlineGraceInterval
-        self.localIPv4Networks = LocalSubnetEnumerator.activeIPv4Networks()
+      init(persistenceKey: String = "unifiedscanner:devices:v1",
+          persistence: DevicePersistence? = nil,
+          classification: ClassificationService.Type = ClassificationService.self,
+          offlineCheckInterval: TimeInterval = 60,
+          onlineGraceInterval: TimeInterval = DeviceConstants.onlineGraceInterval) {
+          self.persistenceKey = persistenceKey
+          self.persistence = persistence ?? LiveDevicePersistence()
+          self.classification = classification
+          self.offlineCheckInterval = offlineCheckInterval
+          self.onlineGraceInterval = onlineGraceInterval
+         self.localIPv4Networks = LocalSubnetEnumerator.activeIPv4Networks()
          let env = ProcessInfo.processInfo.environment
          let disablePersistence = env["UNIFIEDSCANNER_DISABLE_PERSISTENCE"] == "1"
         if disablePersistence {
@@ -118,9 +119,37 @@ final class SnapshotService: ObservableObject {
             Task { @MainActor in
                 await self.reloadFromPersistenceIfChanged()
             }
-        }
-        startOfflineHeartbeat()
-    }
+         }
+         startOfflineHeartbeat()
+         startMutationListener()
+     }
+
+     private func startMutationListener() {
+         mutationListenerTask?.cancel()
+         mutationListenerTask = Task { [weak self] in
+             guard let self else { return }
+             let stream = await DeviceMutationBus.shared.mutationStream(includeBuffered: true)
+             for await mutation in stream {
+                 if Task.isCancelled { break }
+                 await self.applyMutation(mutation)
+             }
+         }
+     }
+
+     @MainActor
+     private func applyMutation(_ mutation: DeviceMutation) async {
+         switch mutation {
+         case .snapshot(let devices):
+             // Replace all devices with snapshot
+             self.devices = devices
+             sortDevices()
+             persist()
+             emit(.snapshot(devices))
+         case .change(let change):
+             // Apply the change using existing upsert logic
+             await self.upsert(change.after, source: change.source)
+         }
+     }
      
      private func startOfflineHeartbeat() {
          offlineHeartbeatTask?.cancel()
@@ -482,6 +511,23 @@ private extension SnapshotService {
         }
 
         sanitized.ips = filteredIPs
+
+        if (sanitized.vendor ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if let fingerprints = sanitized.fingerprints {
+                let extracted = VendorModelExtractorService.extract(from: fingerprints)
+                if let vendor = extracted.vendor, !vendor.isEmpty {
+                    sanitized.vendor = vendor
+                }
+                if (sanitized.modelHint ?? "").isEmpty, let model = extracted.model, !model.isEmpty {
+                    sanitized.modelHint = model
+                }
+            }
+            if (sanitized.vendor ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+               let mac = sanitized.macAddress,
+               let vendor = OUILookupService.shared.vendorFor(mac: mac) {
+                sanitized.vendor = vendor
+            }
+        }
 
         if sanitized.primaryIP == nil && sanitized.ips.isEmpty {
             return nil

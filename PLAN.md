@@ -38,7 +38,7 @@
 20. [x] Integrate store with ContentView observable state.  
 
 ## Phase 5: Discovery Pipeline (PARTIAL)
-Earlier version marked this fully complete; correction: Only Ping + ARP (macOS) implemented. Port scanning, real mDNS, structured logging not yet present.
+Ping, ARP (macOS), and Bonjour browsing/resolution are now wired through the unified store with start/stop controls. Port scanning and structured logging remain outstanding.
 21a. [x] `PingService` protocol + `PingMeasurement`.  
 21b. [x] `SimplePingKitService` ICMP implementation.  
 21c. [x] `PingOrchestrator` (32 concurrent hosts throttle).  
@@ -50,7 +50,7 @@ Earlier version marked this fully complete; correction: Only Ping + ARP (macOS) 
 25. [x] UDP warmup / broadcast population (macOS) before ARP read.  
 26. [~] Logging: env-var gated prints (`PING_INFO_LOG`, `ARP_INFO_LOG`) — structured logger pending.  
 27. [ ] Port scanning engine (tiered) — NOT IMPLEMENTED.  
-28. [ ] Real mDNS provider (NetServiceBrowser) — NOT IMPLEMENTED.  
+28. [x] Real mDNS provider (NetServiceBrowser) — integrated with toolbar controls and sanitisation.  
 29. [ ] Mutation bus decoupling (providers emit events, not direct store upserts).  
 30. [ ] Large-scale performance validation (synthetic > /24) — NOT RUN.  
 
@@ -64,7 +64,7 @@ Earlier version marked this fully complete; correction: Only Ping + ARP (macOS) 
 37. [ ] Provider → mutation bus refactor (`DeviceMutation` events).  
 38. [ ] FeatureFlag enum & runtime toggles (logging, discovery providers, port tiers).  
 39. [ ] OUI ingestion (parse `oui.csv`, build prefix map).  
-40. [ ] mDNS provider (service discovery + TXT parsing).  
+40. [x] mDNS provider (service discovery + TXT parsing).  
 41. [ ] Port scanner tier 0/1 implementation (22,80,443 first).  
 42. [ ] Reverse DNS enrichment (optional).  
 43. [ ] HTTP / SSH fingerprint population (fill `fingerprints`).  
@@ -97,7 +97,6 @@ Earlier version marked this fully complete; correction: Only Ping + ARP (macOS) 
 
 ## Deferred Backlog (Refined)
 - Tiered port scanner & mutation emission.  
-- Real mDNS provider.  
 - OUI ingestion + vendor lookup caching.  
 - HTTP/SSH fingerprint enrichment.  
 - Reverse DNS provider.  
@@ -109,7 +108,7 @@ Earlier version marked this fully complete; correction: Only Ping + ARP (macOS) 
 - Throwing/Result-based error surfaces for network/persistence services (starting with ARPService).  
 
 ## Immediate Next Action
-Implement Phase 6 logging + provider mutation bus before adding new discovery types (ensures consistent event pipeline).
+Implement mutation bus decoupling so discovery providers emit `DeviceMutation` events rather than mutating the snapshot directly (lays groundwork for structured logging).
 
 ---
 (End of PLAN.md)

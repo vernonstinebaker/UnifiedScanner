@@ -7,8 +7,8 @@ import XCTest
         let store = SnapshotService(persistenceKey: "auto-enum", persistence: MemoryPersistenceAE(), classification: ClassificationService.self)
         let mockEnumerator = MockEnumerator(hosts: ["10.0.0.5", "10.0.0.6"]) // deterministic
         let mockPingService = OneShotMockPingServiceAE(rtt: 3.3)
-        let orchestrator = PingOrchestrator(pingService: mockPingService, store: store, maxConcurrent: 4)
-        let coordinator = DiscoveryCoordinator(store: store, pingOrchestrator: orchestrator, providers: [], hostEnumerator: mockEnumerator)
+        let orchestrator = PingOrchestrator(pingService: mockPingService, mutationBus: DeviceMutationBus.shared, maxConcurrent: 4)
+        let coordinator = DiscoveryCoordinator(store: store, pingOrchestrator: orchestrator, mutationBus: DeviceMutationBus.shared, providers: [], hostEnumerator: mockEnumerator)
 
         var yieldedHosts: Set<String> = []
         let stream = store.mutationStream(includeInitialSnapshot: false)
