@@ -1,3 +1,0 @@
-module NIOPosix {
-    header "/Volumes/X9Pro/Local/Programming/Swift/netscan/UnifiedScanner/.build/arm64-apple-ios-simulator/debug/NIOPosix.build/include/NIOPosix-Swift.h"
-}
