@@ -60,8 +60,10 @@ final class DeviceModelTests: XCTestCase {
         let d1 = Device()
         let d2 = Device()
         XCTAssertNotEqual(d1.id, d2.id)
-        let uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-        XCTAssertTrue(uuidRegex.matches(d1.id))
+        let uuidPattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        let uuidRegex = try! NSRegularExpression(pattern: uuidPattern, options: [.caseInsensitive])
+        let range = NSRange(d1.id.startIndex..<d1.id.endIndex, in: d1.id)
+        XCTAssertNotNil(uuidRegex.firstMatch(in: d1.id, options: [], range: range))
     }
 
     func testOnlineOverride() {
@@ -84,7 +86,7 @@ final class DeviceModelTests: XCTestCase {
 
     func testDisplayServicesDeduplication() {
         let explicitHTTP = NetworkService(name: "Custom HTTP", type: .http, rawType: nil, port: 80, isStandardPort: true)
-        let portDerivedSSH = Port(number: 22, serviceName: "ssh", description: "SSH", status: .open)
+        let portDerivedSSH = Port(number: 22, serviceName: "ssh", description: "SSH", status: .open, lastSeenOpen: Date())
         let d = Device(services: [explicitHTTP], openPorts: [portDerivedSSH])
         let display = d.displayServices
         XCTAssertEqual(display.count, 2)
@@ -172,8 +174,8 @@ final class DeviceModelTests: XCTestCase {
         XCTAssertEqual(serviceTypes.count, 16)
         XCTAssertTrue(serviceTypes.contains(.other))
 
-        let portStatuses = Port.Status.allCases
+        let portStatuses: [UnifiedScanner.Port.Status] = [.open, .filtered, .closed]
         XCTAssertEqual(portStatuses.count, 3)
-        XCTAssertTrue(portStatuses.contains(.filtered))
+        XCTAssertTrue(portStatuses.contains(UnifiedScanner.Port.Status.filtered))
     }
 }

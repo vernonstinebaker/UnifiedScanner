@@ -93,7 +93,7 @@ public final class ARPService: @unchecked Sendable { // @unchecked because NWCon
 
     #if os(macOS)
     private static func loadRouteDump() async throws -> [ARPEntry] {
-        var mib: [Int32] = [CTL_NET, PF_ROUTE, 0, AF_INET, NET_RT_DUMP, 0]
+        let mib: [Int32] = [CTL_NET, PF_ROUTE, 0, AF_INET, NET_RT_DUMP, 0]
         var bufferSize: size_t = 0
         var localMib = mib
         if sysctl(&localMib, UInt32(localMib.count), nil, &bufferSize, nil, 0) != 0 {
@@ -128,14 +128,14 @@ public final class ARPService: @unchecked Sendable { // @unchecked because NWCon
         var destinationIP: String?
         var macAddress: String?
         var interface: String?
-        var isStatic = (message.rtm_flags & RTF_STATIC) != 0
+        let isStatic = (message.rtm_flags & RTF_STATIC) != 0
 
         var rawPointer = UnsafeRawPointer(basePointer).advanced(by: MemoryLayout<rt_msghdr>.size)
         for bit in 0..<RTAX_MAX where (message.rtm_addrs & (1 << bit)) != 0 {
             let sockaddrHeader = rawPointer.assumingMemoryBound(to: sockaddr.self).pointee
             switch (Int32(sockaddrHeader.sa_family), bit) {
-            case (AF_INET, RTAX_DST):
-                var sin = rawPointer.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { $0.pointee }
+case (AF_INET, RTAX_DST):
+                    let sin = rawPointer.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { $0.pointee }
                 var addr = sin.sin_addr
                 var buffer = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN))
                 inet_ntop(AF_INET, &addr, &buffer, socklen_t(INET_ADDRSTRLEN))

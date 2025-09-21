@@ -124,11 +124,11 @@ final class SnapshotService: ObservableObject {
          startMutationListener()
      }
 
-     private func startMutationListener() {
-         mutationListenerTask?.cancel()
-         mutationListenerTask = Task { [weak self] in
-             guard let self else { return }
-             let stream = await DeviceMutationBus.shared.mutationStream(includeBuffered: true)
+private func startMutationListener() {
+        mutationListenerTask?.cancel()
+        mutationListenerTask = Task { [weak self] in
+            guard let self else { return }
+            let stream = DeviceMutationBus.shared.mutationStream(includeBuffered: true)
              for await mutation in stream {
                  if Task.isCancelled { break }
                  await self.applyMutation(mutation)

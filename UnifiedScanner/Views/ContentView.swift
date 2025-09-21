@@ -54,17 +54,17 @@ struct ContentView: View {
                     .padding(.top, Theme.space(.lg))
 				ZStack(alignment: .bottom) {
                     List {
-                        ForEach(store.devices, id: \.id) { device in
-                            Button {
-                                selectedID = device.id
-                                showDetailSheet = true
-                            } label: {
-                                DeviceRowView(device: device)
-                            }
-                            .buttonStyle(.plain)
-                            .listRowInsets(EdgeInsets())
-                            .listRowBackground(Color.clear)
-                        }
+ForEach(store.devices, id: \.id) { device in
+    Button {
+        selectedID = device.id
+        showDetailSheet = true
+    } label: {
+        DeviceRowView(device: device)
+    }
+    .buttonStyle(.plain)
+    .listRowInsets(EdgeInsets())
+    .listRowBackground(Color.clear)
+}
                     }
                     .scrollContentBackground(.hidden)
                     .listStyle(.plain)
@@ -131,13 +131,13 @@ struct ContentView: View {
                     .padding(.top, Theme.space(.lg))
                 ZStack(alignment: .bottom) {
                     List(selection: $selectedID) {
-                        ForEach(store.devices, id: \.id) { device in
-                            NavigationLink(value: device.id) {
-                                DeviceRowView(device: device)
-                            }
-                            .listRowInsets(EdgeInsets())
-                            .listRowBackground(Color.clear)
-                        }
+ForEach(store.devices, id: \.id) { device in
+    NavigationLink(value: device.id) {
+        DeviceRowView(device: device)
+    }
+    .listRowInsets(EdgeInsets())
+    .listRowBackground(Color.clear)
+}
                     }
                     .scrollContentBackground(.hidden)
                     .listStyle(.plain)

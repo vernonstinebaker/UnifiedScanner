@@ -29,29 +29,30 @@ struct UnifiedScannerApp: App {
                                                timeoutPerPing: 1.0)
     private let defaultMaxHosts = 254
 
-     var body: some Scene {
-         WindowGroup {
-             ContentView(store: snapshotStore,
-                         progress: scanProgress,
-                         settings: appSettings,
-                         isBonjourRunning: $isBonjourRunning,
-                         isScanRunning: $isScanRunning,
-                         startBonjour: { startBonjour() },
-                         stopBonjour: { stopBonjour() },
-                         startScan: { startScan() },
-                         stopScan: { stopScan() },
-                         saveSnapshot: { snapshotStore.saveSnapshotNow() })
-                 .onAppear { startDiscoveryIfNeeded() }
-        }
-        #if os(macOS)
-        .commands {
-            CommandGroup(replacing: .newItem) {
-                Button("Clear KV Store") { clearKVStore() }
-                .keyboardShortcut("k", modifiers: [.command, .shift])
-            }
-        }
-        #endif
+var body: some Scene {
+    WindowGroup {
+        ContentView(store: snapshotStore,
+                    progress: scanProgress,
+                    settings: appSettings,
+                    isBonjourRunning: $isBonjourRunning,
+                    isScanRunning: $isScanRunning,
+                    startBonjour: { startBonjour() },
+                    stopBonjour: { stopBonjour() },
+                    startScan: { startScan() },
+                    stopScan: { stopScan() },
+                    saveSnapshot: { snapshotStore.saveSnapshotNow() })
+            .preferredColorScheme(.dark)
+            .onAppear { startDiscoveryIfNeeded() }
     }
+#if os(macOS)
+    .commands {
+        CommandGroup(replacing: .newItem) {
+            Button("Clear KV Store") { clearKVStore() }
+                .keyboardShortcut("k", modifiers: [.command, .shift])
+        }
+    }
+#endif
+}
 
     private func clearKVStore() {
         // Clear both NSUbiquitousKeyValueStore and UserDefaults backing store key

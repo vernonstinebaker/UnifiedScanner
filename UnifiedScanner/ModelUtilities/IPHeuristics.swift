@@ -15,10 +15,10 @@ public enum IPHeuristics {
     }
 
     // Marked @inline(__always) and nonisolated to avoid unintended MainActor inference in Swift 6
-    nonisolated private static func stableSort(_ a: String, _ b: String) -> Bool { a < b }
+    internal static func stableSort(_ a: String, _ b: String) -> Bool { a < b }
 }
 
-fileprivate extension String {
+internal extension String {
     var isIPv4: Bool { components(separatedBy: ".").count == 4 && self.range(of: "[^0-9.]", options: .regularExpression) == nil }
     var isPrivateIPv4: Bool {
         guard isIPv4 else { return false }

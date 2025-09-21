@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DeviceRowView: View {
     let device: Device
+    // // let isSelected: Bool = false
 
     private var discoverySources: [DiscoverySource] {
         device.discoverySources
@@ -22,13 +23,13 @@ struct DeviceRowView: View {
             Spacer()
             indicatorColumn
         }
-        .padding(Theme.space(.lg))
-        .background(Theme.color(.bgCard))
-        .cornerRadius(Theme.radius(.xl))
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.radius(.xl))
-                .stroke(Theme.color(.separator), lineWidth: 1)
-        )
+.padding(Theme.space(.lg))
+.background(Theme.color(.bgCard))
+.cornerRadius(Theme.radius(.xl))
+.overlay(
+    RoundedRectangle(cornerRadius: Theme.radius(.xl))
+        .stroke(Theme.color(.separator), lineWidth: 1)
+)
     }
 
     private var deviceIcon: some View {
@@ -43,46 +44,46 @@ struct DeviceRowView: View {
     }
 
     private var headerRow: some View {
-        HStack(spacing: Theme.space(.sm)) {
-            Text(primaryTitle)
-                .font(Theme.Typography.headline)
-                .foregroundColor(Theme.color(.textPrimary))
+HStack(spacing: Theme.space(.sm)) {
+    Text(primaryTitle)
+        .font(Theme.Typography.headline)
+        .foregroundColor(Theme.color(.textPrimary))
+        .lineLimit(1)
+    if let classification = device.classification {
+        ConfidenceBadge(confidence: classification.confidence)
+    }
+    Spacer(minLength: 0)
+}
+    }
+
+private var metaRow: some View {
+    VStack(alignment: .leading, spacing: Theme.space(.xs)) {
+        if let vendor = device.vendor {
+            Text(vendor)
+                .font(Theme.Typography.caption)
+                .foregroundColor(Theme.color(.textSecondary))
                 .lineLimit(1)
-            if let classification = device.classification {
-                ConfidenceBadge(confidence: classification.confidence)
+        }
+        if let ip = device.bestDisplayIP {
+            Text(ip)
+                .font(Theme.Typography.mono)
+                .foregroundColor(Theme.color(.accentPrimary))
+        }
+        HStack(spacing: Theme.space(.sm)) {
+            if let mac = device.macAddress, !mac.isEmpty {
+                Text(mac.uppercased())
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(Theme.color(.textTertiary))
             }
-            Spacer(minLength: 0)
-            if let vendor = device.vendor {
-                Text(vendor)
+            if let host = device.hostname, host != primaryTitle {
+                Text(host)
                     .font(Theme.Typography.caption)
                     .foregroundColor(Theme.color(.textSecondary))
                     .lineLimit(1)
             }
         }
     }
-
-    private var metaRow: some View {
-        VStack(alignment: .leading, spacing: Theme.space(.xs)) {
-            if let ip = device.bestDisplayIP {
-                Text(ip)
-                    .font(Theme.Typography.mono)
-                    .foregroundColor(Theme.color(.accentPrimary))
-            }
-            HStack(spacing: Theme.space(.sm)) {
-                if let mac = device.macAddress, !mac.isEmpty {
-                    Text(mac.uppercased())
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundColor(Theme.color(.textTertiary))
-                }
-                if let host = device.hostname, host != primaryTitle {
-                    Text(host)
-                        .font(Theme.Typography.caption)
-                        .foregroundColor(Theme.color(.textSecondary))
-                        .lineLimit(1)
-                }
-            }
-        }
-    }
+}
 
     private var indicatorColumn: some View {
         VStack(alignment: .trailing, spacing: Theme.space(.sm)) {
@@ -97,9 +98,9 @@ struct DeviceRowView: View {
         }
     }
 
-    private var primaryTitle: String {
-        device.vendor ?? device.hostname ?? device.bestDisplayIP ?? device.id
-    }
+private var primaryTitle: String {
+    device.hostname ?? device.bestDisplayIP ?? device.id
+}
 
     private var iconName: String {
         if let ff = device.classification?.formFactor {

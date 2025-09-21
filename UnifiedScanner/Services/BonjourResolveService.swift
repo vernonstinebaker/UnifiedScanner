@@ -131,7 +131,7 @@ extension BonjourResolveService: NetServiceBrowserDelegate, NetServiceDelegate {
             service.resolve(withTimeout: 5.0)
             let key = self.serviceKey(service)
             stateQueue.sync { _ = pendingResolveKeys.insert(key) }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) { [weak self] in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) { [weak self, name, type, key] in
                 guard let self else { return }
                 let stillPending = self.stateQueue.sync { self.pendingResolveKeys.contains(key) }
                 if stillPending && !self.stopped {
@@ -146,12 +146,14 @@ extension BonjourResolveService: NetServiceBrowserDelegate, NetServiceDelegate {
         LoggingService.warn("resolve: browser failed error=\(errorDict)")
     }
     func netService(_ sender: NetService, didNotResolve errorDict: [String : NSNumber]) {
+        let name = sender.name
+        let type = sender.type
         let key = serviceKey(sender)
         stateQueue.sync {
             _ = pendingResolveKeys.remove(key)
             resolvingServices.removeValue(forKey: key)
         }
-        LoggingService.warn("resolve: didNotResolve name=\(sender.name) type=\(sender.type) error=\(errorDict)")
+        LoggingService.warn("resolve: didNotResolve name=\(name) type=\(type) error=\(errorDict)")
     }
     func netServiceDidResolveAddress(_ sender: NetService) {
         guard !stopped else { return }
