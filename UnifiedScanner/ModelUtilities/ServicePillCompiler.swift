@@ -5,6 +5,8 @@ struct ServicePill: Identifiable, Hashable {
     let label: String
     let type: NetworkService.ServiceType?
     let isOverflow: Bool
+    let serviceID: UUID?
+    let port: Int?
 }
 
 enum ServicePillCompiler {
@@ -19,7 +21,7 @@ enum ServicePillCompiler {
         }
 
         var entries: [Entry] = grouped.map { key, value in
-            Entry(key: key, count: value.count)
+            Entry(key: key, count: value.count, firstID: value.first?.id, firstPort: value.first?.port)
         }
 
         entries.sort { lhs, rhs in
@@ -37,13 +39,18 @@ enum ServicePillCompiler {
             let baseLabel = entry.key.label
             let label = entry.count > 1 ? "\(baseLabel) ×\(entry.count)" : baseLabel
             let pillID = "\(entry.key.type.rawValue)|\(baseLabel)"
-            pills.append(ServicePill(id: pillID, label: label, type: entry.key.type, isOverflow: false))
+            pills.append(ServicePill(id: pillID,
+                                     label: label,
+                                     type: entry.key.type,
+                                     isOverflow: false,
+                                     serviceID: entry.firstID,
+                                     port: entry.firstPort))
         }
 
         var overflow = 0
         if entries.count > limit {
             overflow = entries.count - limit
-            pills.append(ServicePill(id: "overflow-\(overflow)", label: "+\(overflow)", type: nil, isOverflow: true))
+            pills.append(ServicePill(id: "overflow-\(overflow)", label: "+\(overflow)", type: nil, isOverflow: true, serviceID: nil, port: nil))
         }
 
         return (pills, overflow)
@@ -71,6 +78,8 @@ enum ServicePillCompiler {
     private struct Entry {
         let key: GroupKey
         let count: Int
+        let firstID: UUID?
+        let firstPort: Int?
     }
 }
 

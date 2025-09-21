@@ -1,4 +1,10 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
+#if canImport(AppKit)
+import AppKit
+#endif
 
 struct DeviceRowView: View {
     let device: Device
@@ -17,7 +23,7 @@ struct DeviceRowView: View {
                 headerRow
                 metaRow
                 if !device.displayServices.isEmpty {
-                    ServiceTagsView(services: device.displayServices, maxVisible: 4)
+                    ServiceTagsView(services: device.displayServices, device: device, maxVisible: 4)
                 }
             }
             Spacer()
@@ -181,7 +187,9 @@ struct DiscoveryPillsView: View {
 
 struct ServiceTagsView: View {
     let services: [NetworkService]
+    let device: Device
     var maxVisible: Int? = nil
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         let compilation = ServicePillCompiler.compile(services: services, maxVisible: maxVisible)
@@ -207,13 +215,26 @@ struct ServiceTagsView: View {
                 .clipShape(Capsule())
         } else if let type = pill.type {
             let style = Theme.style(for: type)
-            Text(pill.label)
-                .font(Theme.Typography.tag)
-                .padding(.horizontal, Theme.space(.sm))
-                .padding(.vertical, Theme.space(.xs))
-                .background(style.color.opacity(0.18))
-                .foregroundColor(style.color)
-                .clipShape(Capsule())
+            if let action = action(for: pill) {
+                Button(action: action) {
+                    Text(pill.label)
+                        .font(Theme.Typography.tag)
+                        .padding(.horizontal, Theme.space(.sm))
+                        .padding(.vertical, Theme.space(.xs))
+                        .background(style.color.opacity(0.18))
+                        .foregroundColor(style.color)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            } else {
+                Text(pill.label)
+                    .font(Theme.Typography.tag)
+                    .padding(.horizontal, Theme.space(.sm))
+                    .padding(.vertical, Theme.space(.xs))
+                    .background(style.color.opacity(0.18))
+                    .foregroundColor(style.color)
+                    .clipShape(Capsule())
+            }
         } else {
             Text(pill.label)
                 .font(Theme.Typography.tag)
@@ -223,6 +244,69 @@ struct ServiceTagsView: View {
                 .foregroundColor(Theme.color(.textSecondary))
                 .clipShape(Capsule())
         }
+    }
+
+    private func action(for pill: ServicePill) -> (() -> Void)? {
+        guard let type = pill.type, let host = hostForAction() else { return nil }
+        let port = effectivePort(for: pill)
+        switch type {
+        case .http:
+            return { openURLIfPossible(scheme: "http", host: host, port: port) }
+        case .https:
+            return { openURLIfPossible(scheme: "https", host: host, port: port) }
+        case .ftp:
+            return { openURLIfPossible(scheme: "ftp", host: host, port: port) }
+        case .ssh:
+            return { copyToClipboard("ssh \(host)") }
+        default:
+            return nil
+        }
+    }
+
+    private func effectivePort(for pill: ServicePill) -> Int? {
+        if let port = pill.port { return port }
+        if let id = pill.serviceID, let match = services.first(where: { $0.id == id }) {
+            return match.port
+        }
+        guard let type = pill.type else { return nil }
+        return services.first(where: { $0.type == type })?.port
+    }
+
+    private func hostForAction() -> String? {
+        if let hostname = device.hostname, !hostname.isEmpty { return hostname }
+        if let ip = device.bestDisplayIP { return ip }
+        if let primary = device.primaryIP { return primary }
+        return nil
+    }
+
+    private func openURLIfPossible(scheme: String, host: String, port: Int?) {
+        var components = URLComponents()
+        components.scheme = scheme
+        components.host = host
+        if let port, shouldSpecifyPort(for: scheme, port: port) {
+            components.port = port
+        }
+        guard let url = components.url else { return }
+        openURL(url)
+    }
+
+    private func shouldSpecifyPort(for scheme: String, port: Int) -> Bool {
+        switch scheme {
+        case "http": return port != 80
+        case "https": return port != 443
+        case "ftp": return port != 21
+        default: return true
+        }
+    }
+
+    private func copyToClipboard(_ string: String) {
+#if canImport(UIKit)
+        UIPasteboard.general.string = string
+#elseif canImport(AppKit)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(string, forType: .string)
+#endif
     }
 }
 

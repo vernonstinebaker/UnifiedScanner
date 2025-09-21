@@ -157,7 +157,7 @@ struct UnifiedDeviceDetail: View {
                     Text("Services")
                         .font(Theme.Typography.subheadline)
                         .foregroundColor(Theme.color(.textSecondary))
-                    ServiceTagsView(services: device.displayServices)
+                    ServiceTagsView(services: device.displayServices, device: device)
                 }
                 .cardStyle()
             }
