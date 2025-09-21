@@ -56,7 +56,7 @@ struct UnifiedDeviceDetail: View {
                 RoundedRectangle(cornerRadius: Theme.radius(.xl))
                     .fill(Theme.color(.bgElevated))
                     .frame(width: 80, height: 80)
-                Image(systemName: iconName)
+                Image(systemName: DeviceIconResolver.iconName(for: device))
                     .font(.system(size: 34))
                     .foregroundColor(Theme.color(.accentPrimary))
             }
@@ -75,17 +75,17 @@ struct UnifiedDeviceDetail: View {
                         .foregroundColor(Theme.color(.textTertiary))
                 }
                 if let classification = device.classification {
-                    HStack(spacing: Theme.space(.sm)) {
-                        ConfidenceBadge(confidence: classification.confidence)
+                    VStack(alignment: .leading, spacing: Theme.space(.xxs)) {
                         Text(classification.formFactor?.rawValue.capitalized ?? "Unclassified")
                             .font(Theme.Typography.caption)
                             .foregroundColor(Theme.color(.textSecondary))
-                    }
-                    if !classification.reason.isEmpty {
-                        Text(classification.reason)
-                            .font(Theme.Typography.caption)
-                            .foregroundColor(Theme.color(.textTertiary))
-                            .lineLimit(2)
+                        ConfidenceLevelView(confidence: classification.confidence)
+                        if !classification.reason.isEmpty {
+                            Text(classification.reason)
+                                .font(Theme.Typography.caption)
+                                .foregroundColor(Theme.color(.textTertiary))
+                                .lineLimit(2)
+                        }
                     }
                 }
             }
@@ -234,29 +234,6 @@ struct UnifiedDeviceDetail: View {
     }
 
     private var primaryTitle: String { device.vendor ?? device.hostname ?? device.bestDisplayIP ?? device.id }
-
-    private var iconName: String {
-        if let ff = device.classification?.formFactor {
-            switch ff {
-            case .router: return "network"
-            case .computer, .laptop: return "desktopcomputer"
-            case .tv: return "tv"
-            case .printer: return "printer"
-            case .phone: return "iphone"
-            case .tablet: return "ipad"
-            case .server: return "server.rack"
-            case .camera: return "camera"
-            case .speaker: return "hifispeaker.fill"
-            case .iot, .hub, .accessory: return "dot.radiowaves.left.and.right"
-            case .gameConsole: return "gamecontroller"
-            case .unknown: return "desktopcomputer"
-            }
-        }
-        if device.displayServices.contains(where: { $0.type == .airplay || $0.type == .airplayAudio }) { return "airplayvideo" }
-        if device.displayServices.contains(where: { $0.type == .printer }) { return "printer" }
-        if device.displayServices.contains(where: { $0.type == .http || $0.type == .https }) { return "server.rack" }
-        return "desktopcomputer"
-    }
 
     private func statusColor(_ status: Port.Status) -> Color {
         switch status {
@@ -413,4 +390,59 @@ struct UnifiedDeviceDetail: View {
         formatter.timeStyle = .short
         return formatter
     }()
+}
+
+private struct ConfidenceLevelView: View {
+    let confidence: ClassificationConfidence
+
+    private var confidenceLabel: String {
+        switch confidence {
+        case .high: return "High"
+        case .medium: return "Medium"
+        case .low: return "Low"
+        case .unknown: return "Unknown"
+        }
+    }
+
+    private var fillFraction: CGFloat {
+        switch confidence {
+        case .high: return 1
+        case .medium: return 2.0 / 3.0
+        case .low: return 1.0 / 3.0
+        case .unknown: return 0
+        }
+    }
+
+    private var fillColor: Color {
+        switch confidence {
+        case .high: return Theme.color(.statusOnline)
+        case .medium: return Theme.color(.accentWarn)
+        case .low: return Theme.color(.accentDanger)
+        case .unknown: return Theme.color(.accentMuted)
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.space(.xxs)) {
+            HStack(spacing: Theme.space(.xxs)) {
+                Text("Confidence")
+                    .font(Theme.Typography.caption)
+                    .foregroundColor(Theme.color(.textSecondary))
+                Text(confidenceLabel.uppercased())
+                    .font(Theme.Typography.caption)
+                    .foregroundColor(Theme.color(.textSecondary))
+            }
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Theme.color(.bgElevated))
+                    Capsule()
+                        .fill(fillColor)
+                        .frame(width: geometry.size.width * fillFraction)
+                }
+            }
+            .frame(height: 8)
+            .accessibilityLabel("Confidence \(confidenceLabel)")
+        }
+    }
 }

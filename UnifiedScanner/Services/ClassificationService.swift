@@ -46,6 +46,11 @@ struct ClassificationService {
         let explicitVendor = device.vendor?.lowercased() ?? ""
         let fingerprintResult = device.fingerprints.flatMap { VendorModelExtractorService.extract(from: $0) }
         let fingerprintVendor = fingerprintResult?.vendor?.lowercased() ?? ""
+        let fingerprintModel = fingerprintResult?.model?.lowercased() ?? ""
+        let modelHint = device.modelHint?.lowercased() ?? ""
+        let fingerprintValues = device.fingerprints?.values.map { $0.lowercased() } ?? []
+        let fingerprintCorpusComponents = fingerprintValues + (modelHint.isEmpty ? [] : [modelHint])
+        let fingerprintCorpus = fingerprintCorpusComponents.joined(separator: " ")
         let inferredVendor = (await inferVendorFromOUI(mac: device.macAddress))?.lowercased() ?? ""
         // Prefer explicit vendor, then fingerprint, then OUI
         let vendor = [explicitVendor, fingerprintVendor, inferredVendor].first(where: { !$0.isEmpty }) ?? ""
@@ -59,6 +64,12 @@ struct ClassificationService {
 
         // MARK: - High Confidence Vendor / Hostname Patterns
         vendorHostnameRules(vendor: vendor, host: lowerHost, services: serviceTypes, ports: ports, add: add)
+
+        // MARK: - Fingerprint / Model Hint Rules
+        fingerprintRules(vendor: vendor,
+                         fingerprintModel: fingerprintModel,
+                         fingerprintCorpus: fingerprintCorpus,
+                         add: add)
 
         // MARK: - Service Combination Rules (medium/high)
         serviceCombinationRules(vendor: vendor, host: lowerHost, services: serviceTypes, add: add)
@@ -148,6 +159,24 @@ struct ClassificationService {
         // SSH-only host
         if serviceTypes == [.ssh] || (services.count == 1 && services.first?.type == .ssh) {
             add(.server, "ssh_only", .low, "Only SSH service discovered", ["service:ssh"]) }
+    }
+
+    private static func fingerprintRules(vendor: String,
+                                         fingerprintModel: String,
+                                         fingerprintCorpus: String,
+                                         add: (_ form: DeviceFormFactor?, _ raw: String?, _ conf: ClassificationConfidence, _ reason: String, _ sources: [String]) -> Void) {
+        let hasFingerprintData = !fingerprintModel.isEmpty || !fingerprintCorpus.isEmpty
+        guard hasFingerprintData else { return }
+        let fingerprintSources = ["fingerprint:model"]
+        let appleContext = vendor.contains("apple") || fingerprintCorpus.contains("apple") || fingerprintModel.contains("apple")
+
+        if appleContext && (fingerprintModel.contains("appletv") || fingerprintCorpus.contains("appletv")) {
+            add(.tv, "apple_tv", .high, "Fingerprint model indicates Apple TV", fingerprintSources)
+        }
+
+        if appleContext && (fingerprintModel.contains("homepod") || fingerprintModel.contains("audioaccessory") || fingerprintCorpus.contains("homepod")) {
+            add(.speaker, "homepod", .high, "Fingerprint model indicates HomePod", fingerprintSources)
+        }
     }
 
     // MARK: - Helpers

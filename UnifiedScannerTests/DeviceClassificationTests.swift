@@ -39,4 +39,30 @@ final class DeviceClassificationTests: XCTestCase {
         // Might classify as computer (still ssh + vendor) but not tv
         XCTAssertNotEqual(mac.classification?.formFactor, .tv)
     }
+
+    func testFingerprintModelElevatesAppleTVConfidence() async {
+        var d = Device(primaryIP: "192.168.1.150",
+                       hostname: "living-room.local",
+                       vendor: "Apple",
+                       discoverySources: [.mdns],
+                       services: [ServiceDeriver.makeService(fromRaw: "_airplay._tcp", port: 7000)],
+                       openPorts: [],
+                       fingerprints: ["md": "AppleTV6,2"])
+        d.classification = await ClassificationService.classify(device: d)
+        XCTAssertEqual(d.classification?.formFactor, .tv)
+        XCTAssertEqual(d.classification?.confidence, .high)
+    }
+
+    func testFingerprintModelRecognisesHomePod() async {
+        var d = Device(primaryIP: "192.168.1.151",
+                       hostname: "kitchen-speaker",
+                       vendor: "Apple",
+                       discoverySources: [.mdns],
+                       services: [ServiceDeriver.makeService(fromRaw: "_raop._tcp", port: 7000)],
+                       openPorts: [],
+                       fingerprints: ["md": "HomePod", "model": "AudioAccessory5,1"])
+        d.classification = await ClassificationService.classify(device: d)
+        XCTAssertEqual(d.classification?.formFactor, .speaker)
+        XCTAssertEqual(d.classification?.confidence, .high)
+    }
 }

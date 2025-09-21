@@ -50,23 +50,20 @@ struct DeviceRowView: View {
             RoundedRectangle(cornerRadius: Theme.radius(.lg))
                 .fill(Theme.color(.bgElevated))
                 .frame(width: 48, height: 48)
-            Image(systemName: iconName)
+            Image(systemName: DeviceIconResolver.iconName(for: device))
                 .font(.system(size: 22, weight: .medium))
                 .foregroundColor(Theme.color(.accentPrimary))
         }
     }
 
     private var headerRow: some View {
-HStack(spacing: Theme.space(.sm)) {
-    Text(primaryTitle)
-        .font(Theme.Typography.headline)
-        .foregroundColor(Theme.color(.textPrimary))
-        .lineLimit(1)
-    if let classification = device.classification {
-        ConfidenceBadge(confidence: classification.confidence)
-    }
-    Spacer(minLength: 0)
-}
+        HStack(spacing: Theme.space(.sm)) {
+            Text(primaryTitle)
+                .font(Theme.Typography.headline)
+                .foregroundColor(Theme.color(.textPrimary))
+                .lineLimit(1)
+            Spacer(minLength: 0)
+        }
     }
 
 private var metaRow: some View {
@@ -114,29 +111,6 @@ private var metaRow: some View {
 private var primaryTitle: String {
     device.hostname ?? device.bestDisplayIP ?? device.id
 }
-
-    private var iconName: String {
-        if let ff = device.classification?.formFactor {
-            switch ff {
-            case .router: return "network"
-            case .computer, .laptop: return "desktopcomputer"
-            case .tv: return "tv"
-            case .printer: return "printer"
-            case .phone: return "iphone"
-            case .tablet: return "ipad"
-            case .server: return "server.rack"
-            case .camera: return "camera"
-            case .speaker: return "hifispeaker.fill"
-            case .iot, .hub, .accessory: return "dot.radiowaves.left.and.right"
-            case .gameConsole: return "gamecontroller"
-            case .unknown: return "desktopcomputer"
-            }
-        }
-        if device.displayServices.contains(where: { $0.type == .airplay || $0.type == .airplayAudio }) { return "airplayvideo" }
-        if device.displayServices.contains(where: { $0.type == .printer }) { return "printer" }
-        if device.displayServices.contains(where: { $0.type == .http || $0.type == .https }) { return "server.rack" }
-        return "desktopcomputer"
-    }
 
     private func discoveryOrder(_ lhs: DiscoverySource, _ rhs: DiscoverySource) -> Bool {
         let ranking: [DiscoverySource] = [.arp, .ping, .mdns, .ssdp, .portScan, .reverseDNS, .manual, .unknown]
@@ -310,35 +284,98 @@ struct ServiceTagsView: View {
     }
 }
 
-struct ConfidenceBadge: View {
-    let confidence: ClassificationConfidence
+enum DeviceIconResolver {
+    static func iconName(for device: Device) -> String {
+        let context = normalizedContext(for: device)
 
-    var body: some View {
-        Text(label)
-            .font(Theme.Typography.tag)
-            .padding(.horizontal, Theme.space(.sm))
-            .padding(.vertical, Theme.space(.xs))
-            .background(color.opacity(0.18))
-            .foregroundColor(color)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.radius(.sm)))
-            .accessibilityLabel("Confidence \(label)")
+        if context.contains(where: { $0.contains("homepod") || $0.contains("audioaccessory") }) {
+            return "homepod"
+        }
+        if context.contains(where: { $0.contains("appletv") || $0.contains("apple tv") }) {
+            return "appletv"
+        }
+        if context.contains(where: { $0.contains("airport") }) {
+            return "wifi.router"
+        }
+        if context.contains(where: { $0.contains("iphone") || $0.contains("ipod") }) {
+            return "iphone"
+        }
+        if context.contains(where: { $0.contains("ipad") }) {
+            return "ipad"
+        }
+        if context.contains(where: { $0.contains("macbook") }) {
+            return "laptopcomputer"
+        }
+        if context.contains(where: { $0.contains("imac") }) {
+            return "desktopcomputer"
+        }
+        if context.contains(where: { $0.contains("mac mini") || $0.contains("macmini") }) {
+            return "macmini"
+        }
+
+        if let classification = device.classification {
+            if let icon = iconName(for: classification.formFactor, context: context) {
+                return icon
+            }
+        }
+
+        if device.displayServices.contains(where: { $0.type == .airplay || $0.type == .airplayAudio }) {
+            return "tv"
+        }
+        if device.displayServices.contains(where: { $0.type == .printer || $0.type == .ipp }) {
+            return "printer"
+        }
+
+        if let hostname = device.hostname?.lowercased(), hostname.contains("router") || hostname.contains("gateway") {
+            return "wifi.router"
+        }
+
+        return "wifi"
     }
 
-    private var label: String {
-        switch confidence {
-        case .high: return "HIGH"
-        case .medium: return "MED"
-        case .low: return "LOW"
-        case .unknown: return "?"
+    private static func iconName(for formFactor: DeviceFormFactor?, context: [String]) -> String? {
+        guard let formFactor else { return nil }
+        switch formFactor {
+        case .router:
+            return "wifi.router"
+        case .computer:
+            return context.contains(where: { $0.contains("laptop") }) ? "laptopcomputer" : "desktopcomputer"
+        case .laptop:
+            return "laptopcomputer"
+        case .tv:
+            return "tv"
+        case .printer:
+            return "printer"
+        case .phone:
+            return "iphone"
+        case .tablet:
+            return "ipad"
+        case .server:
+            return "server.rack"
+        case .camera:
+            return "camera"
+        case .speaker:
+            return context.contains(where: { $0.contains("speaker") || $0.contains("audio") }) ? "speaker.wave.2" : "speaker"
+        case .iot, .hub, .accessory:
+            return "dot.radiowaves.left.and.right"
+        case .gameConsole:
+            return "gamecontroller"
+        case .unknown:
+            return nil
         }
     }
 
-    private var color: Color {
-        switch confidence {
-        case .high: return Theme.color(.statusOnline)
-        case .medium: return Theme.color(.accentWarn)
-        case .low: return Theme.color(.accentDanger)
-        case .unknown: return Theme.color(.accentMuted)
+    private static func normalizedContext(for device: Device) -> [String] {
+        var pieces: [String] = []
+        if let vendor = device.vendor { pieces.append(vendor) }
+        if let modelHint = device.modelHint { pieces.append(modelHint) }
+        if let hostname = device.hostname { pieces.append(hostname) }
+        if let rawType = device.classification?.rawType { pieces.append(rawType) }
+        if let fingerprints = device.fingerprints?.values {
+            pieces.append(contentsOf: fingerprints)
         }
+        return pieces
+            .map { $0.lowercased() }
+            .filter { !$0.isEmpty }
     }
 }
