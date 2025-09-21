@@ -1,31 +1,31 @@
 # UnifiedScanner Project Overview
 
 ## Purpose
-UnifiedScanner is a greenfield consolidation UI drawing on *reference-only* legacy projects **BonjourScanner** and **netscan**. Those codebases remain frozen; this app selectively adapts their strongest concepts into a cohesive, extensible network scanning and device intelligence experience.
+UnifiedScanner is a greenfield consolidation of network scanning capabilities from legacy reference projects **BonjourScanner** and **netscan**. The legacy codebases remain frozen and read-only; this app selectively adapts their strongest concepts into a cohesive, extensible experience for device discovery and network intelligence on Apple platforms.
 
 ## Vision (Pragmatic Scope)
-Create a single experience that:
-- Discovers devices via currently implemented mechanisms (ICMP ping + ARP on macOS) and future planned mechanisms (mDNS/Bonjour, port scan enrichment, reverse DNS, SSDP, WS-Discovery) added incrementally.
-- Normalizes heterogeneous discovery signals into a canonical `Device` model (multi-IP, services, ports, vendor, classification).
-- Classifies devices (form factor + confidence + rationale) using multi-signal heuristics (hostname, vendor, model hints, services, ports when available).
-- Surfaces actionable service endpoints (HTTP(S), SSH, AirPlay, printer, etc.) with contextual actions.
-- Persists device timeline (first/last seen) and core attributes for continuity across launches.
+Build a single app that:
+- Discovers devices using implemented mechanisms (ICMP ping via SimplePingKit, ARP table on macOS, mDNS/Bonjour browsing) and planned extensions (port scanning, reverse DNS, SSDP, WS-Discovery).
+- Normalizes discovery signals into a canonical `Device` model supporting multi-IP, services, ports, vendor info, and classification.
+- Classifies devices (form factor, confidence, rationale) using heuristics from hostname, vendor, services, and ports.
+- Provides actionable views of services (HTTP/SSH/AirPlay) with contextual interactions.
+- Persists device history (first/last seen, attributes) for session continuity via iCloud Key-Value Store.
 
-## Non‑Goals (Early Phases)
-- Full immediate parity with every experimental feature from netscan / BonjourScanner.
-- Live user annotations (nicknames, tagging) — may come later.
-- Broad cross‑platform beyond macOS + iOS/iPadOS targets.
-- Heavy analytics or telemetry pipelines.
+## Non-Goals (Early Phases)
+- Immediate full parity with all experimental features from legacy projects.
+- User annotations (nicknames, tags) — deferred.
+- Broad platform support beyond macOS, iOS, iPadOS.
+- Telemetry or analytics.
 
 ## Guiding Principles
-1. Single Source of Truth: Unified `Device` model; no parallel production structs.  
-2. Extensibility Over Exhaustiveness: Enums + raw fallback keep evolving network signatures from blocking releases.  
-3. Deterministic Presentation: Centralized service/port dedupe & sorting rules.  
-4. Explicit Semantics: Derived states (e.g., `isOnline`) document assumptions (recent activity window).  
-5. Reference Isolation: Only copy logic with attribution; never import legacy modules.  
-6. Test Intent: Unit tests focus on merging, classification, normalization invariants.  
+1. **Single Source of Truth:** Unified `Device` model; no duplicate production structs.
+2. **Extensibility:** Enums with raw fallbacks for evolving network data.
+3. **Determinism:** Centralized deduplication and sorting for services/ports.
+4. **Explicitness:** Derived states (e.g., `isOnline`) with documented assumptions.
+5. **Isolation:** Copy logic from references with attribution; no direct imports.
+6. **Test Focus:** Unit tests target merge logic, classification, normalization.
 
-## Core Domain Model (Implemented)
+## Core Domain Model
 ```swift
 public struct Device: Identifiable, Hashable, Codable, Sendable {
     public struct Classification: Hashable, Codable, Sendable {
@@ -47,93 +47,99 @@ public struct Device: Identifiable, Hashable, Codable, Sendable {
     public var rttMillis: Double?
     public var services: [NetworkService]
     public var openPorts: [Port]
-    public var fingerprints: [String:String]?
+    public var fingerprints: [String: String]?
     public var firstSeen: Date?
     public var lastSeen: Date?
     public var isOnlineOverride: Bool?
     public var isOnline: Bool { isOnlineOverride ?? recentlySeen }
-    public var recentlySeen: Bool { guard let ls = lastSeen else { return false }; return Date().timeIntervalSince(ls) < DeviceConstants.onlineGraceInterval }
+    public var recentlySeen: Bool { Date().timeIntervalSince(lastSeen ?? .distantPast) < DeviceConstants.onlineGraceInterval }
     public var displayServices: [NetworkService] { ServiceDeriver.displayServices(services: services, openPorts: openPorts) }
     public var bestDisplayIP: String? { primaryIP ?? IPHeuristics.bestDisplayIP(ips) }
 }
 ```
-(See source for supporting enums and structs.)
+(See source for enums/structs like `NetworkService`, `Port`, `DiscoverySource`.)
 
-### Identity Strategy
-Priority for assigning `Device.id` when merging:
-1. MAC address (normalized)  
-2. Primary IP  
-3. Hostname  
-4. Generated UUID fallback  
+### Identity Resolution
+Merge priority for `Device.id`:
+1. Normalized MAC address
+2. Primary IP
+3. Hostname
+4. UUID fallback
 
-### Classification Pipeline (Current)
-- Signals: hostname, vendor, modelHint, normalized service types, open ports (currently empty until scanner implemented), fingerprints (future).
-- Rule set (ported & simplified) yields: form factor, confidence, reason string (semi-colon joined), rawType fallback.
-- Re-evaluated automatically when material classification inputs change in `SnapshotService`.
+### Classification (Implemented)
+- Inputs: hostname, vendor, modelHint, service types, open ports, fingerprints.
+- Outputs: form factor (e.g., .router), confidence (.high/.medium), reason (e.g., "hostname: linksys; services: _http._tcp"), sources.
+- Auto-recomputed on relevant field changes in `SnapshotService`.
 
-## Architecture Choices (Option A: Local-First)
-Delay Swift package modularization until after multiple real discovery providers exist and APIs stabilize. Benefits: faster iteration, simpler refactors, reduced cognitive load.
+## Architecture (Local-First)
+No premature SPM modularization; iterate locally until discovery providers stabilize. Inspirations:
+- BonjourScanner: Multi-signal classification, multi-IP models.
+- netscan: Service/port normalization, ping orchestration.
 
-Adopted inspirations:
-- BonjourScanner: classification strategy structuring & multi-signal reasoning, multi-IP device representation.  
-- netscan: service/port normalization concepts, ping orchestration pattern (adapted), model richness for ports/fingerprints (structure kept; engine pending).  
+## Implemented Discovery
+- **ICMP Ping:** SimplePingKitService in async stream; PingOrchestrator throttles to 32 concurrent.
+- **Auto-Enumeration:** LocalSubnetEnumerator for /24 hosts when no list provided.
+- **ARP (macOS):** Route table dump + UDP warmup; merges MACs into devices.
+- **Mutation Stream:** SnapshotService.mutationStream for snapshots and DeviceChange events.
+- **Persistence:** iCloud KVS + UserDefaults; env var for clearing.
 
-## Current Discovery Implementation (Accurate as of this revision)
-Implemented:
-- ICMP Ping via `SimplePingKitService` wrapped in async stream.  
-- `PingOrchestrator` actor throttling concurrency (32 active hosts).  
-- Auto /24 host enumeration using `LocalSubnetEnumerator` when no explicit host list provided.  
-- ARP (macOS): route table dump + UDP warmup + MAC merge into existing devices.  
-- Mutation stream: `SnapshotService.mutationStream` yields snapshots and fine-grained `DeviceChange` events.  
-- Persistence: iCloud KVS + UserDefaults mirror at startup (optional clearing via env var).  
+Not Implemented (Planned):
+- Port scanning (TCP multi-port).
+- Real mDNS/Bonjour (mock only).
+- Reverse DNS, SSDP, WS-Discovery.
+- HTTP/SSH fingerprinting.
+- Network framework ping fallback.
+- Structured logging (ad-hoc prints).
+- Provider event bus (direct upserts).
 
-Not Yet Implemented (Previously Overstated in Docs):
-- Port scanning engine (no TCP multi-port probing active).  
-- UDP fallback logic (beyond ARP cache warm UDP nudge).  
-- Real mDNS / Bonjour provider (only mock exists).  
-- Reverse DNS, SSDP, WS-Discovery providers.  
-- HTTP banner / SSH fingerprint extraction.  
-- Alternate PingService (Network framework / exec fallback).  
-- Structured logging facade (using ad-hoc `print`).  
-- Provider → mutation event bus abstraction (providers currently upsert directly).  
+## Planned Enhancements
+**Short-Term:**
+- Port scanning (tiers: 80/443/22).
+- OUI vendor lookup (oui.csv ingestion).
+- Structured logging (categories: ping, mDNS).
+- Provider decoupling (mutation events).
+- Accessibility (VoiceOver, Dynamic Type).
 
-## Planned Enhancements (Roadmap Extract)
-Short-term (Phase 6): logging abstraction, provider event bus, mDNS provider, tier-0/1 port scanner, OUI ingestion, FeatureFlag system, accessibility labels, theming extraction, initial reverse DNS, basic HTTP/SSH fingerprint capture.
-Longer-term (Phase 7+): extended port tiers, SSDP & WS-Discovery, mutation backpressure tuning, offline service pruning policy, internationalization, advanced accessibility (rotor grouping), performance benchmarking, light/high-contrast themes.
+**Medium-Term:**
+- SSDP/WS-Discovery.
+- HTTP/SSH fingerprints.
+- Light theme.
+- UI tests.
 
-## Concurrency & Cancellation (Planned Improvements)
-- Replace ad-hoc `Task {}` launches in `PingOrchestrator` with structured task groups & cancellation tokens.  
-- Introduce DiscoveryCoordinator shutdown API (cancel & drain).  
-- Provider emission shift: producers emit `DeviceMutation` values; store folds and persists.  
+**Long-Term:**
+- Snapshot export (JSON/CSV).
+- Annotations.
+- HomeKit/AirPlay integration.
+- Benchmarks (>1000 hosts).
 
-## Logging Direction
-Introduce `ScanLogger` with categories (`ping`, `arp`, `mdns`, `merge`, `portscan`, `classify`) gating output via FeatureFlag/env, migrating away from scattered prints.
+## Concurrency & Cancellation (Planned)
+- Structured task groups in PingOrchestrator.
+- DiscoveryCoordinator shutdown.
+- Provider emissions to mutation bus.
 
-## Accessibility Direction
-VoiceOver device row label pattern: `<FormFactor>, <Hostname|Vendor>, IP <BestDisplayIP>, <n> services, RTT <x> ms`.  
-Service pills & port list entries to gain descriptive accessibility labels + rotor grouping.  
-Dynamic Type stress testing up to XXXL & macOS Large Content Viewer considered in Phase 6.
+## Logging (Planned)
+ScanLogger with categories (ping, ARP, mDNS); FeatureFlag gating.
 
-## Testing Priorities (Next)
-- Merge semantics: multi-source union (ping + ARP), RTT update path, classification re-run triggers.  
-- mDNS provider tests (service/TXT parsing) once implemented.  
-- Port scanner tier scheduling & cancellation tests (future).  
-- Vendor/OUI lookup correctness tests after ingestion.  
+## Accessibility (Planned)
+- Row labels: "<FormFactor>, <Hostname/Vendor>, IP <BestIP>, <n> services, RTT <x>ms".
+- Pills/ports: Descriptive labels, rotor grouping.
+- Dynamic Type to XXXL; macOS Large Content Viewer.
 
-## Removed / Corrected Prior Claims
-- Removed statements asserting multi-port TCP probing & UDP fallback engine — not implemented.  
-- Removed claim of Network framework-based unified ping — current implementation exclusively SimplePingKit.  
-- Removed large-scale performance claim ("1400+ devices"); no such benchmark present in code/tests.  
+## Testing Priorities
+- Merge: Multi-source (ping+ARP), RTT updates, re-classification.
+- mDNS: Service/TXT parsing.
+- Port scanner: Scheduling, cancellation.
+- OUI: Lookup accuracy.
 
-## Reference Code Policy
-Legacy projects remain read-only; copy/adapt logic with attribution where essential. Future modularization triggered by stable APIs + multiple consumer targets.
+## Reference Policy
+Legacy projects read-only; adapt with attribution. Modularize post-stabilization.
 
-## Next Steps Snapshot
-1. Introduce logging facade & feature flag scaffolding.  
-2. Implement provider → mutation bus (decouple upserts).  
-3. Add mDNS provider (NetServiceBrowser) + TXT parsing + classification triggers.  
-4. Tier-0 port scanner (22,80,443) feeding `openPorts`.  
-5. OUI ingestion service + vendor enrichment tests.  
+## Next Steps
+1. Logging facade + flags.
+2. Provider mutation bus.
+3. mDNS provider + TXT.
+4. Tier-0 ports.
+5. OUI + vendor tests.
 
 ---
-This overview stays synchronized with `PLAN.md` and `FEATURE_COMPARISON.md`; discrepancies should be resolved immediately when features land.
+Synchronized with PLAN.md and FEATURE_COMPARISON.md; resolve discrepancies on feature landing.
