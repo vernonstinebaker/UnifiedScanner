@@ -10,13 +10,13 @@ final class BonjourBrowseService: NSObject, @unchecked Sendable {
     private let stateQueue = DispatchQueue(label: "BonjourBrowseService.state")
     private var stopped = false
 
-    private static let validTypeRegex: NSRegularExpression = {
+    static let validTypeRegex: NSRegularExpression = {
         // _name._tcp.  or _name._udp. (allow alnum + dash)
         return try! NSRegularExpression(pattern: "^_[A-Za-z0-9-]+\\._(tcp|udp)\\.$")
     }()
 
 #if os(iOS)
-    private static let permittedTypesIOS: Set<String> = {
+    static let permittedTypesIOS: Set<String> = {
         [
             "_services._dns-sd._udp.",
             "_airplay._tcp.",
@@ -83,12 +83,12 @@ final class BonjourBrowseService: NSObject, @unchecked Sendable {
 }
 
 extension BonjourBrowseService: NetServiceBrowserDelegate {
-    private func isValidServiceType(_ type: String) -> Bool {
+    func isValidServiceType(_ type: String) -> Bool {
         let range = NSRange(location: 0, length: type.utf16.count)
         return Self.validTypeRegex.firstMatch(in: type, options: [], range: range) != nil
     }
 
-    private func emitTypeIfNeeded(_ type: String, origin: String) {
+    func emitTypeIfNeeded(_ type: String, origin: String) {
         let lower = type.lowercased()
 #if os(iOS)
         guard Self.permittedTypesIOS.contains(lower) else {
@@ -111,12 +111,12 @@ extension BonjourBrowseService: NetServiceBrowserDelegate {
         }
     }
 
-    private func startCuratedBrowsers() {
+    func startCuratedBrowsers() {
         LoggingService.info("browse: starting curated browsers count=\(self.curatedServiceTypes.count)")
         for type in curatedServiceTypes { startBrowser(for: type) }
         LoggingService.info("browse: curated browsers started activeCount=\(self.serviceBrowsers.count)")
     }
-    private func startWildcardBrowser() {
+    func startWildcardBrowser() {
         let type = "_services._dns-sd._udp."
         let browser = NetServiceBrowser()
         browser.delegate = self
@@ -125,7 +125,7 @@ extension BonjourBrowseService: NetServiceBrowserDelegate {
         browser.searchForServices(ofType: type, inDomain: "local.")
         LoggingService.info("browse: started wildcard browser type=\(type)")
     }
-    private func startBrowser(for type: String) {
+    func startBrowser(for type: String) {
         let lower = type.lowercased()
         stateQueue.sync { _ = activeServiceTypes.insert(lower) }
         let browser = NetServiceBrowser()
@@ -134,8 +134,8 @@ extension BonjourBrowseService: NetServiceBrowserDelegate {
         browser.searchForServices(ofType: type, inDomain: "local.")
         LoggingService.info("browse: started browser type=\(type)")
     }
-    private func browserIsWildcard(_ browser: NetServiceBrowser) -> Bool { browser === wildcardBrowser }
-    private func isServiceTypeEnumeration(service: NetService) -> Bool {
+    func browserIsWildcard(_ browser: NetServiceBrowser) -> Bool { browser === wildcardBrowser }
+    func isServiceTypeEnumeration(service: NetService) -> Bool {
         return (service.port == -1 || service.port == 0) && service.name.hasPrefix("_") && service.type == "_services._dns-sd._udp."
     }
     private func considerStartingDynamicBrowser(forRawDiscoveredType type: String) {

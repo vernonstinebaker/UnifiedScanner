@@ -1,7 +1,7 @@
 import XCTest
 @testable import UnifiedScanner
 
-final class AppSettingsTests: XCTestCase {
+@MainActor final class AppSettingsTests: XCTestCase {
     private var originalDefaults: UserDefaults!
 
     override func setUp() {

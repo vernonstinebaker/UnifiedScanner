@@ -6,8 +6,8 @@ UnifiedScanner is a greenfield consolidation of network scanning capabilities fr
 ## Vision (Pragmatic Scope)
 Build a single app that:
 - Discovers devices using implemented mechanisms (ICMP ping via SimplePingKit on iOS, ARP table on macOS, mDNS/Bonjour browsing) and planned extensions (port scanning, reverse DNS, SSDP, WS-Discovery). macOS deliberately omits ICMP because sandboxed apps cannot issue raw pings without elevated entitlements.
-- Normalizes discovery signals into a canonical `Device` model supporting multi-IP, services, ports, vendor info, and classification.
-- Classifies devices (form factor, confidence, rationale) using heuristics from hostname, vendor, services, and ports.
+- Normalizes discovery signals into a canonical `Device` model supporting multi-IP, services, ports, vendor info (including HTTP-derived fingerprints), and classification.
+- Classifies devices (form factor, confidence, rationale) using heuristics from hostname, vendor, fingerprints (incl. HTTP headers/certs), services, and ports.
 - Provides actionable views of services (HTTP/SSH/AirPlay) with contextual interactions.
 - Persists device history (first/last seen, attributes) for session continuity via iCloud Key-Value Store.
 
@@ -59,7 +59,7 @@ public struct Device: Identifiable, Hashable, Codable, Sendable {
 ```
 (See source for enums/structs like `NetworkService`, `Port`, `DiscoverySource`.)
 
-Vendor enrichment pulls from multiple signals: explicit vendor values, fingerprint extraction (TXT records), and OUI prefix lookup via `OUILookupService` (default-initialised at app launch).
+ Vendor enrichment pulls from multiple signals: explicit vendor values, fingerprint extraction (TXT/HTTP records), and OUI prefix lookup via `OUILookupService` (default-initialised at app launch).
 
 ### Identity Resolution
 Merge priority for `Device.id`:
@@ -86,11 +86,14 @@ No premature SPM modularization; iterate locally until discovery providers stabi
 - **Mutation Bus & Store:** Discovery providers emit `DeviceMutation` events via `DeviceMutationBus`; `SnapshotService` applies them and exposes `mutationStream`.
 - **Persistence:** iCloud KVS + UserDefaults mirror with environment flag for clearing on launch.
 - **Port Scanning (Tier 0):** `PortScanService` listens to mutation events and probes ports 22/80/443, adding services/open ports and marking hosts online when responsive.
+- **HTTP Fingerprinting:** `HTTPFingerprintService` performs lightweight HEAD/GET requests on HTTP/HTTPS ports and records headers/realms/certificate subjects as fingerprints, feeding classification and vendor/model inference.
 
-Not Implemented (Planned):
-- SSDP / WS-Discovery.
-- Reverse DNS enrichment.
-- HTTP/SSH fingerprinting pipeline.
+- Deferred (Considered Low ROI):
+  - SSDP / WS-Discovery (likely redundant with mDNS/HTTP fingerprints for our target devices).
+  - Reverse DNS enrichment (PTR data rarely improves classification and adds latency).
+- Planned Enhancements:
+  - SSH host-key fingerprint capture (for strong identity/confidence signals).
+  - Additional protocol fingerprints as justified (e.g. HTTP response body banners).
 - Logging runtime toggles & category controls (logger exists).
 - Feature flags for discovery/logging toggles.
 

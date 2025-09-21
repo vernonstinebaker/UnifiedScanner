@@ -11,8 +11,9 @@ final class PingOrchestratorTimeoutTests: XCTestCase {
         // Mock ping service that only emits a timeout
         let mock = TimeoutOnlyPingService()
         // Fresh bus (shared) may contain buffered events; clear it
-        await MainActor.run { DeviceMutationBus.shared.clearBuffer() }
-        let orchestrator = PingOrchestrator(pingService: mock, mutationBus: DeviceMutationBus.shared, maxConcurrent: 1)
+        let bus = await MainActor.run { DeviceMutationBus.shared }
+        await MainActor.run { bus.clearBuffer() }
+        let orchestrator = PingOrchestrator(pingService: mock, mutationBus: bus, maxConcurrent: 1)
         await orchestrator.enqueue(hosts: ["10.0.0.200"], config: PingConfig(host: "placeholder", count: 1, interval: 0.01, timeoutPerPing: 0.01))
         try? await Task.sleep(nanoseconds: 400_000_000)
         let devices = await MainActor.run { store.devices }

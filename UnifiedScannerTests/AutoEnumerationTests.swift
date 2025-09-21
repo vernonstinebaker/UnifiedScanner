@@ -7,8 +7,9 @@ import XCTest
         let store = SnapshotService(persistenceKey: "auto-enum", persistence: MemoryPersistenceAE(), classification: ClassificationService.self)
         let mockEnumerator = MockEnumerator(hosts: ["10.0.0.5", "10.0.0.6"]) // deterministic
         let mockPingService = OneShotMockPingServiceAE(rtt: 3.3)
-        let orchestrator = PingOrchestrator(pingService: mockPingService, mutationBus: DeviceMutationBus.shared, maxConcurrent: 4)
-        let coordinator = DiscoveryCoordinator(store: store, pingOrchestrator: orchestrator, mutationBus: DeviceMutationBus.shared, providers: [], hostEnumerator: mockEnumerator)
+        let bus = await MainActor.run { DeviceMutationBus.shared }
+        let orchestrator = PingOrchestrator(pingService: mockPingService, mutationBus: bus, maxConcurrent: 4)
+        let coordinator = DiscoveryCoordinator(store: store, pingOrchestrator: orchestrator, mutationBus: bus, providers: [], hostEnumerator: mockEnumerator)
 
         var yieldedHosts: Set<String> = []
         let stream = store.mutationStream(includeInitialSnapshot: false)
@@ -22,7 +23,7 @@ import XCTest
         }
 
         // Act
-        await coordinator.startAndWait(pingHosts: [], pingConfig: PingConfig(host: "placeholder", count: 1, interval: 0.05, timeoutPerPing: 0.05), mdnsWarmupSeconds: 0.001, autoEnumerateIfEmpty: true, maxAutoEnumeratedHosts: 10)
+        await coordinator.startScan(pingHosts: [], pingConfig: PingConfig(host: "placeholder", count: 1, interval: 0.05, timeoutPerPing: 0.05), mdnsWarmupSeconds: 0.001, autoEnumerateIfEmpty: true, maxAutoEnumeratedHosts: 10)
         // Wait up to 2 seconds for both hosts instead of fixed sleep
         let start = Date()
         while yieldedHosts.count < 2 && Date().timeIntervalSince(start) < 2.0 {

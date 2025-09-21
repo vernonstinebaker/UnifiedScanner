@@ -52,6 +52,8 @@ final class PortScanServiceTests: XCTestCase {
         XCTAssertTrue(portChange.changed.contains(.services))
         XCTAssertTrue(portChange.after.openPorts.contains(where: { $0.number == 22 && $0.status == .open }))
         XCTAssertTrue(portChange.after.services.contains(where: { $0.port == 22 && $0.type == .ssh }))
+    }
+
     func testPortScanUpdatesExistingDeviceUnionsDiscoverySources() async {
         let bus = await MainActor.run { DeviceMutationBus() }
         let prober = StubPortProber(results: [22: .open])

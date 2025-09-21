@@ -124,7 +124,7 @@ public final class ARPService: @unchecked Sendable { // @unchecked because NWCon
         return entries
     }
 
-    private static func parseEntry(message: rt_msghdr, basePointer: UnsafeMutableRawPointer) -> ARPEntry? {
+    static func parseEntry(message: rt_msghdr, basePointer: UnsafeMutableRawPointer) -> ARPEntry? {
         var destinationIP: String?
         var macAddress: String?
         var interface: String?
@@ -159,29 +159,29 @@ case (AF_INET, RTAX_DST):
         return ARPEntry(ipAddress: ip, macAddress: mac, interface: interface ?? "", isStatic: isStatic)
     }
 
-    private static func advancePointer(from pointer: UnsafeRawPointer, sockaddr: sockaddr) -> UnsafeRawPointer {
+    static func advancePointer(from pointer: UnsafeRawPointer, sockaddr: sockaddr) -> UnsafeRawPointer {
         var length = Int(sockaddr.sa_len)
         if length == 0 { length = MemoryLayout<sockaddr>.size }
         if length & 3 != 0 { length += 4 - (length & 3) }
         return pointer.advanced(by: length)
     }
 
-    private static func extractInterfaceName(from sdl: sockaddr_dl, dataPointer: UnsafeRawPointer) -> String? {
+    static func extractInterfaceName(from sdl: sockaddr_dl, dataPointer: UnsafeRawPointer) -> String? {
         guard sdl.sdl_nlen > 0 else { return nil }
         let nameStart = dataPointer.advanced(by: sockaddrDLDataOffset)
         let bytes = nameStart.assumingMemoryBound(to: UInt8.self)
         return String(bytes: UnsafeBufferPointer(start: bytes, count: Int(sdl.sdl_nlen)), encoding: .utf8)
     }
 
-    private static func macString(from pointer: UnsafePointer<UInt8>) -> String {
+    static func macString(from pointer: UnsafePointer<UInt8>) -> String {
         (0..<6).map { String(format: "%02X", pointer[$0]) }.joined(separator: ":")
     }
 
-    private static var sockaddrDLDataOffset: Int {
+    static var sockaddrDLDataOffset: Int {
         MemoryLayout.offset(of: \sockaddr_dl.sdl_data) ?? 8
     }
 
-    private func sendUDP(host: String, port: UInt16, timeout: TimeInterval) {
+    func sendUDP(host: String, port: UInt16, timeout: TimeInterval) {
         guard let endpointPort = NWEndpoint.Port(rawValue: port) else { return }
         udpQueue.async {
             let connection = NWConnection(host: NWEndpoint.Host(host), port: endpointPort, using: .udp)
@@ -195,7 +195,7 @@ case (AF_INET, RTAX_DST):
         }
     }
 
-    private static func broadcastAddress(from host: String?) -> String? {
+    static func broadcastAddress(from host: String?) -> String? {
         guard let host, !host.isEmpty else { return nil }
         var parts = host.split(separator: ".", omittingEmptySubsequences: false)
         guard parts.count == 4 else { return nil }
@@ -204,5 +204,5 @@ case (AF_INET, RTAX_DST):
     }
     #endif
 
-    private static var defaultUDPPorts: [UInt16] { [137, 1900, 5353, 67, 68] }
+    static var defaultUDPPorts: [UInt16] { [137, 1900, 5353, 67, 68] }
 }

@@ -24,7 +24,7 @@ final class UTF8DecodeTests: XCTestCase {
     }
 
     func testDecodeCStringBadUTF8() {
-        let invalidUTF8 = [0xFF, 0xFE, 0xFD, 0x80, 0x00] as [CChar] // invalid sequence + NUL
+        let invalidUTF8: [CChar] = [CChar(bitPattern: 0xFF), CChar(bitPattern: 0xFE), CChar(bitPattern: 0xFD), CChar(bitPattern: 0x80), 0]
         let ptr = UnsafePointer<CChar>(invalidUTF8)
         let result = decodeCString(ptr, context: "test bad utf8")
         XCTAssertNil(result)
@@ -50,7 +50,7 @@ final class UTF8DecodeTests: XCTestCase {
     }
 
     func testDecodeBufferBadUTF8() {
-        var buffer: [CChar] = [0xFF as CChar, 0x80 as CChar, 0x00]
+        var buffer: [CChar] = [CChar(bitPattern: 0xFF), CChar(bitPattern: 0x80), 0]
         let result = decodeBuffer(&buffer, context: "test bad utf8 buffer")
         XCTAssertNil(result)
     }

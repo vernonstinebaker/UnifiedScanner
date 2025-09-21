@@ -43,7 +43,7 @@ Ping via SimplePingKit on iOS, ARP-only sweeps on macOS, and Bonjour browse/reso
 21b. [x] `SimplePingKitService` ICMP implementation.  
 21c. [x] `PingOrchestrator` (32 concurrent hosts throttle).  
 21d. [x] RTT updates via `SnapshotService.applyPing`.  
-22. [x] Define `DiscoveryProvider` protocol + mock mDNS provider.  
+22. [x] Define `DiscoveryProvider` protocol (mock provider lives in tests only).  
 23. [x] `DiscoveryCoordinator` (auto /24 enumeration, orchestrates ping + ARP).  
 24. [x] `ARPService` route dump reader + MAC merge (macOS only).  
 25. [x] UDP warmup / broadcast population (macOS) before ARP read.  
@@ -66,7 +66,9 @@ Ping via SimplePingKit on iOS, ARP-only sweeps on macOS, and Bonjour browse/reso
 40. [x] mDNS provider (service discovery + TXT parsing).  
 41. [x] Port scanner tier 0/1 implementation (22,80,443 first).  
 42. [ ] Reverse DNS enrichment (optional).  
-43. [ ] HTTP / SSH fingerprint population (fill `fingerprints`).  
+-33a. [ ] Document rationale for deferring SSDP / WS-Discovery / reverse DNS (low discovery value vs cost).  
+-43. [~] HTTP fingerprint population implemented via `HTTPFingerprintService`; SSH host-key capture still pending.  
+-44. [ ] Evaluate lightweight HTTP banner capture (if bodies provide additional vendor hints).  
 44. [ ] Accessibility pass (labels for row/pills/ports, Dynamic Type audit).  
 45. [ ] Theming extraction (UnifiedTheme struct + light mode tokens).  
 46. [ ] UI tests (navigation + detail).  

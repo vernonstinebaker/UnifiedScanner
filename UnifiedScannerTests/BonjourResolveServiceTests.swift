@@ -4,7 +4,8 @@ import XCTest
 final class BonjourResolveServiceTests: XCTestCase {
     func testServiceKey() {
         let service = NetService(domain: "local.", type: "_http._tcp.", name: "example", port: 80)
-        let key = BonjourResolveService.serviceKey(service)
+        let resolver = BonjourResolveService(resolveCooldown: 1.0)
+        let key = resolver.serviceKey(service)
         XCTAssertEqual(key, "example._http._tcp.local.")
     }
 
@@ -34,7 +35,8 @@ final class BonjourResolveServiceTests: XCTestCase {
         let data = Data(bytes: &sin, count: MemoryLayout<sockaddr_in>.size)
         let addresses = [data]
         let service = mockService(addresses: addresses)
-        let ips = BonjourResolveService.extractIPs(from: service)
+        let resolver = BonjourResolveService(resolveCooldown: 1.0)
+        let ips = resolver.extractIPs(from: service)
         XCTAssertEqual(ips, ["192.168.1.1"])
     }
 
@@ -42,11 +44,15 @@ final class BonjourResolveServiceTests: XCTestCase {
         // Mock sockaddr_in6 for ::1
         var sin6 = sockaddr_in6()
         sin6.sin6_family = sa_family_t(AF_INET6)
-        sin6.sin6_addr = in6_addr(s6_addr: (0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1))
+        withUnsafeMutableBytes(of: &sin6.sin6_addr) { ptr in
+            let bytes: [UInt8] = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+            ptr.copyBytes(from: bytes)
+        }
         let data = Data(bytes: &sin6, count: MemoryLayout<sockaddr_in6>.size)
         let addresses = [data]
         let service = mockService(addresses: addresses)
-        let ips = BonjourResolveService.extractIPs(from: service)
+        let resolver = BonjourResolveService(resolveCooldown: 1.0)
+        let ips = resolver.extractIPs(from: service)
         XCTAssertEqual(ips, ["::1"])
     }
 
@@ -59,12 +65,16 @@ final class BonjourResolveServiceTests: XCTestCase {
 
         var sin6 = sockaddr_in6()
         sin6.sin6_family = sa_family_t(AF_INET6)
-        sin6.sin6_addr = in6_addr(s6_addr: (0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1))
+        withUnsafeMutableBytes(of: &sin6.sin6_addr) { ptr in
+            let bytes: [UInt8] = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+            ptr.copyBytes(from: bytes)
+        }
         let data6 = Data(bytes: &sin6, count: MemoryLayout<sockaddr_in6>.size)
 
         let addresses = [data4, data6, data4] // dup IPv4
         let service = mockService(addresses: addresses)
-        let ips = BonjourResolveService.extractIPs(from: service)
+        let resolver = BonjourResolveService(resolveCooldown: 1.0)
+        let ips = resolver.extractIPs(from: service)
         XCTAssertEqual(ips, ["192.168.1.1", "::1"])
     }
 
@@ -72,7 +82,8 @@ final class BonjourResolveServiceTests: XCTestCase {
         let invalidData = Data(repeating: 0, count: 8) // too short
         let addresses = [invalidData]
         let service = mockService(addresses: addresses)
-        let ips = BonjourResolveService.extractIPs(from: service)
+        let resolver = BonjourResolveService(resolveCooldown: 1.0)
+        let ips = resolver.extractIPs(from: service)
         XCTAssertTrue(ips.isEmpty)
     }
 
@@ -84,8 +95,8 @@ final class BonjourResolveServiceTests: XCTestCase {
     // Helper
     private func mockService(addresses: [Data]) -> NetService {
         let service = NetService(domain: "local.", type: "_http._tcp.", name: "mock", port: 80)
-        // Set addresses via reflection or KVC if needed, but for test, use as is
-        // Note: In real, set service.addresses = addresses, but since read only in test, use above
+        // NetService.addresses is KVC-compliant; set via KVC for tests
+        service.setValue(addresses, forKey: "addresses")
         return service
     }
 

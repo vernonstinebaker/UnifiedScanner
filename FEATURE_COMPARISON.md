@@ -33,10 +33,10 @@ Legend: ✅ = Present, ❌ = Absent, ⏳ = Planned / Not Yet Implemented, ☑️
 | ARP Discovery | ✅ | ✅ | ✅ Route dump + MAC capture | macOS only (iOS returns empty) + UDP warmup | App Utility | ☑️ |
 | Ping / Reachability | Light | ✅ SimplePing + orchestrator | ➕ Orchestrated concurrent ICMP (iOS only) | SimplePingKitService + PingOrchestrator + /24 auto enumeration; macOS relies on ARP merge only | App Utility | ✅ |
 | Bonjour / mDNS Discovery | Strong | Basic | ✅ Rebuilt browse + resolve pipeline | `BonjourBrowseService` + `BonjourResolveService` + provider emission | App Utility | ✅ |
-| SSDP / UPnP | ❌ | ✅ | Evaluate later | Deferred | Future Utility | ⏳ |
-| WS-Discovery | ❌ | ✅ | Evaluate later | Deferred | Future Utility | ⏳ |
-| Reverse DNS | ❌ | ✅ | Plan later | Deferred | Future Utility | ⏳ |
-| HTTP Service Fingerprinting | ❌ | ✅ | Plan later | Deferred | Future Utility | ⏳ |
+| SSDP / UPnP | ❌ | ✅ | Low priority (minimal incremental discovery) | Keep documented backlog entry only | Future Utility | ⚪️ |
+| WS-Discovery | ❌ | ✅ | Low priority (overlaps existing signals) | Backlog note only | Future Utility | ⚪️ |
+| Reverse DNS | ❌ | ✅ | Low priority (PTR rarely helpful vs latency) | Optional enrichment if value surfaces | Future Utility | ⚪️ |
+| HTTP Service Fingerprinting | ❌ | ✅ | ✅ Rebuilt lightweight HTTP probe | `HTTPFingerprintService` captures headers/realms/certs for classification | App Utility | ✅ |
 | SSH Fingerprinting | ❌ | ✅ | Plan later | Deferred | Future Utility | ⏳ |
 | MAC Vendor Source File | ✅ `oui.csv` | ✅ `oui.csv` | ✅ Single copy bundled | Parsed by `OUILookupService` at runtime | App Resource | ✅ |
 | Persistence (Snapshot Store) | Partial | ✅ KV store | ✅ Unified snapshot store | iCloud KVS + UserDefaults | App Models | ✅ |
@@ -64,9 +64,10 @@ Legend: ✅ = Present, ❌ = Absent, ⏳ = Planned / Not Yet Implemented, ☑️
 
 ## Deferred / Backlog Items (Updated)
 - Tiered port scanning expansion (broader port lists, cancellation)
-- SSDP / WS-Discovery evaluation & possible providers
-- Reverse DNS enrichment
-- HTTP banner + SSH host key fingerprint extraction (populate `fingerprints`)
+- Documented rationale for deferring SSDP / WS-Discovery (low incremental value)
+- Documented rationale for deferring Reverse DNS enrichment (low value vs latency)
+- HTTP banner capture (for additional vendor hints) – under evaluation
+- SSH host key fingerprint extraction (strong identity signal) – planned
 - Logging runtime controls (category toggles, persistence of minimum level)
 - Accessibility audit (Dynamic Type, VoiceOver labeling, rotor grouping)
 - Theming abstraction (UnifiedTheme + light / high-contrast variants)

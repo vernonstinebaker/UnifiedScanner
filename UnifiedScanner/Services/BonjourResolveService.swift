@@ -68,7 +68,7 @@ final class BonjourResolveService: NSObject, @unchecked Sendable {
         activeBrowsers.removeAll()
     }
 
-    private func shouldResolve(_ service: NetService) -> Bool {
+    func shouldResolve(_ service: NetService) -> Bool {
         let key = serviceKey(service)
         return stateQueue.sync {
             let now = Date()
@@ -78,9 +78,9 @@ final class BonjourResolveService: NSObject, @unchecked Sendable {
         }
     }
 
-    private func serviceKey(_ s: NetService) -> String { "\(s.name).\(s.type)\(s.domain)" }
+    func serviceKey(_ s: NetService) -> String { "\(s.name).\(s.type)\(s.domain)" }
 
-    private func extractIPs(from service: NetService) -> [String] {
+    func extractIPs(from service: NetService) -> [String] {
         guard let datas = service.addresses else { return [] }
         var ipv4s: [String] = []
         var ipv6s: [String] = []

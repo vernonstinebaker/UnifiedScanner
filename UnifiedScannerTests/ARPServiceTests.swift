@@ -10,11 +10,11 @@ final class ARPServiceTests: XCTestCase {
         XCTAssertTrue(entry.isStatic)
     }
 
-    func testARPEntrySendable() {
+    func testARPEntrySendable() async {
         let entry = ARPService.ARPEntry(ipAddress: "192.168.1.1", macAddress: "AA:BB:CC:DD:EE:FF", interface: "en0")
         // Since Sendable, can pass across actors
         let actor = TestActor()
-        actor.receive(entry)
+        await actor.receive(entry)
     }
 
     actor TestActor {
@@ -55,7 +55,7 @@ final class ARPServiceTests: XCTestCase {
 
     func testMacString() {
         let bytes: [UInt8] = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]
-        let ptr = UnsafePointer<UInt8>(bytes)
+        let ptr = bytes.withUnsafeBufferPointer { $0.baseAddress! }
         let mac = ARPService.macString(from: ptr)
         XCTAssertEqual(mac, "AA:BB:CC:DD:EE:FF")
     }

@@ -7,8 +7,9 @@ import XCTest
         let providerDevice = Device(primaryIP: "192.168.1.10", ips: ["192.168.1.10"], hostname: "apple-tv.local", discoverySources: [.mdns])
         let provider = TestProvider(devices: [providerDevice], perDeviceDelay: 0.05)
         let mockPingService = OneShotMockPingService(rtt: 7.0)
-        let orchestrator = PingOrchestrator(pingService: mockPingService, mutationBus: DeviceMutationBus.shared, maxConcurrent: 4)
-        let coordinator = DiscoveryCoordinator(store: store, pingOrchestrator: orchestrator, mutationBus: DeviceMutationBus.shared, providers: [provider])
+        let bus = await MainActor.run { DeviceMutationBus.shared }
+        let orchestrator = PingOrchestrator(pingService: mockPingService, mutationBus: bus, maxConcurrent: 4)
+        let coordinator = DiscoveryCoordinator(store: store, pingOrchestrator: orchestrator, mutationBus: bus, providers: [provider])
 
         // Collect first two change events (mdns upsert, ping device creation with RTT)
         var changes: [DeviceChange] = []
@@ -22,7 +23,8 @@ import XCTest
             }
         }
 
-        await coordinator.start(pingHosts: ["192.168.1.99"], pingConfig: PingConfig(host: "unused", count: 1, interval: 0.1, timeoutPerPing: 0.1), mdnsWarmupSeconds: 0.1)
+        await coordinator.startBonjour()
+        await coordinator.startScan(pingHosts: ["192.168.1.99"], pingConfig: PingConfig(host: "unused", count: 1, interval: 0.1, timeoutPerPing: 0.1), mdnsWarmupSeconds: 0.1, autoEnumerateIfEmpty: false, maxAutoEnumeratedHosts: 0)
 
         try? await Task.sleep(nanoseconds: 800_000_000)
         collectTask.cancel()
@@ -64,12 +66,13 @@ final class TestProvider: DiscoveryProvider {
         self.perDeviceDelay = perDeviceDelay
     }
 
-    func start() -> AsyncStream<Device> {
+    func start(mutationBus: DeviceMutationBus) -> AsyncStream<DeviceMutation> {
         AsyncStream { continuation in
             Task {
                 for dev in devices {
                     if await state.cancelled || Task.isCancelled { break }
-                    continuation.yield(dev)
+                    let mutation = DeviceMutation.change(DeviceChange(before: nil, after: dev, changed: Set(DeviceField.allCases), source: .mdns))
+                    continuation.yield(mutation)
                     try? await Task.sleep(nanoseconds: UInt64(perDeviceDelay * 1_000_000_000))
                 }
                 continuation.finish()
