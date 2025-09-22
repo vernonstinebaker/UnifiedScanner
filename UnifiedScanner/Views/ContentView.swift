@@ -12,7 +12,7 @@ struct ContentView: View {
     let stopScan: () -> Void
     let saveSnapshot: () -> Void
     @Binding var showSettingsFromMenu: Bool
-    @State private var selectedDevice: Device? = nil
+    @State private var selectedDeviceID: String? = nil
     @State private var showDetailSheet: Bool = false
     @State private var showSettings: Bool = false
     @StateObject private var networkInfo = NetworkInfoService()
@@ -68,7 +68,7 @@ struct ContentView: View {
                     List {
 ForEach(store.devices, id: \.id) { device in
     Button {
-        selectedDevice = device
+        selectedDeviceID = device.id
         showDetailSheet = true
     } label: {
         DeviceRowView(device: device, isSelected: false)
@@ -119,18 +119,25 @@ ForEach(store.devices, id: \.id) { device in
                 SettingsView(settings: settings, store: store)
             }
             .sheet(isPresented: $showDetailSheet) {
-                if let device = selectedDevice {
+                if let deviceID = selectedDeviceID,
+                   let device = store.devices.first(where: { $0.id == deviceID }) {
                     NavigationStack {
                         UnifiedDeviceDetail(device: device, settings: settings)
                             .toolbar {
                                 ToolbarItem(placement: .cancellationAction) {
-                                    Button("Done") { 
+                                    Button("Done") {
                                         showDetailSheet = false
-                                        selectedDevice = nil
+                                        selectedDeviceID = nil
                                     }
                                 }
                             }
                         }
+                    }
+                } else {
+                    // Fallback: dismiss sheet if device not found
+                    Button("Close") {
+                        showDetailSheet = false
+                        selectedDeviceID = nil
                     }
                 }
 #if os(macOS)
@@ -154,10 +161,10 @@ ForEach(store.devices, id: \.id) { device in
                 .padding(.horizontal, Theme.space(.lg))
                 .padding(.top, Theme.space(.lg))
             ZStack(alignment: .bottom) {
-                List(selection: $selectedDevice) {
+                List(selection: $selectedDeviceID) {
                     ForEach(store.devices) { device in
-                        NavigationLink(value: device) {
-                            DeviceRowView(device: device, isSelected: selectedDevice?.id == device.id)
+                        NavigationLink(value: device.id) {
+                            DeviceRowView(device: device, isSelected: selectedDeviceID == device.id)
                         }
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Theme.color(.bgRoot))
@@ -174,8 +181,13 @@ ForEach(store.devices, id: \.id) { device in
             }
         }
         .background(Theme.color(.bgRoot))
-        .navigationDestination(for: Device.self) { device in
-            UnifiedDeviceDetail(device: device, settings: settings)
+        .navigationDestination(for: String.self) { deviceID in
+            if let device = store.devices.first(where: { $0.id == deviceID }) {
+                UnifiedDeviceDetail(device: device, settings: settings)
+            } else {
+                Text("Device not found")
+                    .foregroundColor(Theme.color(.textSecondary))
+            }
         }
         .navigationTitle("Devices")
         .toolbar {
@@ -212,8 +224,17 @@ ForEach(store.devices, id: \.id) { device in
 
     private var detail: some View {
         Group {
-            if let device = selectedDevice {
+            if let deviceID = selectedDeviceID,
+               let device = store.devices.first(where: { $0.id == deviceID }) {
                 UnifiedDeviceDetail(device: device, settings: settings)
+            } else if selectedDeviceID != nil {
+                VStack {
+                    Text("Device not found")
+                        .font(Theme.Typography.headline)
+                        .foregroundColor(Theme.color(.textSecondary))
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Theme.color(.bgRoot))
             } else {
                 VStack {
                     Text("Select a device")
