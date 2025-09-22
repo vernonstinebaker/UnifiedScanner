@@ -26,6 +26,7 @@ struct UnifiedScannerApp: App {
     @State private var scanMonitorTask: Task<Void, Never>? = nil
     @State private var portScannerStarted = false
     @State private var httpFingerprintStarted = false
+    @State private var showSettingsFromMenu = false
 
     private let defaultPingConfig = PingConfig(host: "placeholder",
                                                count: 2,
@@ -44,30 +45,25 @@ var body: some Scene {
                     stopBonjour: { stopBonjour() },
                     startScan: { startScan() },
                     stopScan: { stopScan() },
-                    saveSnapshot: { snapshotStore.saveSnapshotNow() })
+                    saveSnapshot: { snapshotStore.saveSnapshotNow() },
+                    showSettingsFromMenu: $showSettingsFromMenu)
             .preferredColorScheme(.dark)
             .onAppear { startDiscoveryIfNeeded() }
     }
-#if os(macOS)
+    
+    #if os(macOS)
     .commands {
-        CommandGroup(replacing: .newItem) {
-            Button("Clear KV Store") { clearKVStore() }
-                .keyboardShortcut("k", modifiers: [.command, .shift])
+        CommandGroup(after: .appInfo) {
+            Button("Settings...") { 
+                showSettingsFromMenu = true
+            }
+            .keyboardShortcut(",", modifiers: .command)
         }
     }
-#endif
+    #endif
 }
 
-    private func clearKVStore() {
-        // Clear both NSUbiquitousKeyValueStore and UserDefaults backing store key
-        let key = "unifiedscanner:devices:v1"
-        NSUbiquitousKeyValueStore.default.removeObject(forKey: key)
-        NSUbiquitousKeyValueStore.default.synchronize()
-        UserDefaults.standard.removeObject(forKey: key)
-        snapshotStore.removeAll()
-        Task { await scanProgress.reset() }
-        restartDiscovery()
-    }
+
 
     private func startDiscoveryIfNeeded() {
         guard !coordinatorStarted else {

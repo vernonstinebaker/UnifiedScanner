@@ -11,6 +11,7 @@ struct ContentView: View {
     let startScan: () -> Void
     let stopScan: () -> Void
     let saveSnapshot: () -> Void
+    @Binding var showSettingsFromMenu: Bool
     @State private var selectedID: String? = nil
     @State private var showDetailSheet: Bool = false
     @State private var showSettings: Bool = false
@@ -109,11 +110,12 @@ ForEach(store.devices, id: \.id) { device in
 #if os(macOS)
                     .help("Persist snapshot now")
 #endif
-                    Button { showSettings = true } label: { Image(systemName: "gearshape") }
+                    Button { showSettingsFromMenu = true } label: { Image(systemName: "gearshape") }
                         .accessibilityLabel("Settings")
+                        .keyboardShortcut(",", modifiers: .command)
                 }
             }
-            .sheet(isPresented: $showSettings) {
+            .sheet(isPresented: $showSettingsFromMenu) {
                 SettingsView(settings: settings, store: store)
             }
             .sheet(isPresented: $showDetailSheet) {

@@ -16,8 +16,16 @@ struct SettingsView: View {
                         }
                     }
                     .pickerStyle(.segmented)
-                    ForEach(LoggingService.Category.allCases) { category in
-                        Toggle(category.displayName, isOn: settings.binding(for: category))
+                    
+                    #if os(macOS)
+                    let columns = Array(repeating: GridItem(.flexible()), count: 2)
+                    #else
+                    let columns = Array(repeating: GridItem(.flexible()), count: 1)
+                    #endif
+                    LazyVGrid(columns: columns, spacing: 16) {
+                        ForEach(LoggingService.Category.allCases) { category in
+                            Toggle(category.displayName, isOn: settings.binding(for: category))
+                        }
                     }
                 }
                 Section("Detail View") {
