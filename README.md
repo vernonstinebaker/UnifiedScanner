@@ -8,6 +8,8 @@ UnifiedScanner is a SwiftUI app that unifies the strongest capabilities from the
 - **Deterministic merging** of discovery signals using `DeviceMutationBus` and `SnapshotService`, with conflict resolution and deduplication baked in.
 - **Device classification** that scores form factor and confidence based on hostname, vendor, fingerprints, services, and open ports.
 - **Session continuity** through iCloud Key-Value Store and UserDefaults, plus runtime logging controls for discovery pipelines.
+- **Condensed status bar** with network information displayed in a compact single-row layout with icons and values side-by-side.
+- **Wi-Fi network detection** with proper entitlements and location services support for accurate SSID resolution.
 
 ## Supported Platforms
 UnifiedScanner targets the latest Apple platform SDKs (macOS, iOS, iPadOS). Platform-specific behavior:
@@ -42,6 +44,7 @@ xcodebuild test -scheme UnifiedScannerTests -destination 'platform=macOS'
 - `UnifiedScanner.xcodeproj/` – Project configuration.
 - `.build/` – SwiftPM build products (ignored).
 - `PROJECT_OVERVIEW.md`, `PLAN.md`, `FEATURE_COMPARISON.md` – In-depth design, roadmap, and legacy comparison docs.
+- `UnifiedScanner.entitlements` – App entitlements including multicast networking and Wi-Fi information access.
 
 ## Discovery Pipeline Overview
 1. `DiscoveryCoordinator` orchestrates discovery providers and plugs them into the shared `DeviceMutationBus`.
@@ -57,6 +60,8 @@ xcodebuild test -scheme UnifiedScannerTests -destination 'platform=macOS'
 - Toggle runtime logging categories and minimum levels via `AppSettings`.
 - Device history is persisted; use the "Clear KV Store" command (macOS) to reset.
 - Port scanning currently covers tier-0 ports (22/80/443); expansion is planned.
+- Interface information display can be toggled on/off in Settings for a more compact status bar.
+- Wi-Fi network name detection requires Location Services to be enabled in System Settings.
 
 ## Roadmap & Further Reading
 Refer to the following documents for detailed plans and comparisons:
