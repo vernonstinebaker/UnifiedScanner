@@ -1,9 +1,13 @@
 import SwiftUI
 
+// Rebuilt clean ContentView after prior corruption. Device selection now ID-based.
 struct ContentView: View {
+    // Services / Stores
     @ObservedObject var store: SnapshotService
     @ObservedObject var progress: ScanProgress
     @ObservedObject var settings: AppSettings
+
+    // Scan / Bonjour control
     @Binding var isBonjourRunning: Bool
     @Binding var isScanRunning: Bool
     let startBonjour: () -> Void
@@ -11,18 +15,23 @@ struct ContentView: View {
     let startScan: () -> Void
     let stopScan: () -> Void
     let saveSnapshot: () -> Void
+
+    // External settings trigger (menu on macOS / gear button on iOS)
     @Binding var showSettingsFromMenu: Bool
+
+    // UI State
     @State private var selectedDeviceID: String? = nil
-    @State private var showDetailSheet: Bool = false
-    @State private var showSettings: Bool = false
+    @State private var sheetDeviceSnapshot: Device? = nil // For compact layout sheet(item:)
+    @State private var showSettingsSheet: Bool = false // Used in regular (macOS / large) layout
     @StateObject private var networkInfo = NetworkInfoService()
 
+    // Environment
     #if os(iOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
-
     @Environment(\.scenePhase) private var scenePhase
 
+    // Layout helpers
     private var isCompact: Bool {
         #if os(iOS)
         horizontalSizeClass == .compact
@@ -31,17 +40,15 @@ struct ContentView: View {
         #endif
     }
 
+    // Stats
     private var deviceCount: Int { store.devices.count }
     private var onlineCount: Int { store.devices.filter { $0.isOnline }.count }
     private var serviceCount: Int { store.devices.reduce(0) { $0 + $1.displayServices.count } }
 
+    // MARK: - Body
     var body: some View {
         Group {
-            if isCompact {
-                compactLayout
-            } else {
-                regularLayout
-            }
+            if isCompact { compactLayout } else { regularLayout }
         }
 #if os(macOS)
         .background(Theme.color(.bgRoot))
@@ -49,40 +56,23 @@ struct ContentView: View {
         .background(Theme.color(.bgRoot).ignoresSafeArea())
 #endif
         .onAppear { networkInfo.refresh() }
-        .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .active {
-                networkInfo.refresh()
-            }
-        }
+        .onChange(of: scenePhase) { _, newPhase in if newPhase == .active { networkInfo.refresh() } }
         .onChange(of: isScanRunning) { _, _ in networkInfo.refresh() }
         .onChange(of: isBonjourRunning) { _, _ in networkInfo.refresh() }
+        .onChange(of: selectedDeviceID) { old, new in
+            LoggingService.debug("selection change old=\(old ?? "nil") new=\(new ?? "nil")", category: .general)
+        }
     }
 
+    // MARK: - Compact Layout (iPhone style)
     private var compactLayout: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: Theme.space(.md)) {
                 statusSection
                     .padding(.horizontal, Theme.space(.lg))
                     .padding(.top, Theme.space(.lg))
-				ZStack(alignment: .bottom) {
-                    List {
-ForEach(store.devices, id: \.id) { device in
-    Button {
-        selectedDeviceID = device.id
-        showDetailSheet = true
-    } label: {
-        DeviceRowView(device: device, isSelected: false)
-    }
-    .buttonStyle(.plain)
-.listRowInsets(EdgeInsets())
-                        .listRowBackground(Theme.color(.bgRoot))
-}
-                    }
-                    .scrollContentBackground(.hidden)
-                    .listStyle(.plain)
-                    .background(Theme.color(.bgRoot))
-                    .padding(.bottom, Theme.space(.xxxl))
-
+                ZStack(alignment: .bottom) {
+                    deviceListCompact
                     summaryFooter
                         .padding(.horizontal, Theme.space(.lg))
                         .padding(.bottom, Theme.space(.lg))
@@ -90,67 +80,23 @@ ForEach(store.devices, id: \.id) { device in
             }
             .background(Theme.color(.bgRoot))
             .navigationTitle("Devices")
-            .toolbar {
-                ToolbarItemGroup(placement: .primaryAction) {
-                    Button(action: { isBonjourRunning ? stopBonjour() : startBonjour() }) {
-                        Label(bonjourButtonLabel, systemImage: bonjourButtonIcon)
-                    }
-#if os(macOS)
-                    .help(bonjourButtonLabel)
-#endif
-                    Button(action: { isScanRunning ? stopScan() : startScan() }) {
-                        Label(scanButtonLabel, systemImage: scanButtonIcon)
-                    }
-#if os(macOS)
-                    .help(scanButtonLabel)
-#endif
-                    Button(action: saveSnapshot) {
-                        Label("Save", systemImage: "externaldrive")
-                    }
-#if os(macOS)
-                    .help("Persist snapshot now")
-#endif
-                    Button { showSettingsFromMenu = true } label: { Image(systemName: "gearshape") }
-                        .accessibilityLabel("Settings")
-                        .keyboardShortcut(",", modifiers: .command)
-                }
+            .toolbar { primaryToolbar(showSettingsBinding: $showSettingsFromMenu) }
+            .sheet(isPresented: $showSettingsFromMenu) { SettingsView(settings: settings, store: store) }
+            .sheet(item: $sheetDeviceSnapshot) { dev in
+                sheetContent(for: dev)
             }
-            .sheet(isPresented: $showSettingsFromMenu) {
-                SettingsView(settings: settings, store: store)
-            }
-            .sheet(isPresented: $showDetailSheet) {
-                if let deviceID = selectedDeviceID,
-                   let device = store.devices.first(where: { $0.id == deviceID }) {
-                    NavigationStack {
-                        UnifiedDeviceDetail(device: device, settings: settings)
-                            .toolbar {
-                                ToolbarItem(placement: .cancellationAction) {
-                                    Button("Done") {
-                                        showDetailSheet = false
-                                        selectedDeviceID = nil
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    // Fallback: dismiss sheet if device not found
-                    Button("Close") {
-                        showDetailSheet = false
-                        selectedDeviceID = nil
-                    }
-                }
 #if os(macOS)
             .toolbarColorScheme(.dark)
 #endif
         }
     }
 
+    // MARK: - Regular Layout (Sidebar + Detail)
     private var regularLayout: some View {
         NavigationSplitView {
             sidebar
         } detail: {
-            detail
+            detailView
         }
         .background(Theme.color(.bgRoot))
     }
@@ -185,76 +131,93 @@ ForEach(store.devices, id: \.id) { device in
             if let device = store.devices.first(where: { $0.id == deviceID }) {
                 UnifiedDeviceDetail(device: device, settings: settings)
             } else {
-                Text("Device not found")
-                    .foregroundColor(Theme.color(.textSecondary))
+                Text("Device not found").foregroundColor(Theme.color(.textSecondary))
             }
         }
         .navigationTitle("Devices")
-        .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
-                Button(action: { isBonjourRunning ? stopBonjour() : startBonjour() }) {
-                    Label(bonjourButtonLabel, systemImage: bonjourButtonIcon)
-                }
-#if os(macOS)
-                .help(bonjourButtonLabel)
-#endif
-                Button(action: { isScanRunning ? stopScan() : startScan() }) {
-                    Label(scanButtonLabel, systemImage: scanButtonIcon)
-                }
-#if os(macOS)
-                .help(scanButtonLabel)
-#endif
-                Button(action: saveSnapshot) {
-                    Label("Save", systemImage: "externaldrive")
-                }
-#if os(macOS)
-                .help("Persist snapshot now")
-#endif
-                Button { showSettings = true } label: { Image(systemName: "gearshape") }
-                    .accessibilityLabel("Settings")
-            }
-        }
-        .sheet(isPresented: $showSettings) {
-            SettingsView(settings: settings, store: store)
-        }
+        .toolbar { primaryToolbar(showSettingsBinding: $showSettingsSheet) }
+        .sheet(isPresented: $showSettingsSheet) { SettingsView(settings: settings, store: store) }
 #if os(macOS)
         .toolbarColorScheme(.dark)
 #endif
     }
 
-    private var detail: some View {
+    // Detail panel (regular layout)
+    private var detailView: some View {
         Group {
-            if let deviceID = selectedDeviceID,
-               let device = store.devices.first(where: { $0.id == deviceID }) {
+            if let id = selectedDeviceID, let device = store.devices.first(where: { $0.id == id }) {
                 UnifiedDeviceDetail(device: device, settings: settings)
             } else if selectedDeviceID != nil {
-                VStack {
-                    Text("Device not found")
-                        .font(Theme.Typography.headline)
-                        .foregroundColor(Theme.color(.textSecondary))
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Theme.color(.bgRoot))
+                placeholderMessage("Device not found")
             } else {
-                VStack {
-                    Text("Select a device")
-                        .font(Theme.Typography.headline)
-                        .foregroundColor(Theme.color(.textSecondary))
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Theme.color(.bgRoot))
+                placeholderMessage("Select a device")
             }
         }
     }
 
+    // MARK: - Device Lists
+    private var deviceListCompact: some View {
+        List {
+            ForEach(store.devices, id: \.id) { device in
+                Button {
+                    let currentCount = store.devices.count
+                    LoggingService.debug("tap:first row device id=\(device.id) before selection count=\(currentCount)", category: .general)
+                    selectedDeviceID = device.id
+                    sheetDeviceSnapshot = device // capture snapshot
+                    LoggingService.debug("presenting sheet snapshot id=\(device.id)", category: .general)
+                } label: {
+                    DeviceRowView(device: device, isSelected: false)
+                }
+                .buttonStyle(.plain)
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Theme.color(.bgRoot))
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .listStyle(.plain)
+        .background(Theme.color(.bgRoot))
+        .padding(.bottom, Theme.space(.xxxl))
+    }
+
+    // MARK: - Sheet Content (compact detail)
+    private func sheetContent(for snapshot: Device) -> some View {
+        let selected = selectedDeviceID
+        let liveDevice: Device? = {
+            if let id = selected { return store.devices.first { $0.id == id } }
+            return nil
+        }()
+        let devicesNow = store.devices.count
+        let resolved: Device = liveDevice ?? snapshot
+        return NavigationStack {
+            UnifiedDeviceDetail(device: resolved, settings: settings)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Done") { dismissSheetSelection() }
+                    }
+                }
+                .onAppear {
+                    let msg = "sheetContent(item): selected=\(selected ?? "nil") live=\(liveDevice?.id ?? "nil") snapshot=\(snapshot.id) devicesNow=\(devicesNow) resolved=\(resolved.id)"
+                    LoggingService.debug(msg, category: .general)
+                }
+        }
+    }
+
+    // MARK: - Shared UI Sections
+    private func placeholderMessage(_ text: String) -> some View {
+        VStack {
+            Text(text)
+                .font(Theme.Typography.headline)
+                .foregroundColor(Theme.color(.textSecondary))
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Theme.color(.bgRoot))
+    }
+
     private var progressText: String {
         switch progress.phase {
-        case .pinging:
-            return "Pinging \(progress.completedHosts)/\(progress.totalHosts) hosts"
-        case .mdnsWarmup:
-            return "Warming up mDNS…"
-        default:
-            return "Scanning \(progress.completedHosts)/\(progress.totalHosts) hosts"
+        case .pinging: return "Pinging \(progress.completedHosts)/\(progress.totalHosts) hosts"
+        case .mdnsWarmup: return "Warming up mDNS…"
+        default: return "Scanning \(progress.completedHosts)/\(progress.totalHosts) hosts"
         }
     }
 
@@ -304,38 +267,29 @@ ForEach(store.devices, id: \.id) { device in
                         Text("\(progress.successHosts) responsive")
                             .foregroundColor(Theme.color(.textSecondary))
                     }
-                     .font(Theme.Typography.caption)
-                     .foregroundColor(Theme.color(.textSecondary))
-                 }
-             } else if progress.phase == .arpPriming {
-                 VStack(alignment: .leading, spacing: Theme.space(.xs)) {
-                     ProgressView()
-                         .tint(Theme.color(.accentPrimary))
-                     Text("Priming ARP table…")
-                         .font(Theme.Typography.caption)
-                         .foregroundColor(Theme.color(.textSecondary))
-                 }
-             } else if progress.phase == .enumerating {
-                 VStack(alignment: .leading, spacing: Theme.space(.xs)) {
-                     ProgressView()
-                         .tint(Theme.color(.accentPrimary))
-                     Text("Enumerating subnet…")
-                         .font(Theme.Typography.caption)
-                         .foregroundColor(Theme.color(.textSecondary))
-                 }
-             } else if progress.phase == .arpRefresh && !progress.finished {
-                 VStack(alignment: .leading, spacing: Theme.space(.xs)) {
-                     ProgressView()
-                         .tint(Theme.color(.accentPrimary))
-                     Text("Refreshing ARP entries…")
-                         .font(Theme.Typography.caption)
-                         .foregroundColor(Theme.color(.textSecondary))
-                 }
-             } else if progress.finished {
+                    .font(Theme.Typography.caption)
+                    .foregroundColor(Theme.color(.textSecondary))
+                }
+            } else if progress.phase == .arpPriming {
+                indeterminateProgress("Priming ARP table…")
+            } else if progress.phase == .enumerating {
+                indeterminateProgress("Enumerating subnet…")
+            } else if progress.phase == .arpRefresh && !progress.finished {
+                indeterminateProgress("Refreshing ARP entries…")
+            } else if progress.finished {
                 Text("Scan complete: \(progress.successHosts) responsive hosts")
                     .font(Theme.Typography.caption)
                     .foregroundColor(Theme.color(.textSecondary))
             }
+        }
+    }
+
+    private func indeterminateProgress(_ label: String) -> some View {
+        VStack(alignment: .leading, spacing: Theme.space(.xs)) {
+            ProgressView().tint(Theme.color(.accentPrimary))
+            Text(label)
+                .font(Theme.Typography.caption)
+                .foregroundColor(Theme.color(.textSecondary))
         }
     }
 
@@ -358,21 +312,36 @@ ForEach(store.devices, id: \.id) { device in
     private var scanButtonLabel: String { isScanRunning ? "Stop Scan" : "Run Scan" }
     private var scanButtonIcon: String { isScanRunning ? "stop.circle" : "arrow.clockwise" }
 
-    private func toolbarButton(title: String,
-                               systemImage: String,
-                               isActive: Bool,
-                               help: String,
-                               action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Label(title, systemImage: systemImage)
-        }
+    private func dismissSheetSelection() {
+        selectedDeviceID = nil
+        sheetDeviceSnapshot = nil
+    }
+
+    @ToolbarContentBuilder
+    private func primaryToolbar(showSettingsBinding: Binding<Bool>) -> some ToolbarContent {
+        ToolbarItemGroup(placement: .primaryAction) {
+            Button(action: { isBonjourRunning ? stopBonjour() : startBonjour() }) { Label(bonjourButtonLabel, systemImage: bonjourButtonIcon) }
 #if os(macOS)
-        .help(help)
+                .help(bonjourButtonLabel)
 #endif
+            Button(action: { isScanRunning ? stopScan() : startScan() }) { Label(scanButtonLabel, systemImage: scanButtonIcon) }
+#if os(macOS)
+                .help(scanButtonLabel)
+#endif
+            Button(action: saveSnapshot) { Label("Save", systemImage: "externaldrive") }
+#if os(macOS)
+                .help("Persist snapshot now")
+#endif
+            Button { showSettingsBinding.wrappedValue = true } label: { Image(systemName: "gearshape") }
+                .accessibilityLabel("Settings")
+#if os(iOS)
+                .keyboardShortcut(",", modifiers: .command)
+#endif
+        }
     }
 }
 
-private struct StatBlock: View {
+struct StatBlock: View {
     let count: Int
     let title: String
 

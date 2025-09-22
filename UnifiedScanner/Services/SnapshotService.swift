@@ -552,6 +552,10 @@ private extension SnapshotService {
         }
 
         if sanitized.primaryIP == nil && sanitized.ips.isEmpty {
+            let incomingID = device.id
+            let rawPrimary = device.primaryIP ?? "nil"
+            let rawIPs = device.ips.joined(separator: ",")
+            LoggingService.debug("sanitize: drop device id=\(incomingID) rawPrimary=\(rawPrimary) rawIPs=\(rawIPs) reason=noValidIPs", category: .snapshot)
             return nil
         }
 

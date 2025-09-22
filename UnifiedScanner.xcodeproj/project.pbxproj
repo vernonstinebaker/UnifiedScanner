@@ -31,7 +31,6 @@
 		3DD1FD382E7B131300D3AF15 /* UnifiedScanner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = UnifiedScanner.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3DD1FD452E7B131400D3AF15 /* UnifiedScannerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = UnifiedScannerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3DD1FD4F2E7B131400D3AF15 /* UnifiedScannerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = UnifiedScannerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		3DDF5A8EEA03D622147808B8 /* UnifiedScanner/UnifiedScanner/Resources/unified_oui.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = UnifiedScanner/UnifiedScanner/Resources/unified_oui.csv; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -85,7 +84,6 @@
 				3DD1FD482E7B131400D3AF15 /* UnifiedScannerTests */,
 				3DD1FD522E7B131400D3AF15 /* UnifiedScannerUITests */,
 				3DD1FD392E7B131300D3AF15 /* Products */,
-				3DF0770A2E7F221F00486EF2 /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -97,14 +95,6 @@
 				3DD1FD4F2E7B131400D3AF15 /* UnifiedScannerUITests.xctest */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		3DF0770A2E7F221F00486EF2 /* Recovered References */ = {
-			isa = PBXGroup;
-			children = (
-				3DDF5A8EEA03D622147808B8 /* UnifiedScanner/UnifiedScanner/Resources/unified_oui.csv */,
-			);
-			name = "Recovered References";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
