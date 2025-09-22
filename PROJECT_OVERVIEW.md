@@ -74,6 +74,9 @@ Merge priority for `Device.id`:
 - Auto-recomputed on relevant field changes in `SnapshotService`.
 
 ## Architecture (Local-First)
+
+### UI State Handling (Compact Device Detail Sheet)
+To prevent a timing race where a SwiftUI sheet rendered before `selectedDevice` state was fully updated (causing an initial "Device not found" placeholder on first tap), the compact device detail presentation uses `sheet(item:)` bound to an immutable snapshot captured synchronously in the tap handler. This avoids relying on a separate boolean flag and eliminates the race between sheet presentation and async device resolution. Future UI detail flows should prefer snapshot-binding for modal presentations when underlying observable collections mutate rapidly.
 No premature SPM modularization; iterate locally until discovery providers stabilize. Inspirations:
 - BonjourScanner: Multi-signal classification, multi-IP models.
 - netscan: Service/port normalization, ping orchestration.
