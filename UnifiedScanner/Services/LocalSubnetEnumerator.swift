@@ -23,36 +23,7 @@ struct LocalSubnetEnumerator: HostEnumerator {
     }
 
     static func primaryIPv4Address() -> String? {
-        var ifaddr: UnsafeMutablePointer<ifaddrs>? = nil
-        guard getifaddrs(&ifaddr) == 0, let start = ifaddr else { return nil }
-        defer { freeifaddrs(ifaddr) }
-
-        var preferred: String?
-        var fallback: String?
-
-        var pointer: UnsafeMutablePointer<ifaddrs>? = start
-        while let current = pointer?.pointee {
-            defer { pointer = current.ifa_next }
-            guard let addrPtr = current.ifa_addr else { continue }
-            let flags = Int32(current.ifa_flags)
-            guard (flags & IFF_UP) == IFF_UP else { continue }
-            guard (flags & IFF_LOOPBACK) != IFF_LOOPBACK else { continue }
-            guard addrPtr.pointee.sa_family == sa_family_t(AF_INET) else { continue }
-
-            let name = decodeCString(current.ifa_name, context: "LocalSubnetEnumerator.ifname") ?? ""
-            var addr = addrPtr.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { $0.pointee.sin_addr }
-            var buffer = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN))
-            guard inet_ntop(AF_INET, &addr, &buffer, socklen_t(INET_ADDRSTRLEN)) != nil else { continue }
-            let ip = buffer.withUnsafeBufferPointer { ptr in
-                ptr.baseAddress.flatMap { decodeCString($0, context: "LocalSubnetEnumerator.ip") } ?? ""
-            }
-
-            if preferred == nil && name.hasPrefix("en") { preferred = ip }
-            if fallback == nil { fallback = ip }
-            if preferred != nil { break }
-        }
-
-        return preferred ?? fallback
+        NetworkInterfaceResolver.primaryIPv4Interface()?.ipAddress
     }
 
     private static func cidrBlock(for ip: String, prefix: Int) -> CIDRBlock? {

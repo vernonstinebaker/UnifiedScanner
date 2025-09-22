@@ -92,7 +92,7 @@ struct CardBackground: ViewModifier {
     func body(content: Content) -> some View {
         content
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(Theme.space(.lg))
+            .padding(Theme.space(.md))
             .background(Theme.color(.bgCard))
             .cornerRadius(Theme.radius(.lg))
             .overlay(

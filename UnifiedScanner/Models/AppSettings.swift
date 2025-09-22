@@ -50,10 +50,17 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    @Published var showInterface: Bool {
+        didSet {
+            persist()
+        }
+    }
+
     private let defaults = UserDefaults.standard
     private let loggingLevelKey = "unifiedscanner:settings:loggingLevel"
     private let loggingCategoriesKey = "unifiedscanner:settings:loggingCategories"
     private let fingerprintsKey = "unifiedscanner:settings:showFingerprints"
+    private let showInterfaceKey = "unifiedscanner:settings:showInterface"
 
     init() {
         if let raw = defaults.string(forKey: loggingLevelKey), let lvl = LoggingLevel(rawValue: raw) {
@@ -72,6 +79,11 @@ final class AppSettings: ObservableObject {
         } else {
             showFingerprints = true
         }
+        if defaults.object(forKey: showInterfaceKey) != nil {
+            showInterface = defaults.bool(forKey: showInterfaceKey)
+        } else {
+            showInterface = false
+        }
         LoggingService.setMinimumLevel(loggingLevel.scanLoggerLevel)
         LoggingService.setEnabledCategories(enabledLogCategories)
     }
@@ -80,6 +92,7 @@ final class AppSettings: ObservableObject {
         defaults.set(loggingLevel.rawValue, forKey: loggingLevelKey)
         defaults.set(Array(enabledLogCategories.map { $0.rawValue }), forKey: loggingCategoriesKey)
         defaults.set(showFingerprints, forKey: fingerprintsKey)
+        defaults.set(showInterface, forKey: showInterfaceKey)
     }
 
     func binding(for category: LoggingService.Category) -> Binding<Bool> {

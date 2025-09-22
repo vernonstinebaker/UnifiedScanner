@@ -22,6 +22,7 @@ struct SettingsView: View {
                 }
                 Section("Detail View") {
                     Toggle("Show Fingerprints", isOn: $settings.showFingerprints)
+                    Toggle("Show Interface", isOn: $settings.showInterface)
                 }
                 Section("Maintenance") {
                     Button(role: .destructive) {
