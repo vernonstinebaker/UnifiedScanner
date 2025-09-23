@@ -16,18 +16,30 @@ struct SettingsView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                    .padding(.horizontal, Theme.space(.lg))
                     
                     #if os(macOS)
-                    let columns = Array(repeating: GridItem(.flexible()), count: 2)
+                    let columns = Array(repeating: GridItem(.flexible(), alignment: .leading), count: 2)
                     #else
-                    let columns = Array(repeating: GridItem(.flexible()), count: 1)
+                    let columns = Array(repeating: GridItem(.flexible(), alignment: .leading), count: 1)
                     #endif
                     LazyVGrid(columns: columns, spacing: 16) {
                         ForEach(LoggingService.Category.allCases) { category in
-                            Toggle(category.displayName, isOn: settings.binding(for: category))
+                            HStack {
+                                Text(category.displayName)
+                                    .font(Theme.Typography.body)
+                                    .foregroundColor(Theme.color(.textPrimary))
+                                    .multilineTextAlignment(.leading)
+                                Spacer()
+                                Toggle("", isOn: settings.binding(for: category))
+                                    .toggleStyle(.switch)
+                                    .labelsHidden()
+                            }
                         }
                     }
+                    .padding(.horizontal, Theme.space(.lg))
                 }
+                .padding(.bottom, Theme.space(.lg))
                 Section("Detail View") {
                     Toggle("Show Fingerprints", isOn: $settings.showFingerprints)
                     Toggle("Show Interface", isOn: $settings.showInterface)
@@ -38,6 +50,8 @@ struct SettingsView: View {
                     } label: {
                         Text("Clear Stored Devices")
                     }
+                    .padding(.horizontal, Theme.space(.lg))
+                    .padding(.bottom, Theme.space(.lg))
                 }
             }
             .navigationTitle("Settings")

@@ -3,6 +3,7 @@ import SwiftUI
 struct DeviceListView: View {
     @ObservedObject var store: SnapshotService
     @Binding var selectedDeviceID: String?
+    @Binding var sheetDeviceSnapshot: Device?
     let mode: LayoutMode
 
     enum LayoutMode {
@@ -25,6 +26,8 @@ struct DeviceListView: View {
                     let currentCount = store.devices.count
                     LoggingService.debug("tap:first row device id=\(device.id) before selection count=\(currentCount)", category: .general)
                     selectedDeviceID = device.id
+                    sheetDeviceSnapshot = device
+                    LoggingService.debug("presenting sheet snapshot id=\(device.id)", category: .general)
                 } label: {
                     DeviceRowView(device: device, isSelected: false)
                 }

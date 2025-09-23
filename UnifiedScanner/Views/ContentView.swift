@@ -72,7 +72,7 @@ struct ContentView: View {
                     .padding(.horizontal, Theme.space(.lg))
                     .padding(.top, Theme.space(.lg))
                 ZStack(alignment: .bottom) {
-                    DeviceListView(store: store, selectedDeviceID: $selectedDeviceID, mode: .compact)
+                    DeviceListView(store: store, selectedDeviceID: $selectedDeviceID, sheetDeviceSnapshot: $sheetDeviceSnapshot, mode: .compact)
                     SummaryFooterView(deviceCount: deviceCount, onlineCount: onlineCount, serviceCount: serviceCount)
                         .padding(.horizontal, Theme.space(.lg))
                         .padding(.bottom, Theme.space(.lg))
@@ -107,7 +107,7 @@ struct ContentView: View {
                 .padding(.horizontal, Theme.space(.lg))
                 .padding(.top, Theme.space(.lg))
             ZStack(alignment: .bottom) {
-                DeviceListView(store: store, selectedDeviceID: $selectedDeviceID, mode: .sidebar)
+                DeviceListView(store: store, selectedDeviceID: $selectedDeviceID, sheetDeviceSnapshot: .constant(nil), mode: .sidebar)
                 SummaryFooterView(deviceCount: deviceCount, onlineCount: onlineCount, serviceCount: serviceCount)
                     .padding(.horizontal, Theme.space(.lg))
                     .padding(.bottom, Theme.space(.lg))
