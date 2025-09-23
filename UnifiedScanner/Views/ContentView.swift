@@ -68,22 +68,22 @@ struct ContentView: View {
     private var compactLayout: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: Theme.space(.md)) {
-                statusSection
+                StatusSectionView(progress: progress, networkInfo: networkInfo, settings: settings)
                     .padding(.horizontal, Theme.space(.lg))
                     .padding(.top, Theme.space(.lg))
                 ZStack(alignment: .bottom) {
-                    deviceListCompact
-                    summaryFooter
+                    DeviceListView(store: store, selectedDeviceID: $selectedDeviceID, mode: .compact)
+                    SummaryFooterView(deviceCount: deviceCount, onlineCount: onlineCount, serviceCount: serviceCount)
                         .padding(.horizontal, Theme.space(.lg))
                         .padding(.bottom, Theme.space(.lg))
                 }
             }
             .background(Theme.color(.bgRoot))
             .navigationTitle("Devices")
-            .toolbar { primaryToolbar(showSettingsBinding: $showSettingsFromMenu) }
+            .toolbar { ToolbarView.toolbarContent(isBonjourRunning: $isBonjourRunning, isScanRunning: $isScanRunning, startBonjour: startBonjour, stopBonjour: stopBonjour, startScan: startScan, stopScan: stopScan, saveSnapshot: saveSnapshot, showSettings: $showSettingsFromMenu) }
             .sheet(isPresented: $showSettingsFromMenu) { SettingsView(settings: settings, store: store) }
             .sheet(item: $sheetDeviceSnapshot) { dev in
-                sheetContent(for: dev)
+                DeviceDetailSheet(device: dev, settings: settings)
             }
 #if os(macOS)
             .toolbarColorScheme(.dark)
@@ -103,25 +103,12 @@ struct ContentView: View {
 
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: Theme.space(.md)) {
-            statusSection
+            StatusSectionView(progress: progress, networkInfo: networkInfo, settings: settings)
                 .padding(.horizontal, Theme.space(.lg))
                 .padding(.top, Theme.space(.lg))
             ZStack(alignment: .bottom) {
-                List(selection: $selectedDeviceID) {
-                    ForEach(store.devices) { device in
-                        NavigationLink(value: device.id) {
-                            DeviceRowView(device: device, isSelected: selectedDeviceID == device.id)
-                        }
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Theme.color(.bgRoot))
-                    }
-                }
-                .scrollContentBackground(.hidden)
-                .listStyle(.plain)
-                .background(Theme.color(.bgRoot))
-                .padding(.bottom, Theme.space(.xxxl))
-
-                summaryFooter
+                DeviceListView(store: store, selectedDeviceID: $selectedDeviceID, mode: .sidebar)
+                SummaryFooterView(deviceCount: deviceCount, onlineCount: onlineCount, serviceCount: serviceCount)
                     .padding(.horizontal, Theme.space(.lg))
                     .padding(.bottom, Theme.space(.lg))
             }
@@ -135,7 +122,7 @@ struct ContentView: View {
             }
         }
         .navigationTitle("Devices")
-        .toolbar { primaryToolbar(showSettingsBinding: $showSettingsSheet) }
+        .toolbar { ToolbarView.toolbarContent(isBonjourRunning: $isBonjourRunning, isScanRunning: $isScanRunning, startBonjour: startBonjour, stopBonjour: stopBonjour, startScan: startScan, stopScan: stopScan, saveSnapshot: saveSnapshot, showSettings: $showSettingsSheet) }
         .sheet(isPresented: $showSettingsSheet) { SettingsView(settings: settings, store: store) }
 #if os(macOS)
         .toolbarColorScheme(.dark)
@@ -181,25 +168,7 @@ struct ContentView: View {
 
     // MARK: - Sheet Content (compact detail)
     private func sheetContent(for snapshot: Device) -> some View {
-        let selected = selectedDeviceID
-        let liveDevice: Device? = {
-            if let id = selected { return store.devices.first { $0.id == id } }
-            return nil
-        }()
-        let devicesNow = store.devices.count
-        let resolved: Device = liveDevice ?? snapshot
-        return NavigationStack {
-            UnifiedDeviceDetail(device: resolved, settings: settings)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Done") { dismissSheetSelection() }
-                    }
-                }
-                .onAppear {
-                    let msg = "sheetContent(item): selected=\(selected ?? "nil") live=\(liveDevice?.id ?? "nil") snapshot=\(snapshot.id) devicesNow=\(devicesNow) resolved=\(resolved.id)"
-                    LoggingService.debug(msg, category: .general)
-                }
-        }
+        DeviceDetailSheet(device: snapshot, settings: settings)
     }
 
     // MARK: - Shared UI Sections
@@ -294,17 +263,7 @@ struct ContentView: View {
     }
 
     private var summaryFooter: some View {
-        HStack {
-            StatBlock(count: deviceCount, title: "Devices")
-            Spacer()
-            StatBlock(count: onlineCount, title: "Online")
-            Spacer()
-            StatBlock(count: serviceCount, title: "Services")
-        }
-        .padding(.horizontal, Theme.space(.xl))
-        .padding(.vertical, Theme.space(.lg))
-        .background(.ultraThinMaterial)
-        .cornerRadius(Theme.radius(.xl))
+        SummaryFooterView(deviceCount: deviceCount, onlineCount: onlineCount, serviceCount: serviceCount)
     }
 
     private var bonjourButtonLabel: String { isBonjourRunning ? "Stop Bonjour" : "Start Bonjour" }
@@ -341,18 +300,4 @@ struct ContentView: View {
     }
 }
 
-struct StatBlock: View {
-    let count: Int
-    let title: String
 
-    var body: some View {
-        VStack(spacing: Theme.space(.xs)) {
-            Text("\(count)")
-                .font(Theme.Typography.title)
-                .foregroundColor(Theme.color(.accentPrimary))
-            Text(title)
-                .font(Theme.Typography.caption)
-                .foregroundColor(Theme.color(.textSecondary))
-        }
-    }
-}
