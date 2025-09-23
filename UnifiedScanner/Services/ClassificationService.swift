@@ -62,10 +62,7 @@ struct ClassificationService {
             candidates.append(MatchResult(formFactor: form, rawType: raw, confidence: conf, reason: reason, sources: sources))
         }
 
-        // MARK: - High Confidence Vendor / Hostname Patterns
-        vendorHostnameRules(vendor: vendor, host: lowerHost, services: serviceTypes, ports: ports, add: add)
-
-        // MARK: - Fingerprint / Model Hint Rules
+        // MARK: - Fingerprint / Model Hint Rules FIRST (authoritative pass)
         fingerprintRules(vendor: vendor,
                          fingerprintModel: fingerprintModel,
                          fingerprintCorpus: fingerprintCorpus,
@@ -73,6 +70,13 @@ struct ClassificationService {
                          serviceTypes: serviceTypes,
                          fingerprints: device.fingerprints,
                          add: add)
+        if let authoritative = candidates.first(where: { $0.confidence == .high && $0.sources.contains(where: { $0.hasPrefix("fingerprint") }) }) {
+            LoggingService.debug("Authoritative fingerprint classification short-circuited: \(authoritative.reason)", category: .classification)
+            return Device.Classification(formFactor: authoritative.formFactor, rawType: authoritative.rawType, confidence: authoritative.confidence, reason: authoritative.reason + " (authoritative)", sources: authoritative.sources)
+        }
+
+        // MARK: - High Confidence Vendor / Hostname Patterns
+        vendorHostnameRules(vendor: vendor, host: lowerHost, services: serviceTypes, ports: ports, add: add)
 
         // MARK: - Service Combination Rules (medium/high)
         serviceCombinationRules(vendor: vendor, host: lowerHost, services: serviceTypes, add: add)
@@ -134,8 +138,8 @@ struct ClassificationService {
 
     private static func serviceCombinationRules(vendor: String, host: String, services: Set<NetworkService.ServiceType>, add: (_ form: DeviceFormFactor?, _ raw: String?, _ conf: ClassificationConfidence, _ reason: String, _ sources: [String]) -> Void) {
         // Apple computer (ssh + airplay)
-        if vendor.contains("apple") && services.contains(.ssh) && services.contains(.airplay) {
-            add(.computer, "mac", .medium, "SSH + AirPlay + Apple vendor", ["service:ssh", "service:airplay", "vendor:apple"]) }
+//        if vendor.contains("apple") && services.contains(.ssh) && services.contains(.airplay) {
+//            add(.computer, "mac", .medium, "SSH + AirPlay + Apple vendor", ["service:ssh", "service:airplay", "vendor:apple"]) }
         // Ubiquiti management (ssh + http)
         if vendor.contains("ubiquiti") && services.contains(.ssh) && services.contains(.http) {
             add(.router, "ubiquiti_device", .medium, "SSH + HTTP mgmt + ubiquiti", ["service:ssh", "service:http", "vendor:ubiquiti"]) }
@@ -143,8 +147,9 @@ struct ClassificationService {
         if services.contains(.homekit) && services.count == 1 {
             add(.accessory, "homekit_accessory", .medium, "Single HomeKit service", ["service:homekit"]) }
         // Media device: AirPlay or Chromecast without SSH suggests non-computer
-        if services.contains(.airplay) && !services.contains(.ssh) && !services.contains(.printer) {
-            add(.tv, "airplay_target", .medium, "AirPlay without SSH", ["service:airplay"]) }
+        if (services.contains(.airplay) || services.contains(.airplayAudio)) && !services.contains(.ssh) && !services.contains(.printer) {
+            let src = services.contains(.airplayAudio) && !services.contains(.airplay) ? ["service:airplayAudio"] : ["service:airplay"]
+            add(.tv, "airplay_target", .medium, "AirPlay without SSH", src) }
     }
 
     private static func portProfileRules(vendor: String, services: Set<NetworkService.ServiceType>, ports: Set<Int>, device: Device, add: (_ form: DeviceFormFactor?, _ raw: String?, _ conf: ClassificationConfidence, _ reason: String, _ sources: [String]) -> Void) {
@@ -182,7 +187,7 @@ struct ClassificationService {
         if appleContext && (fingerprintModel.contains("appletv") || fingerprintCorpus.contains("appletv")) {
             add(.tv, nil, .high, "Fingerprint indicates Apple TV", !modelSources.isEmpty ? modelSources : httpSources)
         }
-        if appleContext && (fingerprintModel.contains("homepod") || fingerprintModel.contains("audioaccessory") || fingerprintCorpus.contains("homepod")) {
+        if appleContext && (fingerprintModel.contains("homepod") || fingerprintModel.contains("audioaccessory") || fingerprintCorpus.contains("homepod") || fingerprintCorpus.contains("audioaccessory")) {
             add(.speaker, "homepod", .high, "Fingerprint indicates HomePod", !modelSources.isEmpty ? modelSources : httpSources)
         }
         if appleContext && (fingerprintModel.hasPrefix("macbook")) {

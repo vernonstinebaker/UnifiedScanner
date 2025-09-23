@@ -53,9 +53,17 @@ enum VendorResolverFactory {
 // MARK: - Apple Resolver
 struct AppleDisplayNameResolver: VendorDisplayNameResolving {
     func resolve(device: Device, context: ResolveContext) -> ResolvedName? {
-        // Prefer modelHint hardware identifier mapping
+        // Prefer fingerprint-extracted hardware identifier over legacy modelHint
+        if let fpModel = VendorModelExtractorService.extract(from: device.fingerprints ?? [:], hostname: device.hostname).model?.trimmingCharacters(in: .whitespacesAndNewlines), !fpModel.isEmpty {
+            if let resolved = resolveModel(raw: fpModel, db: context.modelDB) {
+                return ResolvedName(value: resolved, score: 90, sources: ["fingerprint:model"])
+            }
+        }
+        // Fallback: legacy stored modelHint (temporary backward compatibility)
         if let raw = device.modelHint?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty {
-            if let resolved = resolveModel(raw: raw, db: context.modelDB) { return ResolvedName(value: resolved, score: 90, sources: ["model"]) }
+            if let resolved = resolveModel(raw: raw, db: context.modelDB) {
+                return ResolvedName(value: resolved, score: 85, sources: ["modelHint"])
+            }
         }
         // Hostname inference if no model
         if let host = device.hostname, let inferred = inferFromHostname(host) { return ResolvedName(value: inferred, score: 70, sources: ["hostname-model"]) }
