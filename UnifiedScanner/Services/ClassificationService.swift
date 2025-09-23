@@ -44,9 +44,9 @@ struct ClassificationService {
         var candidates: [MatchResult] = []
         let lowerHost = device.hostname?.lowercased() ?? ""
         let explicitVendor = device.vendor?.lowercased() ?? ""
-        let fingerprintResult = device.fingerprints.flatMap { VendorModelExtractorService.extract(from: $0) }
-        let fingerprintVendor = fingerprintResult?.vendor?.lowercased() ?? ""
-        let fingerprintModel = fingerprintResult?.model?.lowercased() ?? ""
+        let fingerprintResult = VendorModelExtractorService.extract(from: device.fingerprints ?? [:], hostname: device.hostname)
+        let fingerprintVendor = fingerprintResult.vendor?.lowercased() ?? ""
+        let fingerprintModel = fingerprintResult.model?.lowercased() ?? ""
         let modelHint = device.modelHint?.lowercased() ?? ""
         let fingerprintValues = device.fingerprints?.values.map { $0.lowercased() } ?? []
         let fingerprintCorpusComponents = fingerprintValues + (modelHint.isEmpty ? [] : [modelHint])
@@ -70,6 +70,8 @@ struct ClassificationService {
                          fingerprintModel: fingerprintModel,
                          fingerprintCorpus: fingerprintCorpus,
                          fingerprintValues: fingerprintValues,
+                         serviceTypes: serviceTypes,
+                         fingerprints: device.fingerprints,
                          add: add)
 
         // MARK: - Service Combination Rules (medium/high)
@@ -127,6 +129,12 @@ struct ClassificationService {
         // Xiaomi / TP-Link smart plug style hostnames (iot)
         if containsAny(vendor, ["xiaomi", "tplink", "tp-link"]) && (host.contains("plug") || host.contains("smart")) {
             add(.iot, "smart_plug", .medium, "Smart plug hostname + vendor", ["host:plug", "vendor:smart"]) }
+        // Xiaomi specific hostnames
+        if host.hasPrefix("zhimi-airpurifier-") {
+            add(.iot, "xiaomi_air_purifier", .high, "Hostname indicates Xiaomi Air Purifier", ["host:zhimi-airpurifier"])
+        } else if host.hasPrefix("xiaomr-reepeater-") {
+            add(.router, "xiaomi_reepeater", .high, "Hostname indicates Xiaomi Repeater", ["host:xiaomr-reepeater"])
+        }
     }
 
     private static func serviceCombinationRules(vendor: String, host: String, services: Set<NetworkService.ServiceType>, add: (_ form: DeviceFormFactor?, _ raw: String?, _ conf: ClassificationConfidence, _ reason: String, _ sources: [String]) -> Void) {
@@ -166,6 +174,8 @@ struct ClassificationService {
                                          fingerprintModel: String,
                                          fingerprintCorpus: String,
                                          fingerprintValues: [String],
+                                         serviceTypes: Set<NetworkService.ServiceType>,
+                                         fingerprints: [String: String]?,
                                          add: (_ form: DeviceFormFactor?, _ raw: String?, _ conf: ClassificationConfidence, _ reason: String, _ sources: [String]) -> Void) {
         let hasFingerprintData = !fingerprintModel.isEmpty || !fingerprintCorpus.isEmpty
         guard hasFingerprintData else { return }
@@ -174,11 +184,11 @@ struct ClassificationService {
         let appleContext = vendor.contains("apple") || fingerprintCorpus.contains("apple") || fingerprintModel.contains("apple") || fingerprintModel.hasPrefix("mac") || fingerprintModel.hasPrefix("appletv")
 
         if appleContext && (fingerprintModel.contains("appletv") || fingerprintCorpus.contains("appletv")) {
-            add(.tv, "apple_tv", .high, "Fingerprint model indicates Apple TV", !modelSources.isEmpty ? modelSources : httpSources)
+            add(.tv, "Apple TV", .high, "Fingerprint model indicates Apple TV", !modelSources.isEmpty ? modelSources : httpSources)
         }
 
         if appleContext && (fingerprintModel.contains("homepod") || fingerprintModel.contains("audioaccessory") || fingerprintCorpus.contains("homepod")) {
-            add(.speaker, "homepod", .high, "Fingerprint model indicates HomePod", !modelSources.isEmpty ? modelSources : httpSources)
+            add(.speaker, "HomePod", .high, "Fingerprint model indicates HomePod", !modelSources.isEmpty ? modelSources : httpSources)
         }
 
         if appleContext && fingerprintModel.hasPrefix("macbook") {
@@ -226,8 +236,11 @@ struct ClassificationService {
         let httpValues = fingerprintValues
         if containsAny(httpText, ["routeros"]) || httpValues.contains(where: { $0.contains("routeros") }) {
             add(.router, "routeros", .high, "HTTP fingerprint indicates RouterOS", httpSources)
-        }
-        if containsAny(httpText, ["tp-link", "tplink", "archer"]) || httpValues.contains(where: { $0.contains("tp-link") || $0.contains("tplink") || $0.contains("archer") }) {
+        } else if (fingerprints?["txt"]?.contains("Echo") ?? false) || (fingerprints?["txt"]?.contains("Amazon") ?? false) || (fingerprints?["txt"]?.contains("Alexa") ?? false) || (fingerprints?["http"]?.contains("Echo") ?? false) || (fingerprints?["http"]?.contains("Alexa") ?? false) {
+            add(.iot, "alexa_echo", .high, "Fingerprints indicate Amazon Echo/Alexa device", [ "fingerprints:echo" ])
+        } else if serviceTypes.contains(where: { $0.rawValue == "_miio._udp" }) || (fingerprints?["txt"]?.contains("miio") ?? false) || (fingerprints?["txt"]?.contains("0xE0") ?? false) {
+            add(.iot, "xiaomi", .high, "Miio service or TXT indicates Xiaomi IoT", [ "service:miio", "fingerprints:xiaomi" ])
+        } else if containsAny(httpText, ["tp-link", "tplink", "archer"]) || httpValues.contains(where: { $0.contains("tp-link") || $0.contains("tplink") || $0.contains("archer") }) {
             add(.router, "tplink_router", .high, "HTTP fingerprint indicates TP-Link router", httpSources)
         }
         if containsAny(httpText, ["asus"]) || httpValues.contains(where: { $0.contains("asus") }) {

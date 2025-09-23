@@ -2,9 +2,13 @@ import Foundation
 
 struct VendorModelExtractorService {
     struct Result { let vendor: String?; let model: String? }
-    static func extract(from fingerprints: [String:String]) -> Result {
+    static func extract(from fingerprints: [String:String], hostname: String? = nil) -> Result {
+        var allData = fingerprints
+        if let hostname = hostname, !hostname.isEmpty {
+            allData["hostname"] = hostname.lowercased()
+        }
         var lower: [String:String] = [:]
-        for (k,v) in fingerprints { lower[k.lowercased()] = v }
+        for (k,v) in allData { lower[k.lowercased()] = v }
         let vendorKeys = ["vendor","manufacturer","brand","manu","mf","company"]
         let modelKeys = ["model","devicemodel","md","mdl","modelname","product","ty","am"]
         var vendor: String? = nil

@@ -233,7 +233,7 @@ struct UnifiedDeviceDetail: View {
         }
     }
 
-    private var primaryTitle: String { device.vendor ?? device.hostname ?? device.bestDisplayIP ?? device.id }
+    private var primaryTitle: String { device.name ?? device.vendor ?? device.hostname ?? device.bestDisplayIP ?? device.id }
 
     private func statusColor(_ status: Port.Status) -> Color {
         switch status {

@@ -17,6 +17,10 @@ public struct Device: Identifiable, Hashable, Codable, Sendable {
         }
     }
 
+    enum CodingKeys: String, CodingKey {
+        case id, primaryIP, ips, hostname, macAddress, vendor, modelHint, classification, discoverySources, rttMillis, services, openPorts, fingerprints, firstSeen, lastSeen, isOnlineOverride, name
+    }
+
     // MARK: - Identity & Core Signals
     public let id: String // Stable identity (prefer MAC > primary IP > hostname, else UUID)
     public var primaryIP: String?
@@ -25,6 +29,7 @@ public struct Device: Identifiable, Hashable, Codable, Sendable {
     public var macAddress: String?
     public var vendor: String?
     public var modelHint: String?
+    public var name: String?
 
     // MARK: - Classification
     public var classification: Classification?
@@ -62,6 +67,7 @@ public struct Device: Identifiable, Hashable, Codable, Sendable {
                 vendor: String? = nil,
                 modelHint: String? = nil,
                 classification: Classification? = nil,
+                name: String? = nil,
                 discoverySources: Set<DiscoverySource> = [],
                 rttMillis: Double? = nil,
                 services: [NetworkService] = [],
@@ -76,6 +82,7 @@ public struct Device: Identifiable, Hashable, Codable, Sendable {
         self.macAddress = macAddress
         self.vendor = vendor
         self.modelHint = modelHint
+        self.name = name
         self.classification = classification
         self.discoverySources = discoverySources
         self.rttMillis = rttMillis

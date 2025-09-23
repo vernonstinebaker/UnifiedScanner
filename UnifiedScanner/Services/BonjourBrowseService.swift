@@ -15,23 +15,13 @@ final class BonjourBrowseService: NSObject, @unchecked Sendable {
         return try! NSRegularExpression(pattern: "^_[A-Za-z0-9-]+\\._(tcp|udp)\\.$")
     }()
 
-#if os(iOS)
-    static let permittedTypesIOS: Set<String> = {
-        [
+    let permittedTypesIOS: Set<String>
+
+    init(curatedServiceTypes: [String], dynamicBrowserCap: Int) {
+        self.curatedServiceTypes = curatedServiceTypes
+        self.dynamicBrowserCap = dynamicBrowserCap
+        let fixedIOS = [
             "_services._dns-sd._udp.",
-            "_airplay._tcp.",
-            "_raop._tcp.",
-            "_ssh._tcp.",
-            "_http._tcp.",
-            "_https._tcp.",
-            "_hap._tcp.",
-            "_spotify-connect._tcp.",
-            "_smb._tcp.",
-            "_ipp._tcp.",
-            "_printer._tcp.",
-            "_rfb._tcp.",
-            "_afpovertcp._tcp.",
-            "_sftp-ssh._tcp.",
             "_companion-link._tcp.",
             "_device-info._tcp.",
             "_remotepairing._tcp.",
@@ -40,15 +30,12 @@ final class BonjourBrowseService: NSObject, @unchecked Sendable {
             "_sleep-proxy._udp.",
             "_workstation._tcp.",
             "_afp._tcp."
-        ].reduce(into: Set<String>()) { partialResult, type in
-            partialResult.insert(type.lowercased())
-        }
-    }()
+        ]
+#if os(iOS)
+        self.permittedTypesIOS = Set((curatedServiceTypes + fixedIOS).map { $0.lowercased() })
+#else
+        self.permittedTypesIOS = Set(curatedServiceTypes.map { $0.lowercased() })
 #endif
-
-    init(curatedServiceTypes: [String], dynamicBrowserCap: Int) {
-        self.curatedServiceTypes = curatedServiceTypes
-        self.dynamicBrowserCap = dynamicBrowserCap
     }
 
     func start() -> AsyncStream<String> { // emits raw service types (e.g. _http._tcp.)
@@ -91,7 +78,7 @@ extension BonjourBrowseService: NetServiceBrowserDelegate {
     func emitTypeIfNeeded(_ type: String, origin: String) {
         let lower = type.lowercased()
 #if os(iOS)
-        guard Self.permittedTypesIOS.contains(lower) else {
+        guard permittedTypesIOS.contains(lower) else {
             LoggingService.debug("browse: skipping type not declared for iOS origin=\(origin) type=\(type)", category: .bonjour)
             return
         }
@@ -141,7 +128,7 @@ extension BonjourBrowseService: NetServiceBrowserDelegate {
     private func considerStartingDynamicBrowser(forRawDiscoveredType type: String) {
         let normalized = type.lowercased()
 #if os(iOS)
-        guard Self.permittedTypesIOS.contains(normalized) else {
+        guard permittedTypesIOS.contains(normalized) else {
             LoggingService.debug("browse: iOS skipping dynamic browser for undeclared type=\(type)", category: .bonjour)
             return
         }

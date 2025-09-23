@@ -74,7 +74,7 @@ enum ServicePillCompiler {
         let base = service.name.trimmingCharacters(in: .whitespacesAndNewlines)
         let resolvedBase = base.isEmpty ? service.type.rawValue.uppercased() : base
         guard let port = service.port else { return resolvedBase }
-        if service.isStandardPort || service.type.matchesDefaultPort(port) { return resolvedBase }
+        if service.isStandardPort || service.type.matchesDefaultPort(port) || (service.type.rawValue == "_miio._udp" && port == 54321) { return resolvedBase }
         if resolvedBase.contains(":\(port)") { return resolvedBase }
         return "\(resolvedBase) :\(port)"
     }

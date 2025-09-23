@@ -210,7 +210,7 @@ final class NetworkInfoService: NSObject, ObservableObject {
 #if os(iOS)
 @MainActor
 private extension NetworkInfoService {
-    func fetchSSIDForIOS(completion: @escaping (String?) -> Void) {
+    func fetchSSIDForIOS(completion: @escaping @Sendable (String?) -> Void) {
         // Try CNCopyCurrentNetworkInfo first (legacy method)
         if let supportedInterfaces = CNCopySupportedInterfaces() as? [String] {
             for interface in supportedInterfaces {

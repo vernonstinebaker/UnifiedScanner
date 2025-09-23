@@ -1,7 +1,7 @@
 @preconcurrency import Foundation
 
 final class BonjourResolveService: NSObject, @unchecked Sendable {
-    struct ResolvedService { let ips: [String]; let hostname: String?; let port: Int?; let rawType: String; let txt: [String:String] }
+    struct ResolvedService { let ips: [String]; let hostname: String?; let serviceName: String; let port: Int?; let rawType: String; let txt: [String:String] }
 
     private let resolveCooldown: TimeInterval
     private var lastResolved: [String: Date] = [:]
@@ -171,12 +171,19 @@ extension BonjourResolveService: NetServiceBrowserDelegate, NetServiceDelegate {
         }
         var hostname = sender.hostName
         if let h = hostname, h.hasSuffix(".") { hostname = String(h.dropLast()) }
+        // Prefer service name if hostName is generic (e.g., ends with .local or is IP-like)
+        if hostname == nil || hostname?.hasSuffix(".local") == true || String.isValidIP(hostname!) {
+            hostname = sender.name
+        }
         let key = serviceKey(sender)
         stateQueue.sync {
             _ = pendingResolveKeys.remove(key)
             resolvingServices.removeValue(forKey: key)
         }
-        let record = ResolvedService(ips: ips, hostname: hostname, port: sender.port == 0 ? nil : sender.port, rawType: sender.type, txt: txt)
+        // Add service name to TXT for fingerprinting
+        var enhancedTxt = txt
+        enhancedTxt["serviceInstance"] = sender.name
+        let record = ResolvedService(ips: ips, hostname: hostname, serviceName: sender.name, port: sender.port == 0 ? nil : sender.port, rawType: sender.type, txt: enhancedTxt)
         for c in continuations { c.yield(record) }
     }
 }

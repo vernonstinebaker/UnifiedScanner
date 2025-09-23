@@ -84,14 +84,15 @@ public final class BonjourDiscoveryProvider: NSObject, @unchecked Sendable, Disc
     private let curatedServiceTypes: [String] = [
         "_airplay._tcp.", "_raop._tcp.", "_ssh._tcp.", "_http._tcp.", "_https._tcp.",
         "_hap._tcp.", "_spotify-connect._tcp.", "_smb._tcp.", "_ipp._tcp.", "_printer._tcp.",
-        "_rfb._tcp.", "_afpovertcp._tcp.", "_sftp-ssh._tcp."
+        "_rfb._tcp.", "_afpovertcp._tcp.", "_sftp-ssh._tcp.",
+        "_miio._udp.", "_googlecast._tcp.", "_amazonecho._tcp.", "_presence-tls._tcp."
     ]
 
     // Simulation support
     public struct SimulatedService: Sendable { public let type: String; public let name: String; public let port: Int; public let hostname: String; public let ip: String; public let txt: [String:String]; public init(type: String, name: String, port: Int, hostname: String, ip: String, txt: [String:String] = [:]) { self.type = type; self.name = name; self.port = port; self.hostname = hostname; self.ip = ip; self.txt = txt } }
     private let simulated: [SimulatedService]?
 
-    public init(resolveCooldown: TimeInterval = 12.0, dynamicBrowserCap: Int = 64, simulated: [SimulatedService]? = nil) {
+    public init(resolveCooldown: TimeInterval = 12.0, dynamicBrowserCap: Int = 128, simulated: [SimulatedService]? = nil) {
         self.resolveCooldown = resolveCooldown
         self.dynamicBrowserCap = dynamicBrowserCap
         self.simulated = simulated
@@ -99,7 +100,7 @@ public final class BonjourDiscoveryProvider: NSObject, @unchecked Sendable, Disc
     }
 
     // Previous aggregation removed; provider now emits per-service devices.
-    private func makeSingleServiceDevice(ips: [String], hostname: String?, service: NetworkService, fingerprints: [String:String]) -> Device {
+    private func makeSingleServiceDevice(ips: [String], hostname: String?, service: NetworkService, serviceName: String, fingerprints: [String:String]) -> Device {
         // Stable primary IP preference: first IPv4 (lowest numerically) else first IPv6
         let ipv4s = ips.filter { $0.contains(".") }.sorted { a,b in
             let aP = a.split(separator: ".").compactMap { Int($0) }
@@ -111,6 +112,8 @@ public final class BonjourDiscoveryProvider: NSObject, @unchecked Sendable, Disc
         let sanitizedIPs = ips.filter { !$0.hasPrefix("127.") && !$0.hasPrefix("169.254.") }
         let ipSet = sanitizedIPs.isEmpty ? Set(ips) : Set(sanitizedIPs)
 
+        // Use serviceName as fallback hostname if hostname is nil or generic
+        let displayHostname = hostname ?? serviceName
         // primary chosen above
         var vendor: String? = nil
         var model: String? = nil
@@ -119,7 +122,7 @@ public final class BonjourDiscoveryProvider: NSObject, @unchecked Sendable, Disc
             vendor = vm.vendor
             model = vm.model
         }
-        return Device(primaryIP: primary, ips: ipSet, hostname: hostname, vendor: vendor, modelHint: model, discoverySources: [.mdns], services: [service], fingerprints: fingerprints, firstSeen: Date(), lastSeen: Date())
+        return Device(primaryIP: primary, ips: ipSet, hostname: displayHostname, vendor: vendor, modelHint: model, discoverySources: [.mdns], services: [service], fingerprints: fingerprints, firstSeen: Date(), lastSeen: Date())
     }
 
     public func start(mutationBus: DeviceMutationBus) -> AsyncStream<DeviceMutation> {
@@ -130,8 +133,8 @@ public final class BonjourDiscoveryProvider: NSObject, @unchecked Sendable, Disc
                     guard let self else { return }
                     for sim in simulated {
                         if self.stopped { break }
-                        let svc = ServiceDeriver.makeService(fromRaw: sim.type, port: sim.port)
-                        let dev = self.makeSingleServiceDevice(ips: [sim.ip], hostname: sim.hostname, service: svc, fingerprints: sim.txt)
+                            let svc = ServiceDeriver.makeService(fromRaw: sim.type, port: sim.port)
+                            let dev = self.makeSingleServiceDevice(ips: [sim.ip], hostname: sim.hostname, service: svc, serviceName: sim.name, fingerprints: sim.txt)
                         let mutation = DeviceMutation.change(DeviceChange(before: nil, after: dev, changed: Set(DeviceField.allCases), source: .mdns))
                         continuation.yield(mutation)
                     }
@@ -154,7 +157,7 @@ public final class BonjourDiscoveryProvider: NSObject, @unchecked Sendable, Disc
                     for await rs in resolvedStream {
                         if self.stopped { break }
                         let service = ServiceDeriver.makeService(fromRaw: rs.rawType, port: rs.port)
-                        let dev = self.makeSingleServiceDevice(ips: rs.ips, hostname: rs.hostname, service: service, fingerprints: rs.txt)
+        let dev = self.makeSingleServiceDevice(ips: rs.ips, hostname: rs.hostname, service: service, serviceName: rs.serviceName, fingerprints: rs.txt)
                         LoggingService.info("bonjour: yielding device primary=\(dev.primaryIP ?? "nil") hostname=\(dev.hostname ?? "nil") svcType=\(service.type.rawValue) port=\(service.port ?? -1) ips=\(dev.ips.count)", category: .bonjour)
                         let mutation = DeviceMutation.change(DeviceChange(before: nil, after: dev, changed: Set(DeviceField.allCases), source: .mdns))
                         continuation.yield(mutation)

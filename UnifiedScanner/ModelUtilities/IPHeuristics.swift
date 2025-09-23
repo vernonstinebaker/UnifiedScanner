@@ -18,7 +18,16 @@ public enum IPHeuristics {
     internal static func stableSort(_ a: String, _ b: String) -> Bool { a < b }
 }
 
-internal extension String {
+extension String {
+    static func isValidIP(_ string: String) -> Bool {
+        let components = string.components(separatedBy: ".")
+        guard components.count == 4 else { return false }
+        return components.allSatisfy { comp in
+            guard let num = Int(comp), (0...255).contains(num) else { return false }
+            return true
+        }
+    }
+
     var isIPv4: Bool { components(separatedBy: ".").count == 4 && self.range(of: "[^0-9.]", options: .regularExpression) == nil }
     var isPrivateIPv4: Bool {
         guard isIPv4 else { return false }

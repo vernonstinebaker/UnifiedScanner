@@ -108,9 +108,9 @@ private var metaRow: some View {
         }
     }
 
-private var primaryTitle: String {
-    device.hostname ?? device.bestDisplayIP ?? device.id
-}
+    private var primaryTitle: String {
+        device.name ?? device.hostname ?? device.bestDisplayIP ?? device.id
+    }
 
     private func discoveryOrder(_ lhs: DiscoverySource, _ rhs: DiscoverySource) -> Bool {
         let ranking: [DiscoverySource] = [.arp, .ping, .mdns, .ssdp, .portScan, .reverseDNS, .manual, .unknown]
