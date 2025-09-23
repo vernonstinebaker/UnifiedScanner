@@ -137,17 +137,21 @@ struct ClassificationService {
     }
 
     private static func serviceCombinationRules(vendor: String, host: String, services: Set<NetworkService.ServiceType>, add: (_ form: DeviceFormFactor?, _ raw: String?, _ conf: ClassificationConfidence, _ reason: String, _ sources: [String]) -> Void) {
-        // Apple computer (ssh + airplay)
-//        if vendor.contains("apple") && services.contains(.ssh) && services.contains(.airplay) {
-//            add(.computer, "mac", .medium, "SSH + AirPlay + Apple vendor", ["service:ssh", "service:airplay", "vendor:apple"]) }
+        // Apple computer heuristic (SSH + AirPlay) — medium confidence fallback when no fingerprint
+        if vendor.contains("apple") && services.contains(.ssh) && services.contains(.airplay) {
+            add(.computer, "mac", .medium, "SSH + AirPlay + Apple vendor", ["service:ssh", "service:airplay", "vendor:apple"])
+        }
         // Ubiquiti management (ssh + http)
         if vendor.contains("ubiquiti") && services.contains(.ssh) && services.contains(.http) {
             add(.router, "ubiquiti_device", .medium, "SSH + HTTP mgmt + ubiquiti", ["service:ssh", "service:http", "vendor:ubiquiti"]) }
         // HomeKit accessory (homekit only)
         if services.contains(.homekit) && services.count == 1 {
             add(.accessory, "homekit_accessory", .medium, "Single HomeKit service", ["service:homekit"]) }
-        // Media device: AirPlay or Chromecast without SSH suggests non-computer
-        if (services.contains(.airplay) || services.contains(.airplayAudio)) && !services.contains(.ssh) && !services.contains(.printer) {
+        // HomePod heuristic: RAOP / AirPlay Audio only (no generic AirPlay, no SSH) + Apple vendor
+        if vendor.contains("apple") && services.contains(.airplayAudio) && !services.contains(.airplay) && !services.contains(.ssh) {
+            add(.speaker, "homepod", .medium, "AirPlay Audio only + Apple vendor", ["service:airplayAudio", "vendor:apple"]) }
+        else if (services.contains(.airplay) || services.contains(.airplayAudio)) && !services.contains(.ssh) && !services.contains(.printer) {
+            // Generic AirPlay target (non-computer, non-HomePod RAOP-only case)
             let src = services.contains(.airplayAudio) && !services.contains(.airplay) ? ["service:airplayAudio"] : ["service:airplay"]
             add(.tv, "airplay_target", .medium, "AirPlay without SSH", src) }
     }
