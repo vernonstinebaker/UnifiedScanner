@@ -109,7 +109,7 @@ private var metaRow: some View {
     }
 
     private var primaryTitle: String {
-        device.name ?? device.hostname ?? device.bestDisplayIP ?? device.id
+        device.name ?? device.autoName ?? device.hostname ?? device.bestDisplayIP ?? device.id
     }
 
     private func discoveryOrder(_ lhs: DiscoverySource, _ rhs: DiscoverySource) -> Bool {

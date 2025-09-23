@@ -103,7 +103,15 @@ final class SnapshotService: ObservableObject {
                     return d
                 }
             }
-            self.devices = self.devices.compactMap { sanitize(device: $0) }
+             self.devices = self.devices.compactMap { sanitize(device: $0) }
+             // Re-resolve autoName with latest logic (non-destructive to user overrides)
+             for i in devices.indices {
+                 if devices[i].name == nil { // only adjust autoName if not user-specified
+                     if let resolved = DeviceDisplayNameResolver.resolve(for: devices[i]) {
+                         devices[i].autoName = resolved.value
+                     }
+                 }
+             }
              // Sort loaded devices
              self.devices.sort { (lhs, rhs) -> Bool in
                  let lhsIP = lhs.bestDisplayIP ?? lhs.primaryIP ?? "255.255.255.255"
@@ -254,6 +262,22 @@ private func startMutationListener() {
          // Sort devices after modification
          sortDevices()
         persist()
+        // Derive autoName if needed (after merge and potential classification)
+        if let idx = devices.firstIndex(where: { $0.id == (before?.id ?? newDevice.id) }) {
+            var dev = devices[idx]
+            let previousAuto = dev.autoName
+            if dev.name == nil { // only set if no user override
+                if let resolved = DeviceDisplayNameResolver.resolve(for: dev) {
+                    if previousAuto != resolved.value {
+                        let logMsg = "name_resolver: set autoName=\(resolved.value) score=\(resolved.score) id=\(dev.id)"
+                        LoggingService.debug(logMsg, category: .snapshot)
+                        dev.autoName = resolved.value
+                        devices[idx] = dev
+                        changedFields.insert(.hostname) // piggyback to trigger UI refresh
+                    }
+                }
+            }
+        }
         if !changedFields.isEmpty {
             let after = devices.first(where: { $0.id == (before?.id ?? newDevice.id) }) ?? newDevice
             emit(.change(DeviceChange(before: before, after: after, changed: changedFields, source: source)))

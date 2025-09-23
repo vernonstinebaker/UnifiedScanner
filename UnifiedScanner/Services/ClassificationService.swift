@@ -132,8 +132,8 @@ struct ClassificationService {
         // Xiaomi specific hostnames
         if host.hasPrefix("zhimi-airpurifier-") {
             add(.iot, "xiaomi_air_purifier", .high, "Hostname indicates Xiaomi Air Purifier", ["host:zhimi-airpurifier"])
-        } else if host.hasPrefix("xiaomr-reepeater-") {
-            add(.router, "xiaomi_reepeater", .high, "Hostname indicates Xiaomi Repeater", ["host:xiaomr-reepeater"])
+        } else if host.hasPrefix("xiaomi-repeater-") {
+            add(.router, "xiaomi_repeater", .high, "Hostname indicates Xiaomi Repeater", ["host:xiaomi-repeater"])
         }
     }
 

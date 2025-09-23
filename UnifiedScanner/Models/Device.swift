@@ -18,7 +18,7 @@ public struct Device: Identifiable, Hashable, Codable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, primaryIP, ips, hostname, macAddress, vendor, modelHint, classification, discoverySources, rttMillis, services, openPorts, fingerprints, firstSeen, lastSeen, isOnlineOverride, name
+        case id, primaryIP, ips, hostname, macAddress, vendor, modelHint, classification, discoverySources, rttMillis, services, openPorts, fingerprints, firstSeen, lastSeen, isOnlineOverride, name, autoName
     }
 
     // MARK: - Identity & Core Signals
@@ -29,7 +29,8 @@ public struct Device: Identifiable, Hashable, Codable, Sendable {
     public var macAddress: String?
     public var vendor: String?
     public var modelHint: String?
-    public var name: String?
+    public var name: String? // User override
+    public var autoName: String? // Derived display name
 
     // MARK: - Classification
     public var classification: Classification?
@@ -68,6 +69,7 @@ public struct Device: Identifiable, Hashable, Codable, Sendable {
                 modelHint: String? = nil,
                 classification: Classification? = nil,
                 name: String? = nil,
+                autoName: String? = nil,
                 discoverySources: Set<DiscoverySource> = [],
                 rttMillis: Double? = nil,
                 services: [NetworkService] = [],
@@ -83,6 +85,7 @@ public struct Device: Identifiable, Hashable, Codable, Sendable {
         self.vendor = vendor
         self.modelHint = modelHint
         self.name = name
+        self.autoName = autoName
         self.classification = classification
         self.discoverySources = discoverySources
         self.rttMillis = rttMillis
