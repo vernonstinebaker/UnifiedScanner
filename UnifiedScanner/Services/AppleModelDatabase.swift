@@ -23,16 +23,23 @@ final class AppleModelDatabase: @unchecked Sendable {
 
     private init() {}
 
+    /// Returns the raw Device_Type for the given model Identifier (exact match).
+    /// e.g., "AppleTV14,1" -> "Apple TV" (as in CSV).
     func name(for modelIdentifier: String) -> String? {
         loadIfNeeded()
-        return idToName[modelIdentifier.lowercased()]
+        if let exact = idToName[modelIdentifier] { return exact }
+        // Case-insensitive fallback (avoid allocations by early check)
+        let lowered = modelIdentifier.lowercased()
+        if let ci = idToName.first(where: { $0.key.lowercased() == lowered })?.value { return ci }
+
+        return nil
     }
 
     private func loadIfNeeded() {
         if loaded { return }
         lock.lock(); defer { lock.unlock() }
         if loaded { return }
-        let candidateFiles = ["appledevices", "apple_models_simplified"]
+        let candidateFiles = ["appledevices"]
         var raws: [String] = []
         for name in candidateFiles {
             if let url = resourceURL(named: name, extension: "csv") {
@@ -81,61 +88,46 @@ final class AppleModelDatabase: @unchecked Sendable {
             let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { continue }
             let cols = parseCSVLine(trimmed)
-            guard cols.count >= 3 else { continue }
-            let deviceType = cols[0].replacingOccurrences(of: "\"", with: "").trimmingCharacters(in: .whitespaces)
-            let generation = cols[1].replacingOccurrences(of: "\"", with: "").trimmingCharacters(in: .whitespaces)
-            let identifier = cols[2].replacingOccurrences(of: "\"", with: "").trimmingCharacters(in: .whitespaces)
+            guard cols.count >= 3 else {
+                LoggingService.warn("AppleModelDatabase: skipped invalid row with \(cols.count) columns: \(trimmed)", category: .vendor)
+                continue
+            }
+            let deviceType = cols[0].trimmingCharacters(in: .whitespaces)
+            let identifier = cols[2].trimmingCharacters(in: .whitespaces)
             guard !identifier.isEmpty else { continue }
-            let simplified = simplify(deviceType: deviceType, generation: generation)
-            map[identifier.lowercased()] = simplified
+            map[identifier] = deviceType
         }
         idToName = map
-    }
-
-    private func simplify(deviceType: String, generation: String) -> String {
-        let base = deviceType
-        let lowerGen = generation.lowercased()
-        if base == "iPhone" {
-            if let match = firstMatch(pattern: #"iPhone[^\"]*"#, in: generation) {
-                // Trim chip/year parentheticals if present
-                return match.replacingOccurrences(of: #"\s*\([^\)]*\)"#, with: "", options: .regularExpression)
-            }
-            return base
-        }
-        if base.hasPrefix("iPad") {
-            if let size = firstMatch(pattern: #"(1[0-9](?:\.\d)?|\d{1,2})\.?(?:\d)?-?inch"#, in: lowerGen) {
-                return base + " " + size.replacingOccurrences(of: " ", with: "")
-            }
-            return base
-        }
-        if base == "HomePod" {
-            // Defer HomePod mini disambiguation to AppleModelCanonicalizer (single source of truth)
-            return base
-        }
-        if base == "Apple TV" { return base }
-        if base == "Mac mini" || base == "Mac Studio" || base == "Mac Pro" || base == "iMac" || base == "MacBook Air" || base == "MacBook Pro" { return base }
-        return base
-    }
-
-    private func firstMatch(pattern: String, in value: String) -> String? {
-        do {
-            let regex = try NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
-            let range = NSRange(location: 0, length: value.utf16.count)
-            if let m = regex.firstMatch(in: value, options: [], range: range) {
-                if let r = Range(m.range, in: value) { return String(value[r]) }
-            }
-        } catch { return nil }
-        return nil
     }
 
     private func parseCSVLine(_ line: String) -> [String] {
         var result: [String] = []
         var value = ""
         var inQuotes = false
-        for char in line {
-            if char == "\"" { inQuotes.toggle(); continue }
-            if char == "," && !inQuotes { result.append(value); value = ""; continue }
+        var i = line.startIndex
+        while i < line.endIndex {
+            let char = line[i]
+            let nextIndex = line.index(after: i)
+            if char == "\"" {
+                // Check for escaped quote: if next is \", don't toggle, append \"
+                if nextIndex < line.endIndex && line[nextIndex] == "\"" {
+                    value.append(char)
+                    value.append(line[nextIndex])
+                    i = line.index(after: nextIndex)
+                    continue
+                }
+                inQuotes.toggle()
+                i = nextIndex
+                continue
+            }
+            if char == "," && !inQuotes {
+                result.append(value)
+                value = ""
+                i = nextIndex
+                continue
+            }
             value.append(char)
+            i = nextIndex
         }
         result.append(value)
         return result

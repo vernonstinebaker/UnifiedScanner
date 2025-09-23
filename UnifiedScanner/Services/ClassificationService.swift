@@ -99,9 +99,6 @@ struct ClassificationService {
 
     // MARK: - Rule Groups
     private static func vendorHostnameRules(vendor: String, host: String, services: Set<NetworkService.ServiceType>, ports: Set<Int>, add: (_ form: DeviceFormFactor?, _ raw: String?, _ conf: ClassificationConfidence, _ reason: String, _ sources: [String]) -> Void) {
-        // Apple TV explicit
-        if services.contains(.airplay) && vendor.contains("apple") && host.contains("apple-tv") {
-            add(.tv, "apple_tv", .high, "AirPlay + Apple vendor + hostname apple-tv", ["mdns:airplay", "vendor:apple", "host:apple-tv"]) }
         // Printers
         if services.contains(.printer) || services.contains(.ipp) || host.contains("printer") {
             if containsAny(vendor, ["hp", "canon", "epson", "brother"]) {
@@ -114,18 +111,16 @@ struct ClassificationService {
                 add(.router, "router", .high, "Hostname router/gateway + network vendor", ["host:router", "vendor:network"]) }
             else { add(.router, "router", .medium, "Hostname router/gateway", ["host:router"]) }
         }
+        // Apple TV hostname pattern (without fingerprint)
+        if vendor.contains("apple") && (host.contains("apple-tv") || host.contains("appletv")) {
+            add(.tv, nil, .high, "Hostname indicates Apple TV", ["host:appletv"])
+        }
         // Raspberry Pi hostname patterns
         if host.contains("raspberrypi") || host == "pi" || host.hasPrefix("pi-") {
             add(.computer, "raspberry_pi", .medium, "Hostname indicates Raspberry Pi", ["host:raspberrypi"]) }
         // Chromecast
         if services.contains(.chromecast) {
             add(.tv, "chromecast", .medium, "Chromecast service", ["mdns:chromecast"]) }
-        // HomePod vs Apple TV (AirPlay audio only)
-        if services.contains(.airplayAudio) && !services.contains(.airplay) && vendor.contains("apple") {
-            add(.speaker, "homepod", .medium, "AirPlay audio only + Apple vendor", ["mdns:airplayAudio", "vendor:apple"]) }
-        // Mac laptop hint
-        if vendor.contains("apple") && host.contains("macbook") {
-            add(.laptop, "mac_laptop", .medium, "Hostname macbook + Apple vendor", ["host:macbook", "vendor:apple"]) }
         // Xiaomi / TP-Link smart plug style hostnames (iot)
         if containsAny(vendor, ["xiaomi", "tplink", "tp-link"]) && (host.contains("plug") || host.contains("smart")) {
             add(.iot, "smart_plug", .medium, "Smart plug hostname + vendor", ["host:plug", "vendor:smart"]) }
@@ -183,53 +178,29 @@ struct ClassificationService {
         let httpSources = fingerprintCorpus.isEmpty ? [] : ["fingerprint:http"]
         let appleContext = vendor.contains("apple") || fingerprintCorpus.contains("apple") || fingerprintModel.contains("apple") || fingerprintModel.hasPrefix("mac") || fingerprintModel.hasPrefix("appletv")
 
+        // Apple-specific classification now broad only (family refinement happens in AppleDisplayNameResolver)
         if appleContext && (fingerprintModel.contains("appletv") || fingerprintCorpus.contains("appletv")) {
-            add(.tv, "Apple TV", .high, "Fingerprint model indicates Apple TV", !modelSources.isEmpty ? modelSources : httpSources)
+            add(.tv, nil, .high, "Fingerprint indicates Apple TV", !modelSources.isEmpty ? modelSources : httpSources)
         }
-
         if appleContext && (fingerprintModel.contains("homepod") || fingerprintModel.contains("audioaccessory") || fingerprintCorpus.contains("homepod")) {
-            add(.speaker, "HomePod", .high, "Fingerprint model indicates HomePod", !modelSources.isEmpty ? modelSources : httpSources)
+            add(.speaker, "homepod", .high, "Fingerprint indicates HomePod", !modelSources.isEmpty ? modelSources : httpSources)
         }
-
-        if appleContext && fingerprintModel.hasPrefix("macbook") {
+        if appleContext && (fingerprintModel.hasPrefix("macbook")) {
             let sources = !modelSources.isEmpty ? modelSources : httpSources
-            add(.laptop, "macbook", .high, "Model identifier indicates MacBook", sources)
+            add(.laptop, nil, .high, "Fingerprint indicates MacBook", sources)
         }
         if appleContext && (fingerprintModel.hasPrefix("macmini") || fingerprintModel.contains("mac mini")) {
             let sources = !modelSources.isEmpty ? modelSources : httpSources
-            add(.computer, "mac_mini", .high, "Model identifier indicates Mac mini", sources)
+            add(.computer, nil, .high, "Fingerprint indicates Mac mini class", sources)
         }
-        if appleContext && fingerprintModel.hasPrefix("imac") {
-            let sources = !modelSources.isEmpty ? modelSources : httpSources
-            add(.computer, "imac", .high, "Model identifier indicates iMac", sources)
-        }
-        if appleContext && fingerprintModel.hasPrefix("macpro") {
-            let sources = !modelSources.isEmpty ? modelSources : httpSources
-            add(.computer, "mac_pro", .high, "Model identifier indicates Mac Pro", sources)
-        }
-        if appleContext && fingerprintModel.hasPrefix("macstudio") {
-            let sources = !modelSources.isEmpty ? modelSources : httpSources
-            add(.computer, "mac_studio", .high, "Model identifier indicates Mac Studio", sources)
-        }
-        if appleContext && (fingerprintModel.hasPrefix("iphone") || fingerprintModel.hasPrefix("ipod")) {
-            let sources = !modelSources.isEmpty ? modelSources : httpSources
-            add(.phone, "iphone", .high, "Model identifier indicates iPhone/iPod", sources)
-        }
-        if appleContext && fingerprintModel.hasPrefix("ipad") {
-            let sources = !modelSources.isEmpty ? modelSources : httpSources
-            add(.tablet, "ipad", .high, "Model identifier indicates iPad", sources)
-        }
-        if appleContext && (fingerprintModel.hasPrefix("watch") || fingerprintModel.contains("watch")) {
-            let sources = !modelSources.isEmpty ? modelSources : httpSources
-            add(.accessory, "apple_watch", .medium, "Model identifier indicates Apple Watch", sources)
-        }
-        if appleContext && fingerprintModel.hasPrefix("mac") &&
-            !fingerprintModel.hasPrefix("macbook") &&
-            !fingerprintModel.hasPrefix("macmini") &&
-            !fingerprintModel.hasPrefix("macpro") &&
-            !fingerprintModel.hasPrefix("macstudio") {
-            let sources = !modelSources.isEmpty ? modelSources : httpSources
-            add(.computer, "mac_computer", .high, "Model identifier indicates Mac", sources)
+        if appleContext && fingerprintModel.hasPrefix("imac") { add(.computer, nil, .high, "Fingerprint indicates iMac", !modelSources.isEmpty ? modelSources : httpSources) }
+        if appleContext && fingerprintModel.hasPrefix("macpro") { add(.computer, nil, .high, "Fingerprint indicates Mac Pro", !modelSources.isEmpty ? modelSources : httpSources) }
+        if appleContext && fingerprintModel.hasPrefix("macstudio") { add(.computer, nil, .high, "Fingerprint indicates Mac Studio", !modelSources.isEmpty ? modelSources : httpSources) }
+        if appleContext && (fingerprintModel.hasPrefix("iphone") || fingerprintModel.hasPrefix("ipod")) { add(.phone, nil, .high, "Fingerprint indicates iPhone/iPod", !modelSources.isEmpty ? modelSources : httpSources) }
+        if appleContext && fingerprintModel.hasPrefix("ipad") { add(.tablet, nil, .high, "Fingerprint indicates iPad", !modelSources.isEmpty ? modelSources : httpSources) }
+        if appleContext && (fingerprintModel.hasPrefix("watch") || fingerprintModel.contains("watch")) { add(.accessory, nil, .medium, "Fingerprint indicates Apple Watch", !modelSources.isEmpty ? modelSources : httpSources) }
+        if appleContext && fingerprintModel.hasPrefix("mac") && !fingerprintModel.hasPrefix("macbook") && !fingerprintModel.hasPrefix("macmini") && !fingerprintModel.hasPrefix("macpro") && !fingerprintModel.hasPrefix("macstudio") {
+            add(.computer, nil, .medium, "Generic Mac fingerprint", !modelSources.isEmpty ? modelSources : httpSources)
         }
 
         let httpText = fingerprintCorpus

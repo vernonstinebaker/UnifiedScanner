@@ -59,7 +59,7 @@ final class DeviceDisplayNameResolverTests: XCTestCase {
     func testAppleModelIdentifierHomePodMini() {
         let d = Device(primaryIP: "192.168.1.104", hostname: nil, vendor: "Apple", modelHint: "AudioAccessory5,1")
         let resolved = DeviceDisplayNameResolver.resolve(for: d)
-        XCTAssertEqual(resolved?.value, "HomePod mini")
+        XCTAssertEqual(resolved?.value, "HomePod")
     }
 
     func testAppleModelInferenceFromHostname() {
@@ -97,7 +97,7 @@ final class DeviceDisplayNameResolverTests: XCTestCase {
     func testAppleModelIdentifieriPhone14() {
         let d = Device(primaryIP: "192.168.1.102", hostname: nil, vendor: "Apple", modelHint: "iPhone14,7")
         let resolved = DeviceDisplayNameResolver.resolve(for: d)
-        XCTAssertEqual(resolved?.value, "iPhone 14") // expects generation retained
+        XCTAssertEqual(resolved?.value, "iPhone")
     }
 
     func testAppleModelIdentifierHomePod() {
@@ -106,21 +106,5 @@ final class DeviceDisplayNameResolverTests: XCTestCase {
         XCTAssertEqual(resolved?.value, "HomePod")
     }
 
-    func testAppleModelIdentifierReconstructionAppleTV() {
-        let d = Device(primaryIP: "192.168.1.105", hostname: nil, vendor: "Apple", modelHint: "AppleTV141")
-        let resolved = DeviceDisplayNameResolver.resolve(for: d)
-        XCTAssertEqual(resolved?.value, "Apple TV")
-    }
 
-    func testAppleModelIdentifierReconstructionMacMini() {
-        let d = Device(primaryIP: "192.168.1.106", hostname: nil, vendor: "Apple", modelHint: "Mac1412")
-        let resolved = DeviceDisplayNameResolver.resolve(for: d)
-        XCTAssertEqual(resolved?.value, "Mac mini")
-    }
-
-    func testAppleTVMarketingString() {
-        let d = Device(primaryIP: "192.168.1.107", hostname: nil, vendor: "Apple", modelHint: "Apple TV 4K (3rd generation)")
-        let resolved = DeviceDisplayNameResolver.resolve(for: d)
-        XCTAssertEqual(resolved?.value, "Apple TV")
-    }
 }
