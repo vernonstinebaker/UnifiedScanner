@@ -266,37 +266,9 @@ struct ContentView: View {
         SummaryFooterView(deviceCount: deviceCount, onlineCount: onlineCount, serviceCount: serviceCount)
     }
 
-    private var bonjourButtonLabel: String { isBonjourRunning ? "Stop Bonjour" : "Start Bonjour" }
-    private var bonjourButtonIcon: String { isBonjourRunning ? "wifi.slash" : "dot.radiowaves.left.and.right" }
-    private var scanButtonLabel: String { isScanRunning ? "Stop Scan" : "Run Scan" }
-    private var scanButtonIcon: String { isScanRunning ? "stop.circle" : "arrow.clockwise" }
-
     private func dismissSheetSelection() {
         selectedDeviceID = nil
         sheetDeviceSnapshot = nil
-    }
-
-    @ToolbarContentBuilder
-    private func primaryToolbar(showSettingsBinding: Binding<Bool>) -> some ToolbarContent {
-        ToolbarItemGroup(placement: .primaryAction) {
-            Button(action: { isBonjourRunning ? stopBonjour() : startBonjour() }) { Label(bonjourButtonLabel, systemImage: bonjourButtonIcon) }
-#if os(macOS)
-                .help(bonjourButtonLabel)
-#endif
-            Button(action: { isScanRunning ? stopScan() : startScan() }) { Label(scanButtonLabel, systemImage: scanButtonIcon) }
-#if os(macOS)
-                .help(scanButtonLabel)
-#endif
-            Button(action: saveSnapshot) { Label("Save", systemImage: "externaldrive") }
-#if os(macOS)
-                .help("Persist snapshot now")
-#endif
-            Button { showSettingsBinding.wrappedValue = true } label: { Image(systemName: "gearshape") }
-                .accessibilityLabel("Settings")
-#if os(iOS)
-                .keyboardShortcut(",", modifiers: .command)
-#endif
-        }
     }
 }
 
