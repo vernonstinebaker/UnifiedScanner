@@ -182,7 +182,7 @@ struct UnifiedDeviceDetail: View {
         }
         .background(Theme.color(.bgRoot).ignoresSafeArea())
         .navigationTitle("Device")
-        .onChange(of: inputDevice) { oldValue, newValue in
+        .onChange(of: inputDevice) { _, newValue in
             viewModel.update(device: newValue)
         }
     }
@@ -490,3 +490,45 @@ private struct ConfidenceLevelView: View {
         }
     }
 }
+
+#if DEBUG
+private extension Device {
+    static var previewSample: Device {
+        Device(primaryIP: "192.168.1.42",
+               ips: ["192.168.1.42", "192.168.1.43"],
+               hostname: "living-room-apple-tv",
+               macAddress: "AA:BB:CC:DD:EE:FF",
+               vendor: "Apple",
+               modelHint: "AppleTV6,2",
+               classification: Device.Classification(formFactor: .tv,
+                                                      rawType: "apple_tv",
+                                                      confidence: .high,
+                                                      reason: "Fingerprint indicates Apple TV",
+                                                      sources: ["fingerprint:model"]),
+               discoverySources: [.mdns, .ping],
+               services: [NetworkService(name: "AirPlay",
+                                         type: .airplay,
+                                         rawType: "_airplay._tcp",
+                                         port: 7000,
+                                         isStandardPort: true)],
+               openPorts: [Port(number: 7000,
+                                transport: "tcp",
+                                serviceName: "airplay",
+                                description: "AirPlay",
+                                status: .open,
+                                lastSeenOpen: Date())],
+               fingerprints: ["model": "AppleTV6,2"],
+               firstSeen: Date().addingTimeInterval(-7200),
+               lastSeen: Date())
+    }
+}
+
+struct UnifiedDeviceDetail_Previews: PreviewProvider {
+    static var previews: some View {
+        let settings = AppSettings()
+        return UnifiedDeviceDetail(device: .previewSample, settings: settings)
+            .frame(width: 420)
+            .preferredColorScheme(.dark)
+    }
+}
+#endif

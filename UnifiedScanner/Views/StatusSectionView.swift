@@ -198,3 +198,46 @@ struct StatusSectionView: View {
         }
     }
 }
+
+#if DEBUG
+private final class PreviewStatusProvider: NetworkStatusProviding {
+    let objectWillChange = ObservableObjectPublisher()
+
+    var networkDescription: String = "192.168.1.0/24"
+    var ipDescription: String = "192.168.1.20"
+    var wifiDisplay: String = "Preview Wi-Fi"
+    var interface: NetworkInterfaceDetails? = nil
+
+    func refresh() { }
+}
+
+extension StatusDashboardViewModel {
+    static func previewModel() -> StatusDashboardViewModel {
+        let progress = ScanProgress()
+        progress.phase = .pinging
+        progress.totalHosts = 24
+        progress.completedHosts = 12
+        progress.successHosts = 8
+        progress.started = true
+        progress.finished = false
+
+        let settings = AppSettings()
+        settings.showInterface = false
+
+        let provider = PreviewStatusProvider()
+        return StatusDashboardViewModel(progress: progress,
+                                        networkProvider: provider,
+                                        settings: settings)
+    }
+}
+
+struct StatusSectionView_Previews: PreviewProvider {
+    static var previews: some View {
+        StatusSectionView(viewModel: .previewModel())
+            .padding()
+            .background(Theme.color(.bgRoot))
+            .preferredColorScheme(.dark)
+            .previewLayout(.sizeThatFits)
+    }
+}
+#endif
