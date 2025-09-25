@@ -75,6 +75,8 @@ struct LoggingServiceAdapter: LoggingServiceProviding {
 protocol ClassificationServiceProviding {
     func classify(device: Device) async -> Device.Classification
     func setOUILookupProvider(_ provider: OUILookupProviding?)
+    func setRulePipeline(_ builder: @escaping @Sendable () -> ClassificationRulePipeline)
+    func resetRulePipeline()
 }
 
 struct ClassificationServiceAdapter: ClassificationServiceProviding {
@@ -84,6 +86,14 @@ struct ClassificationServiceAdapter: ClassificationServiceProviding {
 
     func setOUILookupProvider(_ provider: OUILookupProviding?) {
         ClassificationService.setOUILookupProvider(provider)
+    }
+
+    func setRulePipeline(_ builder: @escaping @Sendable () -> ClassificationRulePipeline) {
+        ClassificationService.setRulePipeline(builder)
+    }
+
+    func resetRulePipeline() {
+        ClassificationService.resetRulePipeline()
     }
 }
 
@@ -106,6 +116,7 @@ final class AppEnvironment: ObservableObject {
         self.classificationService = classificationService
         self.mutationPublisher = DeviceMutationBusPublisher(bus: deviceMutationBus)
         self.ouiLookupProvider = ouiLookupProvider
+        self.classificationService.resetRulePipeline()
         self.classificationService.setOUILookupProvider(ouiLookupProvider)
     }
 

@@ -4,6 +4,7 @@ import XCTest
 final class DeviceClassificationTests: XCTestCase {
     override func setUp() {
         super.setUp()
+        ClassificationService.resetRulePipeline()
         // Mock OUI lookup for Apple devices
         ClassificationService.setOUILookupProvider(MockOUILookup())
     }
@@ -11,6 +12,7 @@ final class DeviceClassificationTests: XCTestCase {
     override func tearDown() {
         super.tearDown()
         ClassificationService.setOUILookupProvider(nil)
+        ClassificationService.resetRulePipeline()
     }
     func testAppleTVHighConfidence() async {
         var d = Device.mockAppleTV
@@ -194,6 +196,93 @@ final class DeviceClassificationTests: XCTestCase {
         XCTAssertEqual(classification?.rawType, "mac_mini")
         XCTAssertTrue(classification?.reason.contains("Apple database") ?? false)
         XCTAssertTrue(classification?.sources.contains("fingerprint:model") ?? false)
+    }
+
+    func testFingerprintRuleShortCircuitsAuthoritativeMatch() async {
+        ClassificationService.setRulePipeline {
+            ClassificationRulePipeline(rules: [FingerprintClassificationRule()])
+        }
+        defer { ClassificationService.resetRulePipeline() }
+        var device = Device(primaryIP: "10.0.0.50",
+                            vendor: "Apple",
+                            discoverySources: [.mdns],
+                            services: [],
+                            openPorts: [],
+                            fingerprints: ["model": "MacBookPro16,1"])
+        let classification = await ClassificationService.classify(device: device)
+        XCTAssertEqual(classification.formFactor, .laptop)
+        XCTAssertEqual(classification.confidence, .high)
+        XCTAssertTrue(classification.reason.contains("Apple database"), "reason=\(classification.reason)")
+        XCTAssertTrue(classification.reason.contains("authoritative"), "reason=\(classification.reason)")
+    }
+
+    func testHostnamePatternRuleMatchesIPhoneWhenAppleSignalsPresent() async {
+        ClassificationService.setRulePipeline {
+            ClassificationRulePipeline(rules: [HostnamePatternClassificationRule()])
+        }
+        defer { ClassificationService.resetRulePipeline() }
+        let service = ServiceDeriver.makeService(fromRaw: "_companion-link._tcp.", port: nil)
+        var device = Device(primaryIP: "10.0.0.60",
+                            hostname: "kitchen-iphone",
+                            discoverySources: [.mdns],
+                            services: [service])
+        let classification = await ClassificationService.classify(device: device)
+        XCTAssertEqual(classification.formFactor, .phone)
+        XCTAssertEqual(classification.confidence, .high)
+        XCTAssertTrue(classification.reason.contains("iphone"))
+    }
+
+    func testVendorHostnameRuleIdentifiesPrinterVendors() async {
+        ClassificationService.setRulePipeline {
+            ClassificationRulePipeline(rules: [VendorHostnameClassificationRule()])
+        }
+        defer { ClassificationService.resetRulePipeline() }
+        let printerService = ServiceDeriver.makeService(fromRaw: "_ipp._tcp.", port: 631)
+        var device = Device(primaryIP: "10.0.0.61",
+                            hostname: "office-printer",
+                            vendor: "HP",
+                            discoverySources: [.mdns],
+                            services: [printerService])
+        let classification = await ClassificationService.classify(device: device)
+        XCTAssertEqual(classification.formFactor, .printer)
+        XCTAssertEqual(classification.confidence, .high)
+        XCTAssertTrue(classification.sources.contains("vendor:printer"))
+    }
+
+    func testServiceCombinationRuleDetectsAppleComputer() async {
+        ClassificationService.setRulePipeline {
+            ClassificationRulePipeline(rules: [ServiceCombinationClassificationRule()])
+        }
+        defer { ClassificationService.resetRulePipeline() }
+        let ssh = ServiceDeriver.makeService(fromRaw: "_ssh._tcp.", port: 22)
+        let airplay = ServiceDeriver.makeService(fromRaw: "_airplay._tcp.", port: 7000)
+        var device = Device(primaryIP: "10.0.0.62",
+                            vendor: "Apple",
+                            discoverySources: [.mdns],
+                            services: [ssh, airplay])
+        let classification = await ClassificationService.classify(device: device)
+        XCTAssertEqual(classification.formFactor, .computer)
+        XCTAssertEqual(classification.rawType, "mac")
+        XCTAssertEqual(classification.confidence, .medium)
+    }
+
+    func testPortProfileRuleDetectsNASCharacteristics() async {
+        ClassificationService.setRulePipeline {
+            ClassificationRulePipeline(rules: [PortProfileClassificationRule()])
+        }
+        defer { ClassificationService.resetRulePipeline() }
+        let smb = ServiceDeriver.makeService(fromRaw: "_smb._tcp.", port: 445)
+        let http = ServiceDeriver.makeService(fromRaw: "_http._tcp.", port: 80)
+        let smbPort = Port(number: 445, serviceName: "smb", description: "SMB", status: .open, lastSeenOpen: Date())
+        let httpPort = Port(number: 80, serviceName: "http", description: "HTTP", status: .open, lastSeenOpen: Date())
+        var device = Device(primaryIP: "10.0.0.63",
+                            discoverySources: [.portScan],
+                            services: [smb, http],
+                            openPorts: [smbPort, httpPort])
+        let classification = await ClassificationService.classify(device: device)
+        XCTAssertEqual(classification.formFactor, .server)
+        XCTAssertEqual(classification.rawType, "nas")
+        XCTAssertEqual(classification.confidence, .medium)
     }
 }
 
