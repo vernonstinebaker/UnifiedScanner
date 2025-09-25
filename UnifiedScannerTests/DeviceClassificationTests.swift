@@ -2,6 +2,16 @@ import XCTest
 @testable import UnifiedScanner
 
 final class DeviceClassificationTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        // Mock OUI lookup for Apple devices
+        ClassificationService.setOUILookupProvider(MockOUILookup())
+    }
+
+    override func tearDown() {
+        super.tearDown()
+        ClassificationService.setOUILookupProvider(nil)
+    }
     func testAppleTVHighConfidence() async {
         var d = Device.mockAppleTV
         d.classification = await ClassificationService.classify(device: d)
@@ -64,6 +74,19 @@ final class DeviceClassificationTests: XCTestCase {
         d.classification = await ClassificationService.classify(device: d)
         XCTAssertEqual(d.classification?.formFactor, .speaker)
         XCTAssertEqual(d.classification?.confidence, .high)
+    }
+
+    func testHomePodHeuristicWithoutFingerprint() async {
+        var d = Device(primaryIP: "192.168.1.152",
+                       hostname: "homepod-kitchen",
+                       macAddress: "AA:BB:CC:DD:EE:FF", // Mock Apple MAC
+                       discoverySources: [.mdns],
+                       services: [ServiceDeriver.makeService(fromRaw: "_raop._tcp", port: 7000)],
+                       openPorts: [])
+        d.classification = await ClassificationService.classify(device: d)
+        XCTAssertEqual(d.classification?.formFactor, .speaker)
+        XCTAssertEqual(d.classification?.confidence, .medium)
+        XCTAssertEqual(d.classification?.reason, "AirPlay Audio only + Apple vendor")
     }
 
     func testHTTPRealmIdentifiesTplinkRouter() async {
@@ -171,5 +194,14 @@ final class DeviceClassificationTests: XCTestCase {
         XCTAssertEqual(classification?.rawType, "mac_mini")
         XCTAssertTrue(classification?.reason.contains("Apple database") ?? false)
         XCTAssertTrue(classification?.sources.contains("fingerprint:model") ?? false)
+    }
+}
+
+// Mock OUI lookup for tests
+private final class MockOUILookup: OUILookupProviding {
+    func vendorFor(mac: String) -> String? {
+        let upper = mac.uppercased().replacingOccurrences(of: "-", with: ":")
+        if upper.hasPrefix("AA:BB:CC") { return "Apple" } // Mock Apple OUI
+        return nil
     }
 }
