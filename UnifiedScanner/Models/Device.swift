@@ -1,13 +1,31 @@
 import Foundation
 
+/// Represents a discovered network device with all its attributes and metadata.
+/// This is the canonical model used throughout the application for device representation,
+/// merging, and display. Devices are identified by a stable ID and can be updated
+/// through various discovery sources.
 public struct Device: Identifiable, Hashable, Codable, Sendable {
     // MARK: - Nested Types
+    /// Classification information for a device including form factor, confidence, and reasoning.
     public struct Classification: Hashable, Codable, Sendable {
+        /// The device's physical form factor (computer, phone, router, etc.)
         public let formFactor: DeviceFormFactor?
+        /// Raw type string for unrecognized form factors
         public let rawType: String?
+        /// Confidence level in the classification
         public let confidence: ClassificationConfidence
+        /// Human-readable explanation of the classification
         public let reason: String
-        public let sources: [String] // e.g. ["mdns:airplay", "vendor:apple"]
+        /// Sources that contributed to this classification (e.g. ["mdns:airplay", "vendor:apple"])
+        public let sources: [String]
+        
+        /// Initialize a new classification
+        /// - Parameters:
+        ///   - formFactor: The device's form factor
+        ///   - rawType: Raw type for unrecognized form factors
+        ///   - confidence: Confidence in the classification
+        ///   - reason: Explanation of the classification
+        ///   - sources: Sources that contributed to the classification
         public init(formFactor: DeviceFormFactor?, rawType: String?, confidence: ClassificationConfidence, reason: String, sources: [String]) {
             self.formFactor = formFactor
             self.rawType = rawType
@@ -22,28 +40,41 @@ public struct Device: Identifiable, Hashable, Codable, Sendable {
     }
 
     // MARK: - Identity & Core Signals
-    public let id: String // Stable identity (prefer MAC > primary IP > hostname, else UUID)
+    /// Stable identity for the device (prefer MAC > primary IP > hostname, else UUID)
+    public let id: String
+    /// Primary IP address for display and identification
     public var primaryIP: String?
+    /// All known IP addresses for this device
     public var ips: Set<String>
+    /// Device hostname from DNS or mDNS
     public var hostname: String?
+    /// MAC address for device identification
     public var macAddress: String?
+    /// Vendor name derived from OUI database
     public var vendor: String?
+    /// Model hint from various sources (HTTP fingerprints, mDNS, etc.)
     public var modelHint: String?
     public var name: String? // User override
     public var autoName: String? // Derived display name
 
     // MARK: - Classification
+    /// Device classification including form factor and confidence
     public var classification: Classification?
 
     // MARK: - Discovery & Metrics
+    /// Sources that discovered this device
     public var discoverySources: Set<DiscoverySource>
+    /// Round-trip time in milliseconds from ping measurements
     public var rttMillis: Double?
 
     // MARK: - Services & Ports
+    /// Network services discovered on this device
     public var services: [NetworkService]
+    /// Open ports found during port scanning
     public var openPorts: [Port]
 
     // MARK: - Additional Fingerprints
+    /// Additional device fingerprints (HTTP headers, certificates, etc.)
     public var fingerprints: [String: String]?
 
     // MARK: - Timeline
@@ -60,6 +91,26 @@ public struct Device: Identifiable, Hashable, Codable, Sendable {
     public var bestDisplayIP: String? { primaryIP ?? IPHeuristics.bestDisplayIP(ips) }
 
     // MARK: - Init
+    /// Initialize a new Device with the specified attributes
+    /// - Parameters:
+    ///   - id: Explicit device ID (auto-generated if nil)
+    ///   - primaryIP: Primary IP address
+    ///   - ips: All known IP addresses
+    ///   - hostname: Device hostname
+    ///   - macAddress: MAC address
+    ///   - vendor: Vendor name
+    ///   - modelHint: Model hint
+    ///   - classification: Device classification
+    ///   - name: User-defined name
+    ///   - autoName: Automatically derived name
+    ///   - discoverySources: Sources that discovered this device
+    ///   - rttMillis: Round-trip time
+    ///   - services: Network services
+    ///   - openPorts: Open ports
+    ///   - fingerprints: Device fingerprints
+    ///   - firstSeen: First seen timestamp
+    ///   - lastSeen: Last seen timestamp
+    ///   - isOnlineOverride: Override for online status
     public init(id: String? = nil,
                 primaryIP: String? = nil,
                 ips: Set<String> = [],

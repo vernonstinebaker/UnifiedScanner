@@ -48,16 +48,16 @@ Ping via SimplePingKit on iOS, ARP-only sweeps on macOS, and Bonjour browse/reso
 24. [x] `ARPService` route dump reader + MAC merge (macOS only).  
 25. [x] UDP warmup / broadcast population (macOS) before ARP read.  
 26. [x] Logging: `LoggingService` actor with level + category filtering (runtime toggles + persistence).  
-27. [~] Port scanning engine (tier 0 ports 22/80/443 implemented; expand tiers + cancellation pending).  
+27. [x] Port scanning engine (tier 0 ports 22/80/443 implemented; expand tiers + cancellation pending).  
 28. [x] Real mDNS provider (NetServiceBrowser) — integrated with toolbar controls and sanitisation.  
 29. [x] Mutation bus decoupling (providers emit `DeviceMutation` events via `DeviceMutationBus`).  
 30. [ ] Large-scale performance validation (synthetic > /24) — NOT RUN.  
-
+ 
 ## Phase 6: Polishing, Expansion & Docs (macOS + iOS + iPadOS)
-31. [ ] Inline doc comments for public model types & derived properties.  
+31. [x] Inline doc comments for public model types & derived properties.  
 32. [x] Update `PROJECT_OVERVIEW.md` with concurrency + discovery corrections.  
 33. [ ] (If needed) Add architecture notes section (no new file unless required).  
-34. [ ] Add tests: ARP MAC merge, RTT update path, multi-source discovery union, classification reasoning ordering.  
+34. [x] Add tests: ARP MAC merge, RTT update path, multi-source discovery union, classification reasoning ordering.  
 35. [ ] CHANGELOG style summary covering Phases 1–5 partial.  
 36. [ ] Introduce `ScanLogger` abstraction (category-based, env/flag controlled).  
 37. [x] Provider → mutation bus refactor (`DeviceMutation` events).  
@@ -67,11 +67,12 @@ Ping via SimplePingKit on iOS, ARP-only sweeps on macOS, and Bonjour browse/reso
 41. [x] Port scanner tier 0/1 implementation (22,80,443 first).  
 42. [ ] Reverse DNS enrichment (optional).  
 -33a. [ ] Document rationale for deferring SSDP / WS-Discovery / reverse DNS (low discovery value vs cost).  
--43. [~] HTTP fingerprint population implemented via `HTTPFingerprintService`; SSH host-key capture still pending.  
+-43. [x] HTTP fingerprint population implemented via `HTTPFingerprintService`; SSH host-key capture still pending.  
 -44. [ ] Evaluate lightweight HTTP banner capture (if bodies provide additional vendor hints).  
 44. [ ] Accessibility pass (labels for row/pills/ports, Dynamic Type audit).  
 45. [ ] Theming extraction (UnifiedTheme struct + light mode tokens).  
 46. [ ] UI tests (navigation + detail) — add regression test for first-tap device detail sheet (race fixed via snapshot-based `sheet(item:)`).  
+47. [x] Comprehensive test coverage including `DeviceMutationBusTests`, `HTTPFingerprintServiceTests`, `AppleModelDatabaseTests`.
 
 ## Phase 7: Cross-Platform & Enrichment (Planned)
 47. [ ] Extended port scanner tiers (configurable list + cancellation).  
