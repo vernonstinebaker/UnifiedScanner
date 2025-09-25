@@ -179,3 +179,84 @@ final class DeviceModelTests: XCTestCase {
         XCTAssertTrue(portStatuses.contains(UnifiedScanner.Port.Status.filtered))
     }
 }
+
+@MainActor
+final class DeviceDetailViewModelTests: XCTestCase {
+    private typealias DevicePort = UnifiedScanner.Port
+
+    private func makeDevice(hostname: String? = "kitchen-router",
+                            primaryIP: String? = "192.168.1.5",
+                            services: [NetworkService] = [],
+                            openPorts: [DevicePort] = []) -> Device {
+        Device(primaryIP: primaryIP,
+               ips: Set([primaryIP].compactMap { $0 }),
+               hostname: hostname,
+               services: services,
+               openPorts: openPorts)
+    }
+
+    func testHTTPPortActionReturnsOpenURL() {
+        let port = DevicePort(number: 80,
+                        transport: "tcp",
+                        serviceName: "http",
+                        description: "",
+                        status: .open,
+                        lastSeenOpen: nil)
+        let device = makeDevice(services: [], openPorts: [port])
+        let viewModel = DeviceDetailViewModel(device: device)
+
+        let interaction = viewModel.interaction(for: port)
+
+        guard case .openURL(let url)? = interaction?.action else {
+            return XCTFail("Expected openURL action")
+        }
+        XCTAssertEqual(url.absoluteString, "http://kitchen-router")
+    }
+
+    func testSSHPortActionReturnsCopyCommand() {
+        let port = DevicePort(number: 22,
+                        transport: "tcp",
+                        serviceName: "ssh",
+                        description: "",
+                        status: .open,
+                        lastSeenOpen: nil)
+        let device = makeDevice(openPorts: [port])
+        let viewModel = DeviceDetailViewModel(device: device)
+
+        let interaction = viewModel.interaction(for: port)
+
+        guard case .copy(let command)? = interaction?.action else {
+            return XCTFail("Expected copy command action")
+        }
+        XCTAssertEqual(command, "ssh kitchen-router")
+    }
+
+    func testFallbackCopyWhenHostMissing() {
+        let port = DevicePort(number: 1234,
+                        transport: "tcp",
+                        serviceName: "custom",
+                        description: "",
+                        status: .open,
+                        lastSeenOpen: nil)
+        let device = makeDevice(hostname: nil, primaryIP: nil, services: [], openPorts: [port])
+        let viewModel = DeviceDetailViewModel(device: device)
+
+        XCTAssertNil(viewModel.interaction(for: port))
+    }
+
+    func testUnknownServiceProducesCopyAction() {
+        let port = DevicePort(number: 1234,
+                        transport: "tcp",
+                        serviceName: "custom",
+                        description: "",
+                        status: .open,
+                        lastSeenOpen: nil)
+        let device = makeDevice(openPorts: [port])
+        let viewModel = DeviceDetailViewModel(device: device)
+
+        guard case .copy(let value)? = viewModel.interaction(for: port)?.action else {
+            return XCTFail("Expected copy action")
+        }
+        XCTAssertEqual(value, "kitchen-router:1234")
+    }
+}

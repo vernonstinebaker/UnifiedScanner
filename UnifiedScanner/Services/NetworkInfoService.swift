@@ -10,6 +10,14 @@ import NetworkExtension
 import CoreWLAN
 #endif
 
+protocol NetworkStatusProviding: ObservableObject where ObjectWillChangePublisher == ObservableObjectPublisher {
+    var networkDescription: String { get }
+    var ipDescription: String { get }
+    var wifiDisplay: String { get }
+    var interface: NetworkInterfaceDetails? { get }
+    func refresh()
+}
+
 struct NetworkInterfaceDetails: Equatable {
     let name: String
     let ipAddress: String
@@ -136,7 +144,7 @@ enum NetworkInterfaceResolver {
 }
 
 @MainActor
-final class NetworkInfoService: NSObject, ObservableObject {
+final class NetworkInfoService: NSObject, ObservableObject, NetworkStatusProviding {
     @Published private(set) var interface: NetworkInterfaceDetails?
     @Published private(set) var wifiDisplay: String = "—"
 

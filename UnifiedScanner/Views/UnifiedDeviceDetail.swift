@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -6,12 +7,145 @@ import UIKit
 import AppKit
 #endif
 
+enum DeviceDetailAction: Equatable {
+    case openURL(URL)
+    case copy(String)
+}
+
+@MainActor
+final class DeviceDetailViewModel: ObservableObject {
+    struct PortInteraction: Equatable {
+        let accessibilityLabel: String
+        let action: DeviceDetailAction
+    }
+
+    @Published private(set) var device: Device
+
+    init(device: Device) {
+        self.device = device
+    }
+
+    func update(device: Device) {
+        self.device = device
+    }
+
+    func interaction(for port: Port) -> PortInteraction? {
+        guard port.status == .open else { return nil }
+        guard let host = hostForPortAction() else { return nil }
+
+        if let type = inferredServiceType(for: port) {
+            switch type {
+            case .http:
+                if let url = urlFor(scheme: "http", host: host, port: port.number) {
+                    return PortInteraction(accessibilityLabel: "Open HTTP port \(port.number) on \(host)",
+                                            action: .openURL(url))
+                }
+            case .https:
+                if let url = urlFor(scheme: "https", host: host, port: port.number) {
+                    return PortInteraction(accessibilityLabel: "Open HTTPS port \(port.number) on \(host)",
+                                            action: .openURL(url))
+                }
+            case .ftp:
+                if let url = urlFor(scheme: "ftp", host: host, port: port.number) {
+                    return PortInteraction(accessibilityLabel: "Open FTP port \(port.number) on \(host)",
+                                            action: .openURL(url))
+                }
+            case .ssh:
+                let command = sshCommand(host: host, port: port.number)
+                return PortInteraction(accessibilityLabel: "Copy SSH command for \(host)",
+                                        action: .copy(command))
+            case .smb:
+                if let url = urlFor(scheme: "smb", host: host, port: port.number) {
+                    return PortInteraction(accessibilityLabel: "Open SMB share on \(host)",
+                                            action: .openURL(url))
+                }
+            case .vnc:
+                if let url = urlFor(scheme: "vnc", host: host, port: port.number) {
+                    return PortInteraction(accessibilityLabel: "Open VNC session to \(host)",
+                                            action: .openURL(url))
+                }
+            case .telnet:
+                let command = "telnet \(host) \(port.number)"
+                return PortInteraction(accessibilityLabel: "Copy telnet command for \(host)",
+                                        action: .copy(command))
+            default:
+                break
+            }
+        }
+
+        let fallback = "\(host):\(port.number)"
+        return PortInteraction(accessibilityLabel: "Copy \(fallback)",
+                                action: .copy(fallback))
+    }
+
+    private func hostForPortAction() -> String? {
+        if let hostname = device.hostname, !hostname.isEmpty { return hostname }
+        if let ip = device.bestDisplayIP { return ip }
+        if let primary = device.primaryIP { return primary }
+        return nil
+    }
+
+    private func urlFor(scheme: String, host: String, port: Int) -> URL? {
+        var components = URLComponents()
+        components.scheme = scheme
+        components.host = host
+        if shouldSpecifyPort(for: scheme, port: port) {
+            components.port = port
+        }
+        return components.url
+    }
+
+    private func shouldSpecifyPort(for scheme: String, port: Int) -> Bool {
+        switch scheme {
+        case "http": return port != 80
+        case "https": return port != 443
+        case "ftp": return port != 21
+        case "smb": return port != 445
+        case "vnc": return port != 5900
+        default: return true
+        }
+    }
+
+    private func sshCommand(host: String, port: Int) -> String {
+        if port == 22 { return "ssh \(host)" }
+        return "ssh -p \(port) \(host)"
+    }
+
+    private func inferredServiceType(for port: Port) -> NetworkService.ServiceType? {
+        if let mapped = ServiceDeriver.wellKnownPorts[port.number]?.0 {
+            return mapped
+        }
+
+        let name = port.serviceName.lowercased()
+        if name.contains("https") { return .https }
+        if name.contains("http") { return .http }
+        if name.contains("ssh") { return .ssh }
+        if name.contains("ftp") { return .ftp }
+        if name.contains("smb") || name.contains("cifs") { return .smb }
+        if name.contains("vnc") || name.contains("rfb") { return .vnc }
+        if name.contains("telnet") { return .telnet }
+        if name.contains("ipp") { return .ipp }
+        if name.contains("printer") { return .printer }
+        return nil
+    }
+}
+
+
 struct UnifiedDeviceDetail: View {
-    let device: Device
+    private let inputDevice: Device
     @ObservedObject var settings: AppSettings
     @Environment(\.openURL) private var openURL
+    @StateObject private var viewModel: DeviceDetailViewModel
 
     private var shouldShowFingerprints: Bool { settings.showFingerprints }
+
+    private var device: Device { viewModel.device }
+
+    init(device: Device, settings: AppSettings) {
+        self.inputDevice = device
+        self._settings = ObservedObject(wrappedValue: settings)
+        _viewModel = StateObject(wrappedValue: DeviceDetailViewModel(device: device))
+    }
 
     private var allIPs: [String] {
         var result: [String] = []
@@ -48,6 +182,9 @@ struct UnifiedDeviceDetail: View {
         }
         .background(Theme.color(.bgRoot).ignoresSafeArea())
         .navigationTitle("Device")
+        .onChange(of: inputDevice) { oldValue, newValue in
+            viewModel.update(device: newValue)
+        }
     }
 
     private var header: some View {
@@ -254,8 +391,10 @@ struct UnifiedDeviceDetail: View {
             .foregroundColor(statusColor(port.status))
             .cornerRadius(Theme.radius(.sm))
 
-        if let interaction = portInteraction(for: port) {
-            Button(action: interaction.handler) {
+        if let interaction = viewModel.interaction(for: port) {
+            Button {
+                handle(action: interaction.action)
+            } label: {
                 styledLabel
             }
             .buttonStyle(.plain)
@@ -265,103 +404,13 @@ struct UnifiedDeviceDetail: View {
         }
     }
 
-    private func portInteraction(for port: Port) -> PortInteraction? {
-        guard port.status == .open else { return nil }
-        guard let host = hostForPortAction() else { return nil }
-
-        if let type = inferredServiceType(for: port) {
-            switch type {
-            case .http:
-                return PortInteraction(accessibilityLabel: "Open HTTP port \(port.number) on \(host)") {
-                    openURLIfPossible(scheme: "http", host: host, port: port.number)
-                }
-            case .https:
-                return PortInteraction(accessibilityLabel: "Open HTTPS port \(port.number) on \(host)") {
-                    openURLIfPossible(scheme: "https", host: host, port: port.number)
-                }
-            case .ftp:
-                return PortInteraction(accessibilityLabel: "Open FTP port \(port.number) on \(host)") {
-                    openURLIfPossible(scheme: "ftp", host: host, port: port.number)
-                }
-            case .ssh:
-                let command = sshCommand(host: host, port: port.number)
-                return PortInteraction(accessibilityLabel: "Copy SSH command for \(host)") {
-                    copyToClipboard(command)
-                }
-            case .smb:
-                return PortInteraction(accessibilityLabel: "Open SMB share on \(host)") {
-                    openURLIfPossible(scheme: "smb", host: host, port: port.number)
-                }
-            case .vnc:
-                return PortInteraction(accessibilityLabel: "Open VNC session to \(host)") {
-                    openURLIfPossible(scheme: "vnc", host: host, port: port.number)
-                }
-            case .telnet:
-                let command = "telnet \(host) \(port.number)"
-                return PortInteraction(accessibilityLabel: "Copy telnet command for \(host)") {
-                    copyToClipboard(command)
-                }
-            default:
-                break
-            }
+    private func handle(action: DeviceDetailAction) {
+        switch action {
+        case .openURL(let url):
+            openURL(url)
+        case .copy(let value):
+            copyToClipboard(value)
         }
-
-        let fallback = "\(host):\(port.number)"
-        return PortInteraction(accessibilityLabel: "Copy \(fallback)") {
-            copyToClipboard(fallback)
-        }
-    }
-
-    private func inferredServiceType(for port: Port) -> NetworkService.ServiceType? {
-        if let mapped = ServiceDeriver.wellKnownPorts[port.number]?.0 {
-            return mapped
-        }
-
-        let name = port.serviceName.lowercased()
-        if name.contains("https") { return .https }
-        if name.contains("http") { return .http }
-        if name.contains("ssh") { return .ssh }
-        if name.contains("ftp") { return .ftp }
-        if name.contains("smb") || name.contains("cifs") { return .smb }
-        if name.contains("vnc") || name.contains("rfb") { return .vnc }
-        if name.contains("telnet") { return .telnet }
-        if name.contains("ipp") { return .ipp }
-        if name.contains("printer") { return .printer }
-        return nil
-    }
-
-    private func hostForPortAction() -> String? {
-        if let hostname = device.hostname, !hostname.isEmpty { return hostname }
-        if let ip = device.bestDisplayIP { return ip }
-        if let primary = device.primaryIP { return primary }
-        return nil
-    }
-
-    private func openURLIfPossible(scheme: String, host: String, port: Int) {
-        var components = URLComponents()
-        components.scheme = scheme
-        components.host = host
-        if shouldSpecifyPort(for: scheme, port: port) {
-            components.port = port
-        }
-        guard let url = components.url else { return }
-        openURL(url)
-    }
-
-    private func shouldSpecifyPort(for scheme: String, port: Int) -> Bool {
-        switch scheme {
-        case "http": return port != 80
-        case "https": return port != 443
-        case "ftp": return port != 21
-        case "smb": return port != 445
-        case "vnc": return port != 5900
-        default: return true
-        }
-    }
-
-    private func sshCommand(host: String, port: Int) -> String {
-        if port == 22 { return "ssh \(host)" }
-        return "ssh -p \(port) \(host)"
     }
 
     private func copyToClipboard(_ string: String) {
@@ -372,11 +421,6 @@ struct UnifiedDeviceDetail: View {
         pasteboard.clearContents()
         pasteboard.setString(string, forType: .string)
 #endif
-    }
-
-    private struct PortInteraction {
-        let accessibilityLabel: String
-        let handler: () -> Void
     }
 
     private func formatted(_ date: Date?) -> String? {

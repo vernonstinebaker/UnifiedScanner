@@ -1,9 +1,132 @@
 import SwiftUI
+import Combine
+
+@MainActor
+final class StatusDashboardViewModel: ObservableObject {
+    struct StatusItem: Identifiable, Equatable {
+        let id: String
+        let icon: String
+        let value: String
+        let usesMono: Bool
+    }
+
+    enum ProgressState: Equatable {
+        case idle
+        case indeterminate(label: String)
+        case determinate(current: Int, total: Int, caption: String, responsiveSummary: String)
+        case completed(message: String)
+    }
+
+    @Published private(set) var statusItems: [StatusItem] = []
+    @Published private(set) var interfaceLine: String?
+    @Published private(set) var showInterfaceLine: Bool = false
+    @Published private(set) var progressState: ProgressState = .idle
+
+    private let progress: ScanProgress
+    private let networkProvider: any NetworkStatusProviding
+    private let settings: AppSettings
+    private var cancellables: Set<AnyCancellable> = []
+
+    init(progress: ScanProgress,
+         networkProvider: any NetworkStatusProviding,
+         settings: AppSettings) {
+        self.progress = progress
+        self.networkProvider = networkProvider
+        self.settings = settings
+        bind()
+        recompute()
+    }
+
+    func refreshNetwork() {
+        networkProvider.refresh()
+    }
+
+    private func bind() {
+        progress.objectWillChange
+            .sink { [weak self] _ in self?.scheduleRecompute() }
+            .store(in: &cancellables)
+
+        networkProvider.objectWillChange
+            .sink { [weak self] _ in self?.scheduleRecompute() }
+            .store(in: &cancellables)
+
+        settings.objectWillChange
+            .sink { [weak self] _ in self?.scheduleRecompute() }
+            .store(in: &cancellables)
+    }
+
+    private func scheduleRecompute() {
+        Task { @MainActor [weak self] in
+            self?.recompute()
+        }
+    }
+
+    private func recompute() {
+        statusItems = [
+            StatusItem(id: "network", icon: "globe", value: networkProvider.networkDescription, usesMono: true),
+            StatusItem(id: "ip", icon: "dot.radiowaves.left.and.right", value: networkProvider.ipDescription, usesMono: true),
+            StatusItem(id: "wifi", icon: "wifi", value: networkProvider.wifiDisplay, usesMono: false)
+        ]
+
+        if settings.showInterface, let interface = networkProvider.interface {
+            interfaceLine = "Interface: \(interface.name)"
+            showInterfaceLine = true
+        } else {
+            interfaceLine = nil
+            showInterfaceLine = false
+        }
+
+        progressState = computeProgressState()
+    }
+
+    private func computeProgressState() -> ProgressState {
+        if progress.finished {
+            return .completed(message: "Scan complete: \(progress.successHosts) responsive hosts")
+        }
+
+        if progress.started && !progress.finished && progress.totalHosts > 0 {
+            return determinateState()
+        }
+
+        switch progress.phase {
+        case .idle:
+            return .idle
+        case .arpPriming:
+            return .indeterminate(label: "Priming ARP table…")
+        case .enumerating:
+            return .indeterminate(label: "Enumerating subnet…")
+        case .arpRefresh:
+            return .indeterminate(label: "Refreshing ARP entries…")
+        case .mdnsWarmup:
+            return .indeterminate(label: "Warming up mDNS…")
+        case .pinging:
+            return progress.totalHosts > 0 ? determinateState() : .indeterminate(label: "Pinging hosts…")
+        case .complete:
+            return .completed(message: "Scan complete: \(progress.successHosts) responsive hosts")
+        }
+    }
+
+    private func determinateState() -> ProgressState {
+        let caption: String
+        switch progress.phase {
+        case .pinging:
+            caption = "Pinging \(progress.completedHosts)/\(progress.totalHosts) hosts"
+        case .mdnsWarmup:
+            caption = "Warming up mDNS…"
+        default:
+            caption = "Scanning \(progress.completedHosts)/\(progress.totalHosts) hosts"
+        }
+        let responsive = "\(progress.successHosts) responsive"
+        return .determinate(current: progress.completedHosts,
+                             total: progress.totalHosts,
+                             caption: caption,
+                             responsiveSummary: responsive)
+    }
+}
+
 
 struct StatusSectionView: View {
-    @ObservedObject var progress: ScanProgress
-    @ObservedObject var networkInfo: NetworkInfoService
-    @ObservedObject var settings: AppSettings
+    @ObservedObject var viewModel: StatusDashboardViewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.space(.sm)) {
@@ -15,12 +138,12 @@ struct StatusSectionView: View {
     private var networkStatusHeader: some View {
         VStack(alignment: .leading, spacing: Theme.space(.xs)) {
             HStack(spacing: Theme.space(.lg)) {
-                statusIcon(icon: "globe", value: networkInfo.networkDescription, usesMono: true)
-                statusIcon(icon: "dot.radiowaves.left.and.right", value: networkInfo.ipDescription, usesMono: true)
-                statusIcon(icon: "wifi", value: networkInfo.wifiDisplay, usesMono: false)
+                ForEach(viewModel.statusItems) { item in
+                    statusIcon(icon: item.icon, value: item.value, usesMono: item.usesMono)
+                }
             }
-            if settings.showInterface, let interface = networkInfo.interface {
-                Text("Interface: \(interface.name)")
+            if viewModel.showInterfaceLine, let line = viewModel.interfaceLine {
+                Text(line)
                     .font(Theme.Typography.caption)
                     .foregroundColor(Theme.color(.textTertiary))
             }
@@ -40,39 +163,29 @@ struct StatusSectionView: View {
         }
     }
 
+    @ViewBuilder
     private var progressSection: some View {
-        Group {
-            if progress.started && !progress.finished {
-                VStack(alignment: .leading, spacing: Theme.space(.xs)) {
-                    ProgressView(value: Double(progress.completedHosts), total: Double(max(progress.totalHosts, 1)))
-                        .tint(Theme.color(.accentPrimary))
-                    HStack(spacing: Theme.space(.sm)) {
-                        Text(progressText)
-                        Text("\(progress.successHosts) responsive")
-                            .foregroundColor(Theme.color(.textSecondary))
-                    }
-                    .font(Theme.Typography.caption)
-                    .foregroundColor(Theme.color(.textSecondary))
+        switch viewModel.progressState {
+        case .idle:
+            EmptyView()
+        case .indeterminate(let label):
+            indeterminateProgress(label)
+        case .determinate(let current, let total, let caption, let responsiveSummary):
+            VStack(alignment: .leading, spacing: Theme.space(.xs)) {
+                ProgressView(value: Double(current), total: Double(max(total, 1)))
+                    .tint(Theme.color(.accentPrimary))
+                HStack(spacing: Theme.space(.sm)) {
+                    Text(caption)
+                    Text(responsiveSummary)
+                        .foregroundColor(Theme.color(.textSecondary))
                 }
-            } else if progress.phase == .arpPriming {
-                indeterminateProgress("Priming ARP table…")
-            } else if progress.phase == .enumerating {
-                indeterminateProgress("Enumerating subnet…")
-            } else if progress.phase == .arpRefresh && !progress.finished {
-                indeterminateProgress("Refreshing ARP entries…")
-            } else if progress.finished {
-                Text("Scan complete: \(progress.successHosts) responsive hosts")
-                    .font(Theme.Typography.caption)
-                    .foregroundColor(Theme.color(.textSecondary))
+                .font(Theme.Typography.caption)
+                .foregroundColor(Theme.color(.textSecondary))
             }
-        }
-    }
-
-    private var progressText: String {
-        switch progress.phase {
-        case .pinging: return "Pinging \(progress.completedHosts)/\(progress.totalHosts) hosts"
-        case .mdnsWarmup: return "Warming up mDNS…"
-        default: return "Scanning \(progress.completedHosts)/\(progress.totalHosts) hosts"
+        case .completed(let message):
+            Text(message)
+                .font(Theme.Typography.caption)
+                .foregroundColor(Theme.color(.textSecondary))
         }
     }
 

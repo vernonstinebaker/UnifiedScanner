@@ -1,4 +1,5 @@
 import XCTest
+import Combine
 @testable import UnifiedScanner
 
 @MainActor final class AppSettingsTests: XCTestCase {
@@ -108,5 +109,89 @@ import XCTest
         XCTAssertEqual(levels.count, 5)
         let ids = levels.map { $0.id }
         XCTAssertEqual(Set(ids), Set(["off", "error", "warn", "info", "debug"]))
+    }
+}
+
+@MainActor
+final class StatusDashboardViewModelTests: XCTestCase {
+    private final class MockNetworkStatusProvider: NetworkStatusProviding {
+        let objectWillChange = ObservableObjectPublisher()
+
+        var networkDescription: String = "192.168.1.0/24"
+        var ipDescription: String = "192.168.1.10"
+        var wifiDisplay: String = "Test Wi-Fi"
+        var interface: NetworkInterfaceDetails? = nil
+
+        private(set) var refreshCount = 0
+
+        func refresh() {
+            refreshCount += 1
+        }
+
+        func update(network: String, ip: String, wifi: String, interface: NetworkInterfaceDetails?) {
+            networkDescription = network
+            ipDescription = ip
+            wifiDisplay = wifi
+            self.interface = interface
+            objectWillChange.send()
+        }
+    }
+
+    func testDeterminateProgressStateUpdates() async {
+        let progress = ScanProgress()
+        let settings = AppSettings()
+        settings.showInterface = false
+        let network = MockNetworkStatusProvider()
+        let viewModel = StatusDashboardViewModel(progress: progress,
+                                                 networkProvider: network,
+                                                 settings: settings)
+
+        progress.totalHosts = 20
+        progress.completedHosts = 10
+        progress.successHosts = 6
+        progress.started = true
+        progress.finished = false
+        progress.phase = .pinging
+
+        await Task.yield()
+
+        XCTAssertEqual(viewModel.statusItems.count, 3)
+        XCTAssertNil(viewModel.interfaceLine)
+        XCTAssertFalse(viewModel.showInterfaceLine)
+        XCTAssertEqual(viewModel.progressState, .determinate(current: 10,
+                                                             total: 20,
+                                                             caption: "Pinging 10/20 hosts",
+                                                             responsiveSummary: "6 responsive"))
+    }
+
+    func testRefreshNetworkTriggersProvider() {
+        let progress = ScanProgress()
+        let settings = AppSettings()
+        let network = MockNetworkStatusProvider()
+        let viewModel = StatusDashboardViewModel(progress: progress,
+                                                 networkProvider: network,
+                                                 settings: settings)
+
+        XCTAssertEqual(network.refreshCount, 0)
+        viewModel.refreshNetwork()
+        XCTAssertEqual(network.refreshCount, 1)
+    }
+
+    func testIndeterminateStateForEnumeratingPhase() async {
+        let progress = ScanProgress()
+        let settings = AppSettings()
+        let network = MockNetworkStatusProvider()
+        let viewModel = StatusDashboardViewModel(progress: progress,
+                                                 networkProvider: network,
+                                                 settings: settings)
+
+        progress.phase = .enumerating
+        progress.started = true
+        progress.finished = false
+        progress.totalHosts = 0
+
+        await Task.yield()
+
+        XCTAssertEqual(viewModel.progressState, .indeterminate(label: "Enumerating subnet…"))
     }
 }
