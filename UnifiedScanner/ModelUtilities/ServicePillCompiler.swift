@@ -22,44 +22,73 @@ enum ServicePillCompiler {
     static func compile(services: [NetworkService], maxVisible: Int? = nil) -> (pills: [ServicePill], overflow: Int) {
         guard !services.isEmpty else { return ([], 0) }
 
-        var grouped: [GroupKey: [NetworkService]] = [:]
-        for service in services {
-            let label = displayLabel(for: service)
-            let key = GroupKey(type: service.type, label: label)
-            grouped[key, default: []].append(service)
-        }
-
-        var entries: [Entry] = grouped.map { key, value in
-            Entry(key: key, count: value.count, firstID: value.first?.id, firstPort: value.first?.port)
-        }
-
-        entries.sort { lhs, rhs in
-            if lhs.key.type.sortIndex == rhs.key.type.sortIndex {
-                return lhs.key.label.localizedCaseInsensitiveCompare(rhs.key.label) == .orderedAscending
-            }
-            return lhs.key.type.sortIndex < rhs.key.type.sortIndex
-        }
-
-        let limit = normalizedLimit(maxVisible, total: entries.count)
+        let shouldGroup = maxVisible == nil
+        let limit = normalizedLimit(maxVisible, total: services.count)
         var pills: [ServicePill] = []
-        pills.reserveCapacity(min(entries.count, limit) + 1)
-
-        for (index, entry) in entries.enumerated() where index < limit {
-            let baseLabel = entry.key.label
-            let label = entry.count > 1 ? "\(baseLabel) ×\(entry.count)" : baseLabel
-            let pillID = "\(entry.key.type.rawValue)|\(baseLabel)"
-            pills.append(ServicePill(id: pillID,
-                                     label: label,
-                                     type: entry.key.type,
-                                     isOverflow: false,
-                                     serviceID: entry.firstID,
-                                     port: entry.firstPort))
-        }
-
+        pills.reserveCapacity(min(services.count, limit) + 1)
         var overflow = 0
-        if entries.count > limit {
-            overflow = entries.count - limit
-            pills.append(ServicePill(id: "overflow-\(overflow)", label: "+\(overflow)", type: nil, isOverflow: true, serviceID: nil, port: nil))
+
+        if shouldGroup {
+            var grouped: [GroupKey: [NetworkService]] = [:]
+            for service in services {
+                let label = displayLabel(for: service)
+                let key = GroupKey(type: service.type, label: label)
+                grouped[key, default: []].append(service)
+            }
+
+            var entries: [Entry] = grouped.map { key, value in
+                Entry(key: key, count: value.count, firstID: value.first?.id, firstPort: value.first?.port)
+            }
+
+            entries.sort { lhs, rhs in
+                if lhs.key.type.sortIndex == rhs.key.type.sortIndex {
+                    return lhs.key.label.localizedCaseInsensitiveCompare(rhs.key.label) == .orderedAscending
+                }
+                return lhs.key.type.sortIndex < rhs.key.type.sortIndex
+            }
+
+            for (index, entry) in entries.enumerated() where index < limit {
+                let baseLabel = entry.key.label
+                let label = entry.count > 1 ? "\(baseLabel) ×\(entry.count)" : baseLabel
+                let pillID = "\(entry.key.type.rawValue)|\(baseLabel)"
+                pills.append(ServicePill(id: pillID,
+                                         label: label,
+                                         type: entry.key.type,
+                                         isOverflow: false,
+                                         serviceID: entry.firstID,
+                                         port: entry.firstPort))
+            }
+
+            let overflowCount = entries.count > limit ? entries.count - limit : 0
+            if overflowCount > 0 {
+                overflow = overflowCount
+                pills.append(ServicePill(id: "overflow-\(overflow)", label: "+\(overflow)", type: nil, isOverflow: true, serviceID: nil, port: nil))
+            }
+        } else {
+            // When maxVisible is set, show individual pills up to limit, then overflow
+            let sortedServices = services.sorted { lhs, rhs in
+                if lhs.type.sortIndex == rhs.type.sortIndex {
+                    return displayLabel(for: lhs).localizedCaseInsensitiveCompare(displayLabel(for: rhs)) == .orderedAscending
+                }
+                return lhs.type.sortIndex < rhs.type.sortIndex
+            }
+
+            for (index, service) in sortedServices.enumerated() where index < limit {
+                let label = displayLabel(for: service)
+                let pillID = "\(service.type.rawValue)|\(label)|\(service.id)"
+                pills.append(ServicePill(id: pillID,
+                                         label: label,
+                                         type: service.type,
+                                         isOverflow: false,
+                                         serviceID: service.id,
+                                         port: service.port))
+            }
+
+            let overflowCount = services.count > limit ? services.count - limit : 0
+            if overflowCount > 0 {
+                overflow = overflowCount
+                pills.append(ServicePill(id: "overflow-\(overflow)", label: "+\(overflow)", type: nil, isOverflow: true, serviceID: nil, port: nil))
+            }
         }
 
         return (pills, overflow)

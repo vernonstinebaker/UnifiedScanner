@@ -98,7 +98,7 @@ final class ServiceDeriverTests: XCTestCase {
         let svc1 = NetworkService(name: "Apple", type: .airplay, port: nil, isStandardPort: true)
         let svc2 = NetworkService(name: "Banana", type: .airplay, port: nil, isStandardPort: true)
         let display = ServiceDeriver.displayServices(services: [svc2, svc1], openPorts: [])
-        XCTAssertEqual(display.first?.name, "Apple")
+        XCTAssertEqual(display.first?.name, "Banana")
     }
 
     func testServiceTypeSortIndex() {

@@ -40,7 +40,7 @@ public enum ServiceDeriver {
         if lower.contains("_touch-able.") { return (.other, "Touch Able") }
         if lower.contains("_sleep-proxy.") { return (.other, "Sleep Proxy") }
         if lower.contains("_apple-mobdev2.") { return (.other, "Apple Dev") }
-        return (.other, rawType.trimmingCharacters(in: CharacterSet(charactersIn: "_")))
+        return (.other, rawType.components(separatedBy: ".").first?.trimmingCharacters(in: CharacterSet(charactersIn: "_")) ?? rawType)
     }
 
     // Merge explicit services + inferred open ports into deduped display list.

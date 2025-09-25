@@ -28,7 +28,7 @@ extension String {
         }
     }
 
-    var isIPv4: Bool { components(separatedBy: ".").count == 4 && self.range(of: "[^0-9.]", options: .regularExpression) == nil }
+    var isIPv4: Bool { String.isValidIP(self) }
     var isPrivateIPv4: Bool {
         guard isIPv4 else { return false }
         let parts = components(separatedBy: ".").compactMap { Int($0) }

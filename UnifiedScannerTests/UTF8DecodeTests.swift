@@ -4,36 +4,41 @@ import XCTest
 final class UTF8DecodeTests: XCTestCase {
     func testDecodeCStringValid() {
         let buffer: [CChar] = Array("hello\0".utf8CString)
-        let ptr = UnsafePointer<CChar>(buffer)
-        let result = decodeCString(ptr, context: "test valid")
+        let result = buffer.withUnsafeBufferPointer { ptr in
+            decodeCString(ptr.baseAddress!, context: "test valid")
+        }
         XCTAssertEqual(result, "hello")
     }
 
     func testDecodeCStringWithNUL() {
         let buffer: [CChar] = Array("hello world\0".utf8CString)
-        let ptr = UnsafePointer<CChar>(buffer)
-        let result = decodeCString(ptr, context: "test with space")
+        let result = buffer.withUnsafeBufferPointer { ptr in
+            decodeCString(ptr.baseAddress!, context: "test with space")
+        }
         XCTAssertEqual(result, "hello world")
     }
 
     func testDecodeCStringInvalidNoNUL() {
         let buffer: [CChar] = Array("hello".utf8CString.dropLast()) // no \0
-        let ptr = UnsafePointer<CChar>(buffer)
-        let result = decodeCString(ptr, context: "test no nul")
+        let result = buffer.withUnsafeBufferPointer { ptr in
+            decodeCString(ptr.baseAddress!, context: "test no nul")
+        }
         XCTAssertEqual(result, "hello")
     }
 
     func testDecodeCStringBadUTF8() {
         let invalidUTF8: [CChar] = [CChar(bitPattern: 0xFF), CChar(bitPattern: 0xFE), CChar(bitPattern: 0xFD), CChar(bitPattern: 0x80), 0]
-        let ptr = UnsafePointer<CChar>(invalidUTF8)
-        let result = decodeCString(ptr, context: "test bad utf8")
+        let result = invalidUTF8.withUnsafeBufferPointer { ptr in
+            decodeCString(ptr.baseAddress!, context: "test bad utf8")
+        }
         XCTAssertNil(result)
     }
 
     func testDecodeCStringEmpty() {
         let buffer: [CChar] = [0]
-        let ptr = UnsafePointer<CChar>(buffer)
-        let result = decodeCString(ptr, context: "test empty")
+        let result = buffer.withUnsafeBufferPointer { ptr in
+            decodeCString(ptr.baseAddress!, context: "test empty")
+        }
         XCTAssertEqual(result, "")
     }
 

@@ -115,7 +115,7 @@ import XCTest
 
     func testFingerprintVendorPopulatesManufacturer() async {
         let store = SnapshotService(persistence: EphemeralPersistence())
-        var dev = Device(primaryIP: "192.168.0.5",
+        let dev = Device(primaryIP: "192.168.0.5",
                          ips: ["192.168.0.5"],
                          services: [],
                          openPorts: [])
@@ -131,7 +131,7 @@ import XCTest
     func testMultiSourceUnionMaintainsClassificationStability() async {
         let store = SnapshotService(persistence: EphemeralPersistence())
         // Start with mdns discovery
-        var dev = Device(primaryIP: "192.168.1.30",
+        let dev = Device(primaryIP: "192.168.1.30",
                          ips: ["192.168.1.30"],
                          hostname: "apple-tv",
                          discoverySources: [.mdns],

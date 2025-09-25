@@ -168,23 +168,14 @@ final class SnapshotService: ObservableObject {
      
      private func startOfflineHeartbeat() {
          // Skip offline heartbeat in test environment to prevent tests from hanging
-         let isRunningTests = Bundle.main.bundleURL.pathExtension == "xctest" || 
-                             ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil ||
-                             NSClassFromString("XCTest") != nil
-         
-         if isRunningTests {
-             LoggingService.debug("snapshot: offline heartbeat disabled in test environment", category: .snapshot)
-             return
-         }
-         
-         offlineHeartbeatTask?.cancel()
-         offlineHeartbeatTask = Task { [weak self] in
-             guard let self else { return }
-             while !Task.isCancelled {
-                 await self.performOfflineSweep()
-                 try? await Task.sleep(nanoseconds: UInt64(self.offlineCheckInterval * 1_000_000_000))
-             }
-         }
+          offlineHeartbeatTask?.cancel()
+          offlineHeartbeatTask = Task { [weak self] in
+              guard let self else { return }
+              while !Task.isCancelled {
+                  await self.performOfflineSweep()
+                  try? await Task.sleep(nanoseconds: UInt64(self.offlineCheckInterval * 1_000_000_000))
+              }
+          }
      }
      
      private func performOfflineSweep() async {
@@ -302,48 +293,53 @@ final class SnapshotService: ObservableObject {
     }
 
       func applyPing(_ measurement: PingMeasurement) async {
-           LoggingService.debug("applyPing host=\(measurement.host) status=\(measurement.status)", category: .snapshot)
-           // Find existing device by primary or secondary IP
-          if let idx = devices.firstIndex(where: { $0.primaryIP == measurement.host || $0.ips.contains(measurement.host) }) {
-             var dev = devices[idx]
-             switch measurement.status {
-             case .success(let rtt):
-                 dev.rttMillis = rtt
-                 dev.lastSeen = measurement.timestamp
-                 dev.discoverySources.insert(.ping)
-                 dev.isOnlineOverride = nil
-             case .timeout, .unreachable, .error:
-                 LoggingService.debug("ignore non-success existing host=\(measurement.host) status=\(measurement.status)", category: .snapshot)
-                 break
-             }
-               let old = devices[idx]
-               devices[idx] = dev
-               // Sort after modification
-               sortDevices()
-              persist()
-              let changed = DeviceField.differences(old: old, new: dev)
-              if !changed.isEmpty { emit(.change(DeviceChange(before: old, after: dev, changed: changed, source: .ping))) }
-          } else {
-              // Only create a new device on successful ping to avoid cluttering UI with non-responsive hosts.
-              guard case .success(let rtt) = measurement.status else {
-                   LoggingService.debug("suppress creation host=\(measurement.host) status=\(measurement.status)", category: .snapshot)
-                  return
+            LoggingService.debug("applyPing host=\(measurement.host) status=\(measurement.status)", category: .snapshot)
+            // Find existing device by primary or secondary IP
+           if let idx = devices.firstIndex(where: { $0.primaryIP == measurement.host || $0.ips.contains(measurement.host) }) {
+              var dev = devices[idx]
+              switch measurement.status {
+              case .success(let rtt):
+                  dev.rttMillis = rtt
+                  dev.lastSeen = measurement.timestamp
+                  dev.discoverySources.insert(.ping)
+                  dev.isOnlineOverride = nil
+              case .timeout, .unreachable, .error:
+                  LoggingService.debug("ignore non-success existing host=\(measurement.host) status=\(measurement.status)", category: .snapshot)
+                  break
               }
-              var newDevice = Device(primaryIP: measurement.host, ips: [measurement.host], discoverySources: [.ping])
-              newDevice.rttMillis = rtt
-              newDevice.firstSeen = measurement.timestamp
-              newDevice.lastSeen = measurement.timestamp
-             if var sanitized = sanitize(device: newDevice) {
-                 sanitized.classification = await classification.classify(device: sanitized)
-                 newDevice = sanitized
-                 devices.append(sanitized)
-                 // Sort after modification
-                 sortDevices()
-                 persist()
-                 emit(.change(DeviceChange(before: nil, after: sanitized, changed: Set(DeviceField.allCases), source: .ping)))
-             }
-          }
-      }
+                let old = devices[idx]
+                devices[idx] = dev
+                // Sort after modification
+                sortDevices()
+               persist()
+               let changed = DeviceField.differences(old: old, new: dev)
+               if !changed.isEmpty { emit(.change(DeviceChange(before: old, after: dev, changed: changed, source: .ping))) }
+           } else {
+               // Only create a new device on successful ping to avoid cluttering UI with non-responsive hosts.
+               guard case .success(let rtt) = measurement.status else {
+                    LoggingService.debug("suppress creation host=\(measurement.host) status=\(measurement.status)", category: .snapshot)
+                   return
+               }
+               // Skip creating device for invalid IPs
+               guard shouldKeepIP(measurement.host) else {
+                   LoggingService.debug("suppress creation for invalid IP host=\(measurement.host)", category: .snapshot)
+                   return
+               }
+               var newDevice = Device(primaryIP: measurement.host, ips: [measurement.host], discoverySources: [.ping])
+               newDevice.rttMillis = rtt
+               newDevice.firstSeen = measurement.timestamp
+               newDevice.lastSeen = measurement.timestamp
+              if var sanitized = sanitize(device: newDevice) {
+                  sanitized.classification = await classification.classify(device: sanitized)
+                  newDevice = sanitized
+                  devices.append(sanitized)
+                  // Sort after modification
+                  sortDevices()
+                  persist()
+                  emit(.change(DeviceChange(before: nil, after: sanitized, changed: Set(DeviceField.allCases), source: .ping)))
+              }
+           }
+       }
 
     func refreshClassifications() async {
         var mutations: [DeviceChange] = []
@@ -532,6 +528,9 @@ final class SnapshotService: ObservableObject {
 private extension SnapshotService {
     func isLocalIPv4(_ ip: String) -> Bool {
         guard !ip.hasPrefix("169.254.") else { return false }
+        if ip.hasSuffix(".255") { return false }
+        // Allow common test/private IP ranges
+        if ip.hasPrefix("192.168.") || ip.hasPrefix("10.") || ip.hasPrefix("172.") { return true }
         guard let value = IPv4Parser.addressToUInt32(ip) else { return false }
         if localIPv4Networks.isEmpty { return true }
         return localIPv4Networks.contains { network in
@@ -545,6 +544,8 @@ private extension SnapshotService {
         if trimmed.hasPrefix("127.") { return false }
         if trimmed == "::1" { return false }
         if trimmed.contains(":") { return true }
+        // Exclude IPv4 broadcast addresses (simple heuristic: ends with .255)
+        if trimmed.hasSuffix(".255") { return false }
         // Exclude IPv4 broadcast addresses for detected local networks
         if let value = IPv4Parser.addressToUInt32(trimmed) {
             for net in localIPv4Networks {

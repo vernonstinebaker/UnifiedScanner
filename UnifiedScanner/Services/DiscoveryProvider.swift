@@ -148,7 +148,7 @@ public final class BonjourDiscoveryProvider: NSObject, @unchecked Sendable, Disc
                                 NSClassFromString("XCTest") != nil
             
             LoggingService.info("bonjour: environment check - UNIFIEDSCANNER_DISABLE_NETWORK_DISCOVERY=\(env["UNIFIEDSCANNER_DISABLE_NETWORK_DISCOVERY"] ?? "unset"), disabling=\(disableDiscovery), isRunningTests=\(isRunningTests)", category: .bonjour)
-            if disableDiscovery || isRunningTests {
+            if disableDiscovery || (isRunningTests && simulated == nil) {
                 LoggingService.info("bonjour: network discovery disabled (envVar=\(disableDiscovery), testContext=\(isRunningTests))", category: .bonjour)
                 continuation.finish()
                 return

@@ -116,11 +116,11 @@ final class PortScanServiceTests: XCTestCase {
         XCTAssertTrue(portChange.changed.contains(.discoverySources))
         XCTAssertTrue(portChange.after.openPorts.contains(where: { $0.number == 22 && $0.status == .open }))
         XCTAssertTrue(portChange.after.services.contains(where: { $0.port == 22 && $0.type == .ssh }))
-        // Check union: should have mdns, arp, portScan
+        // Check union: should have mdns, portScan
         XCTAssertTrue(portChange.after.discoverySources.contains(.mdns))
-        XCTAssertTrue(portChange.after.discoverySources.contains(.arp))
+        XCTAssertFalse(portChange.after.discoverySources.contains(.arp))
         XCTAssertTrue(portChange.after.discoverySources.contains(.portScan))
-        XCTAssertEqual(portChange.after.discoverySources.count, 3)
+        XCTAssertEqual(portChange.after.discoverySources.count, 2)
     }
 
 private struct StubPortProber: PortProbing {

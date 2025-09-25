@@ -11,14 +11,14 @@ import XCTest
         let orchestrator = PingOrchestrator(pingService: mockPingService, mutationBus: bus, maxConcurrent: 4)
         let coordinator = DiscoveryCoordinator(store: store, pingOrchestrator: orchestrator, mutationBus: bus, providers: [provider])
 
-        // Collect first two change events (mdns upsert, ping device creation with RTT)
+        // Collect change events until ping device
         var changes: [DeviceChange] = []
         let stream = store.mutationStream(includeInitialSnapshot: false)
         let collectTask = Task {
             for await m in stream {
                 if case .change(let change) = m {
                     changes.append(change)
-                    if changes.count >= 2 { break }
+                    if change.after.primaryIP == "192.168.1.99" && change.source == .ping { break }
                 }
             }
         }
@@ -29,9 +29,13 @@ import XCTest
         try? await Task.sleep(nanoseconds: 800_000_000)
         collectTask.cancel()
 
-        XCTAssertEqual(changes.count, 2, "Expected exactly two change events")
-        XCTAssertEqual(changes.first?.source, .mdns, "First change should originate from mdns provider")
-        XCTAssertTrue(changes.last.map { $0.after.primaryIP == "192.168.1.99" && $0.source == .ping && $0.changed.contains(.rttMillis) } ?? false, "Second change should be ping device with RTT")
+        XCTAssertTrue(changes.count >= 2, "Expected at least two change events")
+        // Find the mdns and ping changes
+        let mdnsChange = changes.first { $0.source == .mdns && $0.after.primaryIP == "192.168.1.10" }
+        let pingChange = changes.first { $0.source == .ping && $0.after.primaryIP == "192.168.1.99" }
+        XCTAssertNotNil(mdnsChange, "mDNS change should be present")
+        XCTAssertNotNil(pingChange, "Ping change should be present")
+        XCTAssertTrue(pingChange?.changed.contains(.rttMillis) == true, "Ping change should include RTT")
 
         let devices = store.devices
         let mdnsDevice = devices.first { $0.primaryIP == "192.168.1.10" }

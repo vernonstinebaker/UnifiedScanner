@@ -2,11 +2,9 @@ import XCTest
 @testable import UnifiedScanner
 
 @MainActor final class AppSettingsTests: XCTestCase {
-    private var originalDefaults: UserDefaults!
 
     override func setUp() {
         super.setUp()
-        originalDefaults = UserDefaults.standard
         // To isolate, but since it uses standard, we'll clear keys before each test
     }
 

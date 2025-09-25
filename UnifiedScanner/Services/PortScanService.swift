@@ -188,7 +188,7 @@ actor PortScanService {
                 services.append(svc)
             }
         }
-        let discoverySources: Set<DiscoverySource> = [.portScan]
+        let discoverySources: Set<DiscoverySource> = device.discoverySources.union([.portScan])
         var ips = device.ips
         ips.insert(host)
         let update = Device(id: device.id,

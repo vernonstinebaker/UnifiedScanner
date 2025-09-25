@@ -5,7 +5,7 @@ final class LocalSubnetEnumeratorTests: XCTestCase {
     func testCIDRBlockInitValid() {
         let block = CIDRBlock(cidr: "192.168.1.0/24")
         XCTAssertNotNil(block)
-        XCTAssertEqual(block?.baseAddress, 3232235520) // 192.168.1.0
+        XCTAssertEqual(block?.baseAddress, 3232235776) // 192.168.1.0
         XCTAssertEqual(block?.prefix, 24)
 
         let single = CIDRBlock(cidr: "10.0.0.1/32")

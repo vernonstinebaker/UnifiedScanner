@@ -121,7 +121,7 @@ final class DeviceDisplayNameResolverTests: XCTestCase {
     }
 
     func testFingerprintModelOverridesIncorrectModelHint() {
-        var d = Device(primaryIP: "192.168.1.120", hostname: nil, vendor: "Apple", modelHint: "UnknownXYZ1,1", fingerprints: ["model": "MacBookPro18,3"]) // incorrect legacy hint, correct fingerprint model
+        let d = Device(primaryIP: "192.168.1.120", hostname: nil, vendor: "Apple", modelHint: "UnknownXYZ1,1", fingerprints: ["model": "MacBookPro18,3"]) // incorrect legacy hint, correct fingerprint model
         let resolved = DeviceDisplayNameResolver.resolve(for: d)
         XCTAssertEqual(resolved?.value, "MacBook Pro")
     }
