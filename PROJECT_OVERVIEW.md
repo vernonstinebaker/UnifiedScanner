@@ -75,8 +75,21 @@ Merge priority for `Device.id`:
 
 ## Architecture (Local-First)
 
-### UI State Handling (Compact Device Detail Sheet)
-To prevent a timing race where a SwiftUI sheet rendered before `selectedDevice` state was fully updated (causing an initial "Device not found" placeholder on first tap), the compact device detail presentation uses `sheet(item:)` bound to an immutable snapshot captured synchronously in the tap handler. This avoids relying on a separate boolean flag and eliminates the race between sheet presentation and async device resolution. Future UI detail flows should prefer snapshot-binding for modal presentations when underlying observable collections mutate rapidly.
+### Dependency Injection & Environment
+- `AppEnvironment` acts as the composition root, instantiating discovery, classification, logging, and persistence services.
+- The environment wires dependency protocols (`DeviceMutationBusProviding`, `ClassificationServiceProviding`, `OUILookupProviding`, etc.) so SwiftUI scenes do not rely on global singletons.
+- Tests can override services by injecting custom environment adapters or by calling `ClassificationService.setRulePipeline`/`setOUILookupProvider` before exercising logic.
+
+### Modular Classification Pipeline
+- `ClassificationService` delegates to `ClassificationRulePipeline`, a configurable sequence of rule strategies (fingerprint, hostname, vendor hostname, service combinations, port profiles, fallback).
+- Apple-specific fingerprint resolution now lives in `ClassificationRuleHelpers` with Apple model database lookups, enabling authoritative short-circuits and clean testability.
+- The rule pipeline can be swapped in tests or previews, ensuring deterministic assertions while production uses the default stack.
+
+### UI State Handling & View Models
+- `StatusDashboardViewModel` consolidates network status and scan progress into a single observable source powering the sidebar/compact dashboards.
+- `DeviceDetailViewModel` owns device-specific interactions (port launches, copy commands), keeping SwiftUI views declarative and previewable.
+- SwiftUI previews and UI tests consume these models, guaranteeing parity between design-time previews and runtime compositions.
+- For compact device detail sheets we continue to use immutable snapshots (`sheet(item:)`) to avoid race conditions when the underlying collection mutates quickly.
 No premature SPM modularization; iterate locally until discovery providers stabilize. Inspirations:
 - BonjourScanner: Multi-signal classification, multi-IP models.
 - netscan: Service/port normalization, ping orchestration.
@@ -105,12 +118,12 @@ No premature SPM modularization; iterate locally until discovery providers stabi
 - Feature flag surface (beyond logging) and diagnostics toggles.
 - Accessibility improvements (VoiceOver labels, Dynamic Type audit).
 - Port scanning tier expansion & cancellation controls.
+- Broaden UI automation beyond the launch smoke test.
 
 **Medium-Term:**
 - SSDP/WS-Discovery.
 - HTTP/SSH fingerprints.
 - Light theme.
-- UI tests.
 
 **Long-Term:**
 - Snapshot export (JSON/CSV).
@@ -141,8 +154,8 @@ No premature SPM modularization; iterate locally until discovery providers stabi
 Legacy projects read-only; adapt with attribution. Modularize post-stabilization.
 
 ## Next Steps
-1. Add runtime logging controls (categories, minimum level persistence) & expose as feature flags.
-2. Expand port scanning to additional tiers with cancellation/backoff controls.
+1. Expand port scanning to additional tiers with cancellation/backoff controls.
+2. Broaden UI automation coverage (device detail flows, settings toggles) using deterministic env flags.
 3. Expand tests for DeviceMutationBus buffering & Bonjour browse/resolve integration.
 4. Kick off accessibility audit (VoiceOver labels, Dynamic Type stress).
 
