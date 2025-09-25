@@ -4,16 +4,16 @@ import XCTest
 final class PingOrchestratorTimeoutTests: XCTestCase {
     func testTimeoutDoesNotCreateDevice() async {
         let persistence = EphemeralPersistencePOT()
-        let store = await MainActor.run { SnapshotService(persistenceKey: "ping-orch-timeout", persistence: persistence, classification: ClassificationService.self) }
+        let environment = AppEnvironment(deviceMutationBus: DeviceMutationBus())
+        let store = SnapshotService(persistenceKey: "ping-orch-timeout", persistence: persistence, classification: ClassificationService.self, mutationBus: environment.deviceMutationBus)
         // Ensure store initially empty
         let initialCount = await MainActor.run { store.devices.count }
         XCTAssertEqual(initialCount, 0)
         // Mock ping service that only emits a timeout
         let mock = TimeoutOnlyPingService()
-        // Fresh bus (shared) may contain buffered events; clear it
-        let bus = await MainActor.run { DeviceMutationBus.shared }
-        await MainActor.run { bus.clearBuffer() }
-        let orchestrator = PingOrchestrator(pingService: mock, mutationBus: bus, maxConcurrent: 1)
+        // Fresh bus may contain buffered events; clear it
+        environment.deviceMutationBus.clearBuffer()
+        let orchestrator = PingOrchestrator(pingService: mock, mutationBus: environment.deviceMutationBus, maxConcurrent: 1)
         await orchestrator.enqueue(hosts: ["10.0.0.200"], config: PingConfig(host: "placeholder", count: 1, interval: 0.01, timeoutPerPing: 0.01))
         try? await Task.sleep(nanoseconds: 400_000_000)
         let devices = await MainActor.run { store.devices }

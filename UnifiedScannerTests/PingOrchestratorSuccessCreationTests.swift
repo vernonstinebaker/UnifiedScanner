@@ -4,14 +4,14 @@ import XCTest
 @MainActor final class PingOrchestratorSuccessCreationTests: XCTestCase {
     func testSuccessCreatesDevice() async {
         let persistence = EphemeralPersistencePOS()
-        let store = SnapshotService(persistenceKey: "ping-orch-success", persistence: persistence, classification: ClassificationService.self)
+        let environment = AppEnvironment(deviceMutationBus: DeviceMutationBus())
+        let store = SnapshotService(persistenceKey: "ping-orch-success", persistence: persistence, classification: ClassificationService.self, mutationBus: environment.deviceMutationBus)
         // Ensure store initially empty
         XCTAssertEqual(store.devices.count, 0)
         // Mock ping service that emits a single success with RTT
         let mock = SuccessOnlyPingService()
-        let bus = await MainActor.run { DeviceMutationBus.shared }
-        await MainActor.run { bus.clearBuffer() }
-        let orchestrator = PingOrchestrator(pingService: mock, mutationBus: bus, maxConcurrent: 1)
+        environment.deviceMutationBus.clearBuffer()
+        let orchestrator = PingOrchestrator(pingService: mock, mutationBus: environment.deviceMutationBus, maxConcurrent: 1)
         await orchestrator.enqueue(hosts: ["10.0.0.201"], config: PingConfig(host: "placeholder", count: 1, interval: 0.01, timeoutPerPing: 0.05))
         try? await Task.sleep(nanoseconds: 400_000_000)
         let devices = store.devices

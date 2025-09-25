@@ -9,14 +9,19 @@ import SwiftUI
 
 @main
 struct UnifiedScannerApp: App {
-    init() {
-        ClassificationService.setOUILookupProvider(OUILookupService.shared)
-    }
+    private let appEnvironment: AppEnvironment
+    private let portScanService: PortScanService
+    private let httpFingerprintService: HTTPFingerprintService
+    @StateObject private var snapshotStore: SnapshotService
 
-    private let mutationBus = DeviceMutationBus.shared
-    private let portScanService = PortScanService(mutationBus: DeviceMutationBus.shared)
-    private let httpFingerprintService = HTTPFingerprintService(mutationBus: DeviceMutationBus.shared)
-    @StateObject private var snapshotStore = SnapshotService()
+    init() {
+        let environment = AppEnvironment()
+        ClassificationService.setOUILookupProvider(OUILookupService.shared)
+        self.appEnvironment = environment
+        self.portScanService = environment.makePortScanService()
+        self.httpFingerprintService = environment.makeHTTPFingerprintService()
+        self._snapshotStore = StateObject(wrappedValue: environment.makeSnapshotService())
+    }
     @State private var discoveryCoordinator: DiscoveryCoordinator? = nil
     @State private var coordinatorStarted = false
     @StateObject private var scanProgress = ScanProgress()
@@ -34,34 +39,35 @@ struct UnifiedScannerApp: App {
                                                timeoutPerPing: 1.0)
     private let defaultMaxHosts = 254
 
-var body: some Scene {
-    WindowGroup {
-        ContentView(store: snapshotStore,
-                    progress: scanProgress,
-                    settings: appSettings,
-                    isBonjourRunning: $isBonjourRunning,
-                    isScanRunning: $isScanRunning,
-                    startBonjour: { startBonjour() },
-                    stopBonjour: { stopBonjour() },
-                    startScan: { startScan() },
-                    stopScan: { stopScan() },
-                    saveSnapshot: { snapshotStore.saveSnapshotNow() },
-                    showSettingsFromMenu: $showSettingsFromMenu)
-            .preferredColorScheme(.dark)
-            .onAppear { startDiscoveryIfNeeded() }
-    }
-    
-    #if os(macOS)
-    .commands {
-        CommandGroup(after: .appInfo) {
-            Button("Settings...") { 
-                showSettingsFromMenu = true
-            }
-            .keyboardShortcut(",", modifiers: .command)
+    var body: some Scene {
+        WindowGroup {
+            ContentView(store: snapshotStore,
+                        progress: scanProgress,
+                        settings: appSettings,
+                        isBonjourRunning: $isBonjourRunning,
+                        isScanRunning: $isScanRunning,
+                        startBonjour: { startBonjour() },
+                        stopBonjour: { stopBonjour() },
+                        startScan: { startScan() },
+                        stopScan: { stopScan() },
+                        saveSnapshot: { snapshotStore.saveSnapshotNow() },
+                        showSettingsFromMenu: $showSettingsFromMenu)
+                .preferredColorScheme(.dark)
+                .onAppear { startDiscoveryIfNeeded() }
+                .environment(\.appEnvironment, appEnvironment)
         }
+
+        #if os(macOS)
+        .commands {
+            CommandGroup(after: .appInfo) {
+                Button("Settings...") {
+                    showSettingsFromMenu = true
+                }
+                .keyboardShortcut(",", modifiers: .command)
+            }
+        }
+        #endif
     }
-    #endif
-}
 
 
 
@@ -78,10 +84,10 @@ var body: some Scene {
 #else
         let pingService: PingService = SimplePingKitService()
 #endif
-        let orchestrator = PingOrchestrator(pingService: pingService, mutationBus: DeviceMutationBus.shared, maxConcurrent: 32, progress: scanProgress)
+        let orchestrator = PingOrchestrator(pingService: pingService, mutationBus: appEnvironment.deviceMutationBus, maxConcurrent: 32, progress: scanProgress)
         let providers: [DiscoveryProvider] = [BonjourDiscoveryProvider()]
         let arpService = ARPService()
-        let coordinator = DiscoveryCoordinator(store: snapshotStore, pingOrchestrator: orchestrator, mutationBus: DeviceMutationBus.shared, providers: providers, arpService: arpService)
+        let coordinator = DiscoveryCoordinator(store: snapshotStore, pingOrchestrator: orchestrator, mutationBus: appEnvironment.deviceMutationBus, providers: providers, arpService: arpService)
         discoveryCoordinator = coordinator
         if !portScannerStarted {
             portScannerStarted = true
