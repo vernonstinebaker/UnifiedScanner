@@ -54,7 +54,7 @@ struct UnifiedScannerApp: App {
                         showSettingsFromMenu: $showSettingsFromMenu)
                 .preferredColorScheme(.dark)
                 .onAppear { startDiscoveryIfNeeded() }
-                .environment(\.appEnvironment, appEnvironment)
+                .environmentObject(appEnvironment)
         }
 
         #if os(macOS)

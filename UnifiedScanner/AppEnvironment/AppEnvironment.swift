@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import SwiftUI
 
@@ -87,7 +88,7 @@ struct ClassificationServiceAdapter: ClassificationServiceProviding {
 }
 
 @MainActor
-final class AppEnvironment {
+final class AppEnvironment: ObservableObject {
     let deviceMutationBus: DeviceMutationBus
     let deviceMutationBusProvider: DeviceMutationBusProviding
     let loggingService: LoggingServiceProviding
@@ -116,17 +117,5 @@ final class AppEnvironment {
                         persistence: persistence,
                         classification: ClassificationService.self,
                         mutationBus: deviceMutationBus)
-    }
-}
-
-private struct AppEnvironmentKey: EnvironmentKey {
-    @MainActor
-    static let defaultValue: AppEnvironment = AppEnvironment()
-}
-
-extension EnvironmentValues {
-    var appEnvironment: AppEnvironment {
-        get { self[AppEnvironmentKey.self] }
-        set { self[AppEnvironmentKey.self] = newValue }
     }
 }

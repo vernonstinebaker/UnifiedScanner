@@ -1,7 +1,7 @@
 import XCTest
 @testable import UnifiedScanner
 
-final class PingOrchestratorTimeoutTests: XCTestCase {
+@MainActor final class PingOrchestratorTimeoutTests: XCTestCase {
     func testTimeoutDoesNotCreateDevice() async {
         let persistence = EphemeralPersistencePOT()
         let environment = AppEnvironment(deviceMutationBus: DeviceMutationBus())
