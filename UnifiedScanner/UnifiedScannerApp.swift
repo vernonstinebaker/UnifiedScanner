@@ -16,7 +16,6 @@ struct UnifiedScannerApp: App {
 
     init() {
         let environment = AppEnvironment()
-        ClassificationService.setOUILookupProvider(OUILookupService.shared)
         self.appEnvironment = environment
         self.portScanService = environment.makePortScanService()
         self.httpFingerprintService = environment.makeHTTPFingerprintService()

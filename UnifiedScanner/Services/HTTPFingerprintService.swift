@@ -18,8 +18,6 @@ private struct FingerprintTarget: Sendable {
 @MainActor
 final class HTTPFingerprintService {
 
-    private static weak var sharedInstance: HTTPFingerprintService?
-
     private let mutationBus: DeviceMutationBus
     private var listenerTask: Task<Void, Never>?
     private var pending: Set<FingerprintKey> = []
@@ -35,7 +33,6 @@ final class HTTPFingerprintService {
 
     func start() {
         guard listenerTask == nil else { return }
-        HTTPFingerprintService.sharedInstance = self
         listenerTask = Task { [weak self] in
             guard let self else { return }
             let stream = self.mutationBus.mutationStream(includeBuffered: false)
@@ -50,7 +47,6 @@ final class HTTPFingerprintService {
         listenerTask?.cancel()
         listenerTask = nil
         pending.removeAll()
-        HTTPFingerprintService.sharedInstance = nil
     }
 
     func rescan(devices: [Device], force: Bool = false) {
@@ -82,11 +78,10 @@ final class HTTPFingerprintService {
     }
 
     private func scheduleFingerprint(for target: FingerprintTarget, key: FingerprintKey, timeout: TimeInterval) {
-        Task.detached(priority: .background) {
+        Task.detached(priority: .background) { [weak self] in
             let entries = await HTTPFingerprinter(timeout: timeout).fingerprint(target: target)
-            await MainActor.run {
-                HTTPFingerprintService.sharedInstance?.handleFingerprintResult(entries: entries, for: target, key: key)
-            }
+            guard let self else { return }
+            await self.handleFingerprintResult(entries: entries, for: target, key: key)
         }
     }
 

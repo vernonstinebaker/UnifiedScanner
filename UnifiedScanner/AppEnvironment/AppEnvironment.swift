@@ -94,15 +94,19 @@ final class AppEnvironment: ObservableObject {
     let loggingService: LoggingServiceProviding
     let classificationService: ClassificationServiceProviding
     let mutationPublisher: DeviceMutationPublishing
+    let ouiLookupProvider: OUILookupProviding
 
     init(deviceMutationBus: DeviceMutationBus = .shared,
          loggingService: LoggingServiceProviding = LoggingServiceAdapter(),
-         classificationService: ClassificationServiceProviding = ClassificationServiceAdapter()) {
+         classificationService: ClassificationServiceProviding = ClassificationServiceAdapter(),
+         ouiLookupProvider: OUILookupProviding = OUILookupService.shared) {
         self.deviceMutationBus = deviceMutationBus
         self.deviceMutationBusProvider = DeviceMutationBusAdapter(bus: deviceMutationBus)
         self.loggingService = loggingService
         self.classificationService = classificationService
         self.mutationPublisher = DeviceMutationBusPublisher(bus: deviceMutationBus)
+        self.ouiLookupProvider = ouiLookupProvider
+        self.classificationService.setOUILookupProvider(ouiLookupProvider)
     }
 
     func makePortScanService() -> PortScanService {
