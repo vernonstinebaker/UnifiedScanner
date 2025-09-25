@@ -3,11 +3,12 @@ import XCTest
 
 @MainActor final class DeviceMutationStreamTests: XCTestCase {
     func testStreamEmitsInitialSnapshotAndChangeOnUpsert() async {
-        let store = SnapshotService(persistence: EphemeralPersistenceDM())
+        let testBus = DeviceMutationBus()
+        let store = SnapshotService(persistence: EphemeralPersistenceDM(), mutationBus: testBus)
         var events: [DeviceMutation] = []
         let stream = store.mutationStream()
         let collectTask = Task { for await e in stream.prefix(2) { events.append(e) } }
-        let dev = Device(primaryIP: "10.0.0.2", ips: ["10.0.0.2"], hostname: "h1", discoverySources: [.mdns])
+        let dev = Device(primaryIP: "192.168.1.200", ips: ["192.168.1.200"], hostname: "h1", discoverySources: [.mdns])
         await store.upsert(dev)
         _ = await collectTask.value
         XCTAssertEqual(events.count, 2)
@@ -15,14 +16,15 @@ import XCTest
         XCTAssertTrue(snapDevices.isEmpty)
         guard case .change(let change) = events[1] else { return XCTFail("Second event should be change") }
         XCTAssertNil(change.before)
-        XCTAssertEqual(change.after.primaryIP, "10.0.0.2")
+        XCTAssertEqual(change.after.primaryIP, "192.168.1.200")
         XCTAssertTrue(change.changed.contains(.primaryIP))
         XCTAssertTrue(change.changed.contains(.ips))
     }
 
     func testPingEmitsChangeWithRTTField() async {
-        let store = SnapshotService(persistence: EphemeralPersistenceDM())
-        let dev = Device(primaryIP: "10.0.0.5", ips: ["10.0.0.5"], hostname: "pinger", discoverySources: [.mdns])
+        let testBus = DeviceMutationBus()
+        let store = SnapshotService(persistence: EphemeralPersistenceDM(), mutationBus: testBus)
+        let dev = Device(primaryIP: "192.168.1.201", ips: ["192.168.1.201"], hostname: "pinger", discoverySources: [.mdns])
         await store.upsert(dev)
         var rttEvent: DeviceChange?
         let stream = store.mutationStream(includeInitialSnapshot: false)
@@ -31,7 +33,7 @@ import XCTest
                 if case .change(let change) = e, change.changed.contains(.rttMillis) { rttEvent = change }
             }
         }
-        let measurement = PingMeasurement(host: "10.0.0.5", sequence: 0, status: .success(rttMillis: 5.0))
+        let measurement = PingMeasurement(host: "192.168.1.201", sequence: 0, status: .success(rttMillis: 5.0))
         await store.applyPing(measurement)
         _ = await collectTask.value
         XCTAssertNotNil(rttEvent, "Expected RTT change event")
@@ -39,12 +41,13 @@ import XCTest
     }
 
     func testClassificationChangeEmitsClassificationField() async {
-        let store = SnapshotService(persistence: EphemeralPersistenceDM())
+        let testBus = DeviceMutationBus()
+        let store = SnapshotService(persistence: EphemeralPersistenceDM(), mutationBus: testBus)
         let stream = store.mutationStream(includeInitialSnapshot: false)
         var events: [DeviceMutation] = []
         let collectTask = Task { for await e in stream.prefix(2) { events.append(e) } }
         // Initial device: minimal info -> unknown classification
-        let base = Device(primaryIP: "10.0.0.50", ips: ["10.0.0.50"], hostname: nil, discoverySources: [])
+        let base = Device(primaryIP: "192.168.1.202", ips: ["192.168.1.202"], hostname: nil, discoverySources: [])
         await store.upsert(base)
         // Second upsert adds SSH service triggering classification rule (ssh_only)
         let sshService = NetworkService(name: "ssh", type: .ssh, rawType: "_ssh._tcp", port: 22, isStandardPort: true)
@@ -61,11 +64,12 @@ import XCTest
     }
 
     func testRemoveAllEmitsSnapshotEmpty() async {
-        let store = SnapshotService(persistence: EphemeralPersistenceDM())
+        let testBus = DeviceMutationBus()
+        let store = SnapshotService(persistence: EphemeralPersistenceDM(), mutationBus: testBus)
         let stream = store.mutationStream(includeInitialSnapshot: false)
         var events: [DeviceMutation] = []
         let collectTask = Task { for await e in stream.prefix(2) { events.append(e) } }
-        let dev = Device(primaryIP: "10.0.0.60", ips: ["10.0.0.60"], hostname: "temp", discoverySources: [])
+        let dev = Device(primaryIP: "192.168.1.203", ips: ["192.168.1.203"], hostname: "temp", discoverySources: [])
         await store.upsert(dev)
         store.removeAll()
         _ = await collectTask.value

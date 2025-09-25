@@ -85,8 +85,18 @@ public final class BonjourDiscoveryProvider: NSObject, @unchecked Sendable, Disc
         "_airplay._tcp.", "_raop._tcp.", "_ssh._tcp.", "_http._tcp.", "_https._tcp.",
         "_hap._tcp.", "_spotify-connect._tcp.", "_smb._tcp.", "_ipp._tcp.", "_printer._tcp.",
         "_rfb._tcp.", "_afpovertcp._tcp.", "_sftp-ssh._tcp.",
-        "_miio._udp.", "_googlecast._tcp.", "_amazonecho._tcp.", "_presence-tls._tcp."
+        "_miio._udp.", "_googlecast._tcp.", "_amazonecho._tcp.", "_presence-tls._tcp.",
+        "_mediaremotetv._tcp.", "_asquic._udp.", "_companion-link._tcp.",
+        "_touch-able._tcp.", "_sleep-proxy._udp.", "_device-info._tcp."
     ]
+
+#if os(iOS)
+    private let additionalIOSAllowedTypes: [String] = [
+        "_apple-mobdev2._tcp.", "_remotepairing._tcp."
+    ]
+#else
+    private let additionalIOSAllowedTypes: [String] = []
+#endif
 
     // Simulation support
     public struct SimulatedService: Sendable { public let type: String; public let name: String; public let port: Int; public let hostname: String; public let ip: String; public let txt: [String:String]; public init(type: String, name: String, port: Int, hostname: String, ip: String, txt: [String:String] = [:]) { self.type = type; self.name = name; self.port = port; self.hostname = hostname; self.ip = ip; self.txt = txt } }
@@ -128,6 +138,22 @@ public final class BonjourDiscoveryProvider: NSObject, @unchecked Sendable, Disc
     public func start(mutationBus: DeviceMutationBus) -> AsyncStream<DeviceMutation> {
         stopped = false
         return AsyncStream { continuation in
+            // Check for test environment - disable real network discovery in tests
+            let env = ProcessInfo.processInfo.environment
+            let disableDiscovery = env["UNIFIEDSCANNER_DISABLE_NETWORK_DISCOVERY"] == "1"
+            
+            // Also check if we're running in test bundle
+            let isRunningTests = Bundle.main.bundleURL.pathExtension == "xctest" || 
+                                ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil ||
+                                NSClassFromString("XCTest") != nil
+            
+            LoggingService.info("bonjour: environment check - UNIFIEDSCANNER_DISABLE_NETWORK_DISCOVERY=\(env["UNIFIEDSCANNER_DISABLE_NETWORK_DISCOVERY"] ?? "unset"), disabling=\(disableDiscovery), isRunningTests=\(isRunningTests)", category: .bonjour)
+            if disableDiscovery || isRunningTests {
+                LoggingService.info("bonjour: network discovery disabled (envVar=\(disableDiscovery), testContext=\(isRunningTests))", category: .bonjour)
+                continuation.finish()
+                return
+            }
+            
             if let simulated = self.simulated {
                 Task { [weak self] in
                     guard let self else { return }
@@ -146,7 +172,10 @@ public final class BonjourDiscoveryProvider: NSObject, @unchecked Sendable, Disc
             LoggingService.info("bonjour: provider starting curated=\(self.curatedServiceTypes.count) dynamicCap=\(self.dynamicBrowserCap) cooldown=\(self.resolveCooldown)s", category: .bonjour)
             let initBrowsers = { [weak self] in
                 guard let self else { return }
-                let browse = BonjourBrowseService(curatedServiceTypes: self.curatedServiceTypes, dynamicBrowserCap: self.dynamicBrowserCap)
+                let allCurated = self.curatedServiceTypes
+                let browse = BonjourBrowseService(curatedServiceTypes: allCurated,
+                                                  additionalIOSAllowedTypes: self.additionalIOSAllowedTypes,
+                                                  dynamicBrowserCap: self.dynamicBrowserCap)
                 let resolve = BonjourResolveService(resolveCooldown: self.resolveCooldown)
                 self.browseService = browse
                 self.resolveService = resolve
@@ -250,7 +279,10 @@ public actor PingOrchestrator {
                 if case .success = m.status { sawSuccessFlag = true }
 
                 // Emit raw ping measurement; SnapshotService will decide on device changes
-                await mutationBusRef.emit(.ping(m))
+                let mutationBus = mutationBusRef
+                await MainActor.run {
+                    mutationBus.emit(.ping(m))
+                }
             }
             let finalCount = localMeasurementCount
             let success = sawSuccessFlag

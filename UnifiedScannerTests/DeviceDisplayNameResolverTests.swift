@@ -49,6 +49,20 @@ final class DeviceDisplayNameResolverTests: XCTestCase {
         XCTAssertEqual(resolved?.value, "HomePod")
     }
 
+    func testIPadBrandCasing() {
+        var d = Device(primaryIP: "192.168.1.71", hostname: nil, vendor: "Apple", modelHint: nil)
+        d.classification = Device.Classification(formFactor: .tablet, rawType: "ipad", confidence: .high, reason: "mock", sources: [])
+        let resolved = DeviceDisplayNameResolver.resolve(for: d)
+        XCTAssertEqual(resolved?.value, "iPad")
+    }
+
+    func testIPhoneBrandCasing() {
+        var d = Device(primaryIP: "192.168.1.72", hostname: nil, vendor: "Apple", modelHint: nil)
+        d.classification = Device.Classification(formFactor: .phone, rawType: "iphone", confidence: .high, reason: "mock", sources: [])
+        let resolved = DeviceDisplayNameResolver.resolve(for: d)
+        XCTAssertEqual(resolved?.value, "iPhone")
+    }
+
     func testAppleTVBrandCasing() {
         var d = Device(primaryIP: "192.168.1.80", hostname: nil, vendor: "Apple", modelHint: nil)
         d.classification = Device.Classification(formFactor: .tv, rawType: "apple_tv", confidence: .high, reason: "mock", sources: [])

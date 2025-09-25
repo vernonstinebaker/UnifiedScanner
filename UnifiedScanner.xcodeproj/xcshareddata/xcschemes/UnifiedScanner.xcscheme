@@ -27,6 +27,18 @@
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES">
+      <EnvironmentVariables>
+         <EnvironmentVariable
+            key = "UNIFIEDSCANNER_DISABLE_NETWORK_DISCOVERY"
+            value = "1"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+         <EnvironmentVariable
+            key = "UNIFIEDSCANNER_DISABLE_PERSISTENCE"
+            value = "1"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+      </EnvironmentVariables>
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
@@ -36,17 +48,29 @@
             ReferencedContainer = "container:UnifiedScanner.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
-      <Testables>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "3DD1FD442E7B131400D3AF15"
-               BuildableName = "UnifiedScannerTests.xctest"
-               BlueprintName = "UnifiedScannerTests"
-               ReferencedContainer = "container:UnifiedScanner.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
+       <Testables>
+          <TestableReference
+             skipped = "NO">
+             <BuildableReference
+                BuildableIdentifier = "primary"
+                BlueprintIdentifier = "3DD1FD442E7B131400D3AF15"
+                BuildableName = "UnifiedScannerTests.xctest"
+                BlueprintName = "UnifiedScannerTests"
+                ReferencedContainer = "container:UnifiedScanner.xcodeproj">
+             </BuildableReference>
+             <EnvironmentVariables>
+                <EnvironmentVariable
+                   key = "UNIFIEDSCANNER_DISABLE_NETWORK_DISCOVERY"
+                   value = "1"
+                   isEnabled = "YES">
+                </EnvironmentVariable>
+                <EnvironmentVariable
+                   key = "UNIFIEDSCANNER_DISABLE_PERSISTENCE"
+                   value = "1"
+                   isEnabled = "YES">
+                </EnvironmentVariable>
+             </EnvironmentVariables>
+          </TestableReference>
          <TestableReference
             skipped = "YES">
             <BuildableReference

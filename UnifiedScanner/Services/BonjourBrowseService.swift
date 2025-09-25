@@ -2,6 +2,7 @@ import Foundation
 
 final class BonjourBrowseService: NSObject, @unchecked Sendable {
     let curatedServiceTypes: [String]
+    let permittedTypesIOS: Set<String>
     let dynamicBrowserCap: Int
     private var activeServiceTypes: Set<String> = [] // tracks browsers started (curated + dynamic)
     private var emittedServiceTypes: Set<String> = [] // tracks types already emitted downstream
@@ -15,24 +16,11 @@ final class BonjourBrowseService: NSObject, @unchecked Sendable {
         return try! NSRegularExpression(pattern: "^_[A-Za-z0-9-]+\\._(tcp|udp)\\.$")
     }()
 
-    let permittedTypesIOS: Set<String>
-
-    init(curatedServiceTypes: [String], dynamicBrowserCap: Int) {
+    init(curatedServiceTypes: [String], additionalIOSAllowedTypes: [String] = [], dynamicBrowserCap: Int) {
         self.curatedServiceTypes = curatedServiceTypes
         self.dynamicBrowserCap = dynamicBrowserCap
-        let fixedIOS = [
-            "_services._dns-sd._udp.",
-            "_companion-link._tcp.",
-            "_device-info._tcp.",
-            "_remotepairing._tcp.",
-            "_apple-mobdev2._tcp.",
-            "_touch-able._tcp.",
-            "_sleep-proxy._udp.",
-            "_workstation._tcp.",
-            "_afp._tcp."
-        ]
 #if os(iOS)
-        self.permittedTypesIOS = Set((curatedServiceTypes + fixedIOS).map { $0.lowercased() })
+        self.permittedTypesIOS = Set((curatedServiceTypes + additionalIOSAllowedTypes).map { $0.lowercased() })
 #else
         self.permittedTypesIOS = Set(curatedServiceTypes.map { $0.lowercased() })
 #endif
@@ -144,7 +132,6 @@ extension BonjourBrowseService: NetServiceBrowserDelegate {
     }
 
     func netServiceBrowser(_ browser: NetServiceBrowser, didFind service: NetService, moreComing: Bool) {
-        if service.type == "_services._dns-sd._udp." { return }
         if browserIsWildcard(browser), isServiceTypeEnumeration(service: service) {
             let newType = service.name.hasSuffix(".") ? service.name : service.name + "."
             LoggingService.debug("browse: wildcard discovered rawType=\(newType) moreComing=\(moreComing)", category: .bonjour)

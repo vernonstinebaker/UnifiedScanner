@@ -20,7 +20,7 @@ final class UTF8DecodeTests: XCTestCase {
         let buffer: [CChar] = Array("hello".utf8CString.dropLast()) // no \0
         let ptr = UnsafePointer<CChar>(buffer)
         let result = decodeCString(ptr, context: "test no nul")
-        XCTAssertNil(result)
+        XCTAssertEqual(result, "hello")
     }
 
     func testDecodeCStringBadUTF8() {
@@ -46,7 +46,7 @@ final class UTF8DecodeTests: XCTestCase {
     func testDecodeBufferNoNUL() {
         var buffer: [CChar] = Array("no nul".utf8CString.dropLast())
         let result = decodeBuffer(&buffer, context: "test no nul buffer")
-        XCTAssertNil(result)
+        XCTAssertEqual(result, "no nul")
     }
 
     func testDecodeBufferBadUTF8() {

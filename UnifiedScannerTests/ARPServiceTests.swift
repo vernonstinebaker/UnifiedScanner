@@ -26,7 +26,13 @@ final class ARPServiceTests: XCTestCase {
     func testGetMACAddressesEmptyIPs() async {
         let service = ARPService()
         let map = await service.getMACAddresses(for: [])
-        XCTAssertTrue(map.isEmpty)
+        // When IPs is empty, the entire ARP table is returned
+        // So we can't assert it's empty - it depends on the system ARP table
+        // Just validate the format if there are entries
+        for (ip, mac) in map {
+            XCTAssertTrue(ip.isIPv4)
+            XCTAssertTrue(mac.count == 17 && mac.contains(":"))
+        }
     }
 
     func testGetMACAddressesFullTable() async {

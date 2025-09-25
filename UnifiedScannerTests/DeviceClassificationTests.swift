@@ -109,4 +109,67 @@ final class DeviceClassificationTests: XCTestCase {
         XCTAssertEqual(d.classification?.formFactor, .router)
         XCTAssertEqual(d.classification?.confidence, .high)
     }
+
+    func testHostnameDetectsIPhoneWithoutVendor() async {
+        let service = ServiceDeriver.makeService(fromRaw: "_companion-link._tcp.", port: nil)
+        var d = Device(primaryIP: "192.168.1.60",
+                       hostname: "mom-iphone.local",
+                       discoverySources: [.mdns],
+                       services: [service])
+        d.classification = await ClassificationService.classify(device: d)
+        let classification = d.classification
+        XCTAssertNotNil(classification)
+        XCTAssertEqual(classification?.formFactor, .phone)
+        XCTAssertEqual(classification?.confidence, .high)
+        XCTAssertEqual(classification?.reason, "Hostname contains 'iphone'")
+    }
+
+    func testHostnameApplePatternSkippedForNonAppleVendor() async {
+        let nonAppleService = ServiceDeriver.makeService(fromRaw: "_http._tcp.", port: 80)
+        var d = Device(primaryIP: "192.168.1.61",
+                       hostname: "marketing-ipad",
+                       vendor: "Samsung",
+                       discoverySources: [.mdns],
+                       services: [nonAppleService])
+        d.classification = await ClassificationService.classify(device: d)
+        let classification = d.classification
+        XCTAssertNotNil(classification)
+        XCTAssertNotEqual(classification?.formFactor, .tablet)
+        XCTAssertFalse(classification?.sources.contains(where: { $0.hasPrefix("host:") }) ?? false)
+    }
+
+    func testHostnamePatternRequiresServicePresence() async {
+        var d = Device(primaryIP: "192.168.1.62",
+                       hostname: "spoof-iphone",
+                       discoverySources: [.arp])
+        d.classification = await ClassificationService.classify(device: d)
+        XCTAssertNotEqual(d.classification?.formFactor, .phone)
+    }
+
+    func testAppleVendorAllowsHostnamePattern() async {
+        let genericService = ServiceDeriver.makeService(fromRaw: "_http._tcp.", port: 80)
+        var d = Device(primaryIP: "192.168.1.63",
+                       hostname: "family-ipad",
+                       vendor: "Apple",
+                       discoverySources: [.mdns],
+                       services: [genericService])
+        d.classification = await ClassificationService.classify(device: d)
+        XCTAssertEqual(d.classification?.formFactor, .tablet)
+    }
+
+    func testAppleModelFingerprintUsesDatabase() async {
+        var d = Device(primaryIP: "192.168.1.120",
+                       vendor: "Apple",
+                       discoverySources: [.mdns],
+                       services: [],
+                       openPorts: [],
+                       fingerprints: ["model": "Mac16,11"])
+        d.classification = await ClassificationService.classify(device: d)
+        let classification = d.classification
+        XCTAssertEqual(classification?.confidence, .high)
+        XCTAssertEqual(classification?.formFactor, .computer)
+        XCTAssertEqual(classification?.rawType, "mac_mini")
+        XCTAssertTrue(classification?.reason.contains("Apple database") ?? false)
+        XCTAssertTrue(classification?.sources.contains("fingerprint:model") ?? false)
+    }
 }

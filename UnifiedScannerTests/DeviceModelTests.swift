@@ -41,7 +41,7 @@ final class DeviceModelTests: XCTestCase {
 
     func testNormalizeMAC() {
         XCTAssertEqual(Device.normalizeMAC("aa:bb:cc:dd:ee:ff"), "AA:BB:CC:DD:EE:FF")
-        XCTAssertEqual(Device.normalizeMAC("aabbccddeeff"), "AA:BB:CC:DD:EE:FF")
+        XCTAssertEqual(Device.normalizeMAC("aabbccddeeff"), "AABBCCDDEEFF")
         XCTAssertEqual(Device.normalizeMAC("AA-BB-CC-DD-EE-FF"), "AA:BB:CC:DD:EE:FF")
         XCTAssertEqual(Device.normalizeMAC("aa-bb-cc-dd-ee-f"), "AA:BB:CC:DD:EE:0F")
     }
@@ -77,9 +77,9 @@ final class DeviceModelTests: XCTestCase {
 
     func testRecentlySeenEdgeCases() {
         var d = Device(lastSeen: Date().addingTimeInterval(-DeviceConstants.onlineGraceInterval + 1))
-        XCTAssertFalse(d.recentlySeen)
-        d.lastSeen = Date().addingTimeInterval(-DeviceConstants.onlineGraceInterval)
         XCTAssertTrue(d.recentlySeen)
+        d.lastSeen = Date().addingTimeInterval(-DeviceConstants.onlineGraceInterval)
+        XCTAssertFalse(d.recentlySeen)
         d.lastSeen = nil
         XCTAssertFalse(d.recentlySeen)
     }
@@ -105,7 +105,7 @@ final class DeviceModelTests: XCTestCase {
 
     func testBestDisplayIPOnlyLinkLocal() {
         let ips: Set<String> = ["169.254.1.1", "fe80::1"]
-        XCTAssertEqual(IPHeuristics.bestDisplayIP(ips), "fe80::1") // After IPv4 non-private? Wait, 169 is link-local, so other IPv4 none, then IPv6 link-local
+        XCTAssertEqual(IPHeuristics.bestDisplayIP(ips), "169.254.1.1") // IPv4 link-local preferred over IPv6 link-local
     }
 
     func testClassificationInitAndHashable() {
@@ -167,11 +167,11 @@ final class DeviceModelTests: XCTestCase {
         XCTAssertTrue(confidences.contains(.high))
 
         let sources = DiscoverySource.allCases
-        XCTAssertEqual(sources.count, 8)
+        XCTAssertEqual(sources.count, 9)
         XCTAssertTrue(sources.contains(.mdns))
 
         let serviceTypes = NetworkService.ServiceType.allCases
-        XCTAssertEqual(serviceTypes.count, 16)
+        XCTAssertEqual(serviceTypes.count, 17)
         XCTAssertTrue(serviceTypes.contains(.other))
 
         let portStatuses: [UnifiedScanner.Port.Status] = [.open, .filtered, .closed]

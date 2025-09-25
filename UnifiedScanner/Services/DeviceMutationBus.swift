@@ -53,6 +53,15 @@ public final class DeviceMutationBus {
     func clearBuffer() {
         buffer.removeAll()
     }
+    
+    /// Reset all state - for testing only
+    func resetForTesting() {
+        buffer.removeAll()
+        for (_, continuation) in continuations {
+            continuation.finish()
+        }
+        continuations.removeAll()
+    }
 
     /// Get current buffer size for debugging
     var bufferedCount: Int {

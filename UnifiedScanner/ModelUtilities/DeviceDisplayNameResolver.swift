@@ -156,7 +156,10 @@ private enum BrandCasing {
             "macbook pro": "MacBook Pro",
             "imac": "iMac",
             "mac studio": "Mac Studio",
-            "mac pro": "Mac Pro"
+            "mac pro": "Mac Pro",
+            "ipad": "iPad",
+            "iphone": "iPhone",
+            "ipod": "iPod"
         ]
         let lowered = name.lowercased()
         if let exact = map[lowered] { return exact }

@@ -23,12 +23,12 @@ import XCTest
         base.primaryIP = "192.168.1.10"
         await store.upsert(base)
         var update = base
-        update.ips.insert("10.0.0.5")
+        update.ips.insert("192.168.1.11")
         update.primaryIP = nil // should not clear existing
         await store.upsert(update)
         let result = store.devices.first!
         XCTAssertEqual(result.primaryIP, "192.168.1.10")
-        XCTAssertTrue(result.ips.contains("10.0.0.5"))
+        XCTAssertTrue(result.ips.contains("192.168.1.11"))
     }
 
     func testServicesMergedAndDeduped() async {
@@ -62,8 +62,9 @@ import XCTest
     }
     func testPortMergePrecedenceAndOrdering() async {
         let store = SnapshotService(persistence: EphemeralPersistence())
-        let dev = Device(primaryIP: "10.0.0.10",
-                         ips: ["10.0.0.10"],
+        let dev = Device(primaryIP: "192.168.1.10",
+                         ips: ["192.168.1.10"],
+                         macAddress: "AA:BB:CC:DD:EE:FF",
                          services: [],
                          openPorts: [Port(number: 80, serviceName: "http", description: "HTTP", status: .closed, lastSeenOpen: nil)])
         await store.upsert(dev)
@@ -73,6 +74,7 @@ import XCTest
             Port(number: 22, serviceName: "ssh", description: "SSH", status: .filtered, lastSeenOpen: nil)
         ]
         await store.upsert(update)
+        XCTAssertFalse(store.devices.isEmpty, "Device should be present in store after upsert")
         let ports = store.devices.first!.openPorts
         XCTAssertEqual(ports.count, 2)
         XCTAssertEqual(ports.map { $0.number }, [22, 80], "Ports should be sorted ascending by number")
@@ -82,8 +84,8 @@ import XCTest
 
     func testDiscoverySourcesUnion() async {
         let store = SnapshotService(persistence: EphemeralPersistence())
-        let dev = Device(primaryIP: "10.0.0.20",
-                         ips: ["10.0.0.20"],
+        let dev = Device(primaryIP: "192.168.1.20",
+                         ips: ["192.168.1.20"],
                          discoverySources: [.arp],
                          services: [],
                          openPorts: [])
@@ -129,8 +131,8 @@ import XCTest
     func testMultiSourceUnionMaintainsClassificationStability() async {
         let store = SnapshotService(persistence: EphemeralPersistence())
         // Start with mdns discovery
-        var dev = Device(primaryIP: "10.0.0.30",
-                         ips: ["10.0.0.30"],
+        var dev = Device(primaryIP: "192.168.1.30",
+                         ips: ["192.168.1.30"],
                          hostname: "apple-tv",
                          discoverySources: [.mdns],
                          services: [NetworkService(id: UUID(), name: "AirPlay", type: .airplay, rawType: "_airplay._tcp", port: 7000, isStandardPort: true)])

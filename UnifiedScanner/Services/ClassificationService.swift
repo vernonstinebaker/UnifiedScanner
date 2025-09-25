@@ -46,7 +46,8 @@ struct ClassificationService {
         let explicitVendor = device.vendor?.lowercased() ?? ""
         let fingerprintResult = VendorModelExtractorService.extract(from: device.fingerprints ?? [:], hostname: device.hostname)
         let fingerprintVendor = fingerprintResult.vendor?.lowercased() ?? ""
-        let fingerprintModel = fingerprintResult.model?.lowercased() ?? ""
+        let fingerprintModelRaw = fingerprintResult.model ?? ""
+        let fingerprintModel = fingerprintModelRaw.lowercased()
         let modelHint = device.modelHint?.lowercased() ?? ""
         let fingerprintValues = device.fingerprints?.values.map { $0.lowercased() } ?? []
         let fingerprintCorpusComponents = fingerprintValues + (modelHint.isEmpty ? [] : [modelHint])
@@ -65,6 +66,7 @@ struct ClassificationService {
         // MARK: - Fingerprint / Model Hint Rules FIRST (authoritative pass)
         fingerprintRules(vendor: vendor,
                          fingerprintModel: fingerprintModel,
+                         fingerprintModelRaw: fingerprintModelRaw,
                          fingerprintCorpus: fingerprintCorpus,
                          fingerprintValues: fingerprintValues,
                          serviceTypes: serviceTypes,
@@ -74,6 +76,9 @@ struct ClassificationService {
             LoggingService.debug("Authoritative fingerprint classification short-circuited: \(authoritative.reason)", category: .classification)
             return Device.Classification(formFactor: authoritative.formFactor, rawType: authoritative.rawType, confidence: authoritative.confidence, reason: authoritative.reason + " (authoritative)", sources: authoritative.sources)
         }
+
+        // MARK: - High Confidence Hostname Patterns
+        hostnamePatternRules(vendor: vendor, host: lowerHost, services: services, add: add)
 
         // MARK: - High Confidence Vendor / Hostname Patterns
         vendorHostnameRules(vendor: vendor, host: lowerHost, services: serviceTypes, ports: ports, add: add)
@@ -102,6 +107,51 @@ struct ClassificationService {
     }
 
     // MARK: - Rule Groups
+    private static func hostnamePatternRules(vendor: String, host: String, services: [NetworkService], add: (_ form: DeviceFormFactor?, _ raw: String?, _ conf: ClassificationConfidence, _ reason: String, _ sources: [String]) -> Void) {
+        guard !host.isEmpty else { return }
+        guard !services.isEmpty else { return }
+        struct Pattern {
+            let token: String
+            let formFactor: DeviceFormFactor?
+            let rawType: String?
+            let confidence: ClassificationConfidence
+            let requiresAppleVendor: Bool
+        }
+
+        let patterns: [Pattern] = [
+            Pattern(token: "iphone", formFactor: .phone, rawType: "iphone", confidence: .high, requiresAppleVendor: true),
+            Pattern(token: "ipad", formFactor: .tablet, rawType: "ipad", confidence: .high, requiresAppleVendor: true),
+            Pattern(token: "macbook", formFactor: .laptop, rawType: "mac", confidence: .medium, requiresAppleVendor: true),
+            Pattern(token: "mac-mini", formFactor: .computer, rawType: "mac_mini", confidence: .medium, requiresAppleVendor: true),
+            Pattern(token: "macmini", formFactor: .computer, rawType: "mac_mini", confidence: .medium, requiresAppleVendor: true),
+            Pattern(token: "imac", formFactor: .computer, rawType: "imac", confidence: .medium, requiresAppleVendor: true),
+            Pattern(token: "appletv", formFactor: .tv, rawType: "apple_tv", confidence: .medium, requiresAppleVendor: true),
+            Pattern(token: "apple-tv", formFactor: .tv, rawType: "apple_tv", confidence: .medium, requiresAppleVendor: true),
+            Pattern(token: "homepod", formFactor: .speaker, rawType: "homepod", confidence: .medium, requiresAppleVendor: true)
+        ]
+
+        let hasAppleVendor = vendor.contains("apple") || vendor.contains("ios") || vendor.contains("mac")
+        let appleServiceTypes: Set<NetworkService.ServiceType> = [.airplay, .airplayAudio, .homekit]
+        let appleRawTokens = ["_asquic.", "_companion-link.", "_device-info.", "_touch-able.", "_mediaremotetv.", "_sleep-proxy.", "_remotepairing.", "_apple-mobdev2."]
+        let hasAppleService = services.contains { svc in
+            if appleServiceTypes.contains(svc.type) { return true }
+            guard let raw = svc.rawType?.lowercased() else { return false }
+            return appleRawTokens.contains { raw.contains($0) }
+        }
+
+        for pattern in patterns where host.contains(pattern.token) {
+            if pattern.requiresAppleVendor {
+                if !hasAppleVendor && !hasAppleService { continue }
+            }
+            add(pattern.formFactor,
+                pattern.rawType,
+                pattern.confidence,
+                "Hostname contains '" + pattern.token + "'",
+                ["host:" + pattern.token])
+            break
+        }
+    }
+
     private static func vendorHostnameRules(vendor: String, host: String, services: Set<NetworkService.ServiceType>, ports: Set<Int>, add: (_ form: DeviceFormFactor?, _ raw: String?, _ conf: ClassificationConfidence, _ reason: String, _ sources: [String]) -> Void) {
         // Printers
         if services.contains(.printer) || services.contains(.ipp) || host.contains("printer") {
@@ -176,6 +226,7 @@ struct ClassificationService {
 
     private static func fingerprintRules(vendor: String,
                                          fingerprintModel: String,
+                                         fingerprintModelRaw: String,
                                          fingerprintCorpus: String,
                                          fingerprintValues: [String],
                                          serviceTypes: Set<NetworkService.ServiceType>,
@@ -188,6 +239,14 @@ struct ClassificationService {
         let appleContext = vendor.contains("apple") || fingerprintCorpus.contains("apple") || fingerprintModel.contains("apple") || fingerprintModel.hasPrefix("mac") || fingerprintModel.hasPrefix("appletv")
 
         // Apple-specific classification now broad only (family refinement happens in AppleDisplayNameResolver)
+        if appleContext && classifyAppleModel(fingerprintModelRaw: fingerprintModelRaw,
+                                              fingerprintModel: fingerprintModel,
+                                              modelSources: modelSources,
+                                              httpSources: httpSources,
+                                              add: add) {
+            return
+        }
+
         if appleContext && (fingerprintModel.contains("appletv") || fingerprintCorpus.contains("appletv")) {
             add(.tv, nil, .high, "Fingerprint indicates Apple TV", !modelSources.isEmpty ? modelSources : httpSources)
         }
@@ -241,10 +300,47 @@ struct ClassificationService {
         if containsAny(httpText, ["airport", "time capsule"]) {
             add(.router, "airport", .medium, "HTTP fingerprint indicates AirPort base station", httpSources)
         }
-    }
+}
 
-    // MARK: - Helpers
-    private static func containsAny(_ haystack: String, _ needles: [String]) -> Bool { needles.contains { haystack.contains($0) } }
+// MARK: - Helpers
+private static func containsAny(_ haystack: String, _ needles: [String]) -> Bool { needles.contains { haystack.contains($0) } }
+
+private static func classifyAppleModel(fingerprintModelRaw: String,
+                                       fingerprintModel: String,
+                                       modelSources: [String],
+                                       httpSources: [String],
+                                       add: (_ form: DeviceFormFactor?, _ raw: String?, _ conf: ClassificationConfidence, _ reason: String, _ sources: [String]) -> Void) -> Bool {
+    guard !fingerprintModelRaw.isEmpty else { return false }
+    let db = AppleModelDatabase.shared
+    let trimmed = fingerprintModelRaw.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return false }
+    let candidates = [trimmed, trimmed.lowercased(), trimmed.uppercased(), fingerprintModel]
+    guard let mappedName = candidates.compactMap({ db.name(for: $0) }).first else { return false }
+    guard let formFactor = appleFormFactor(for: mappedName) else { return false }
+    let normalizedRawType = mappedName.lowercased().replacingOccurrences(of: " ", with: "_")
+    var sources = !modelSources.isEmpty ? modelSources : httpSources
+    if !sources.contains(where: { $0 == "apple:database" }) { sources.append("apple:database") }
+    add(formFactor,
+        normalizedRawType,
+        .high,
+        "Fingerprint model maps to Apple database (\(mappedName))",
+        sources)
+    return true
+}
+
+private static func appleFormFactor(for name: String) -> DeviceFormFactor? {
+    let lower = name.lowercased()
+    if lower.contains("iphone") || lower.contains("ipod") { return .phone }
+    if lower.contains("ipad") { return .tablet }
+    if lower.contains("macbook") { return .laptop }
+    if lower.contains("imac") || lower.contains("mac mini") || lower.contains("macmini") || lower.contains("mac studio") || lower.contains("mac pro") { return .computer }
+    if lower.contains("mac") { return .computer }
+    if lower.contains("apple tv") || lower.contains("appletv") { return .tv }
+    if lower.contains("homepod") { return .speaker }
+    if lower.contains("watch") { return .accessory }
+    if lower.contains("airpods") { return .accessory }
+    return nil
+}
 
     private static func inferVendorFromOUI(mac: String?) async -> String? {
         guard let mac = mac?.replacingOccurrences(of: "-", with: ":").uppercased(), mac.count >= 8 else { return nil }
