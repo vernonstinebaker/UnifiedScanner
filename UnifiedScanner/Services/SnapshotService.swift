@@ -1,6 +1,132 @@
 import Foundation
 import Combine
 
+@MainActor
+protocol DevicePersistenceCoordinating {
+    func initialLoad() -> [Device]
+    func save(devices: [Device])
+    func clearAllData()
+    func reloadIfChanged(currentIDs: [String]) -> [Device]?
+}
+
+@MainActor
+final class DevicePersistenceCoordinator: DevicePersistenceCoordinating {
+    private let persistence: DevicePersistence
+    private let persistenceKey: String
+
+    init(persistence: DevicePersistence, key: String) {
+        self.persistence = persistence
+        self.persistenceKey = key
+    }
+
+    func initialLoad() -> [Device] {
+        persistence.load(key: persistenceKey)
+    }
+
+    func save(devices: [Device]) {
+        persistence.save(devices, key: persistenceKey)
+    }
+
+    func clearAllData() {
+        persistence.save([], key: persistenceKey)
+        UserDefaults.standard.removeObject(forKey: persistenceKey)
+        let ubi = NSUbiquitousKeyValueStore.default
+        ubi.removeObject(forKey: persistenceKey)
+        ubi.synchronize()
+    }
+
+    func reloadIfChanged(currentIDs: [String]) -> [Device]? {
+        let latest = persistence.load(key: persistenceKey)
+        let latestIDs = latest.map(\.id)
+        guard latestIDs != currentIDs || latestIDs.count != currentIDs.count else {
+            return nil
+        }
+        return latest
+    }
+}
+
+@MainActor
+protocol DeviceClassificationCoordinating {
+    func classify(_ device: Device) async -> Device.Classification
+    func shouldReclassify(old: Device, merged: Device) -> Bool
+}
+
+@MainActor
+final class DeviceClassificationCoordinator: DeviceClassificationCoordinating {
+    private let classificationService: ClassificationService.Type
+
+    init(service: ClassificationService.Type = ClassificationService.self) {
+        self.classificationService = service
+    }
+
+    func classify(_ device: Device) async -> Device.Classification {
+        await classificationService.classify(device: device)
+    }
+
+    func shouldReclassify(old: Device, merged: Device) -> Bool {
+        fingerprint(of: old) != fingerprint(of: merged)
+    }
+
+    private func fingerprint(of device: Device) -> String {
+        let serviceKey = device.services
+            .map { $0.type.rawValue + "|\($0.port ?? -1)" }
+            .sorted()
+            .joined(separator: ",")
+        let portKey = device.openPorts
+            .map { "\($0.number)/\($0.transport)" }
+            .sorted()
+            .joined(separator: ",")
+        let fingerprintKey = (device.fingerprints ?? [:])
+            .map { "\($0.key)=\($0.value)" }
+            .sorted()
+            .joined(separator: ",")
+        return "host=\(device.hostname ?? "")|vendor=\(device.vendor ?? "")|model=\(device.modelHint ?? "")|svc=\(serviceKey)|ports=\(portKey)|fp=\(fingerprintKey)"
+    }
+}
+
+@MainActor
+protocol DeviceMutationPublishing {
+    func emit(_ mutation: DeviceMutation)
+    func mutationStream(includeBuffered: Bool) -> AsyncStream<DeviceMutation>
+    func clearBuffer()
+}
+
+@MainActor
+struct DeviceMutationBusPublisher: DeviceMutationPublishing {
+    private let bus: DeviceMutationBus
+
+    init(bus: DeviceMutationBus = .shared) {
+        self.bus = bus
+    }
+
+    func emit(_ mutation: DeviceMutation) {
+        bus.emit(mutation)
+    }
+
+    func mutationStream(includeBuffered: Bool) -> AsyncStream<DeviceMutation> {
+        bus.mutationStream(includeBuffered: includeBuffered)
+    }
+
+    func clearBuffer() {
+        bus.clearBuffer()
+    }
+}
+
+protocol SnapshotClock {
+    var now: Date { get }
+    func sleep(seconds: TimeInterval) async
+}
+
+struct SystemSnapshotClock: SnapshotClock {
+    var now: Date { Date() }
+
+    func sleep(seconds: TimeInterval) async {
+        guard seconds > 0 else { return }
+        let nanoseconds = UInt64((seconds * 1_000_000_000).rounded())
+        try? await Task.sleep(nanoseconds: nanoseconds)
+    }
+}
+
 // MARK: - Mutation Stream Types
 public enum DeviceField: String, CaseIterable, Sendable {
     case hostname, vendor, modelHint, rttMillis, services, openPorts, discoverySources, classification, ips, primaryIP, lastSeen, firstSeen, macAddress, fingerprints, isOnlineOverride
@@ -73,32 +199,36 @@ final class SnapshotService: ObservableObject {
      private let offlineCheckInterval: TimeInterval
      private let onlineGraceInterval: TimeInterval
 
-      private let persistence: DevicePersistence
-     private let classification: ClassificationService.Type
-     private let persistenceKey: String
-      private let localIPv4Networks: [IPv4Network]
-      private var mutationListenerTask: Task<Void, Never>? = nil
-      private let mutationBus: DeviceMutationBus
+     private let persistenceCoordinator: DevicePersistenceCoordinating
+     private let classificationCoordinator: DeviceClassificationCoordinating
+     private let mutationPublisher: DeviceMutationPublishing
+     private let clock: SnapshotClock
+     private let localIPv4Networks: [IPv4Network]
+     private var mutationListenerTask: Task<Void, Never>? = nil
 
-       init(persistenceKey: String = "unifiedscanner:devices:v1",
-           persistence: DevicePersistence? = nil,
-           classification: ClassificationService.Type = ClassificationService.self,
-           offlineCheckInterval: TimeInterval = 60,
-           onlineGraceInterval: TimeInterval = DeviceConstants.onlineGraceInterval,
-           mutationBus: DeviceMutationBus = DeviceMutationBus.shared) {
-           self.persistenceKey = persistenceKey
-           self.persistence = persistence ?? LiveDevicePersistence()
-           self.classification = classification
-           self.offlineCheckInterval = offlineCheckInterval
-           self.onlineGraceInterval = onlineGraceInterval
-           self.mutationBus = mutationBus
+     init(persistenceKey: String = "unifiedscanner:devices:v1",
+          persistence: DevicePersistence? = nil,
+          classification: ClassificationService.Type = ClassificationService.self,
+          offlineCheckInterval: TimeInterval = 60,
+          onlineGraceInterval: TimeInterval = DeviceConstants.onlineGraceInterval,
+          mutationPublisher: DeviceMutationPublishing? = nil,
+          persistenceCoordinator: DevicePersistenceCoordinating? = nil,
+          classificationCoordinator: DeviceClassificationCoordinating? = nil,
+          clock: SnapshotClock = SystemSnapshotClock()) {
+         let resolvedPersistence = persistence ?? LiveDevicePersistence()
+         self.persistenceCoordinator = persistenceCoordinator ?? DevicePersistenceCoordinator(persistence: resolvedPersistence, key: persistenceKey)
+         self.classificationCoordinator = classificationCoordinator ?? DeviceClassificationCoordinator(service: classification)
+         self.mutationPublisher = mutationPublisher ?? DeviceMutationBusPublisher()
+         self.clock = clock
+         self.offlineCheckInterval = offlineCheckInterval
+         self.onlineGraceInterval = onlineGraceInterval
          self.localIPv4Networks = LocalSubnetEnumerator.activeIPv4Networks()
-         let env = ProcessInfo.processInfo.environment
-         let disablePersistence = env["UNIFIEDSCANNER_DISABLE_PERSISTENCE"] == "1"
+        let env = ProcessInfo.processInfo.environment
+        let disablePersistence = env["UNIFIEDSCANNER_DISABLE_PERSISTENCE"] == "1"
         if disablePersistence {
             self.devices = []
         } else {
-            self.devices = self.persistence.load(key: persistenceKey)
+            self.devices = self.persistenceCoordinator.initialLoad()
              if true { // forceOfflineOnRestore now always-on
                 self.devices = self.devices.map { dev in
                     var d = dev
@@ -122,10 +252,10 @@ final class SnapshotService: ObservableObject {
                  return compareIPs(lhsIP, rhsIP)
               }
          }
-         if env["UNIFIEDSCANNER_CLEAR_ON_START"] == "1" {
-             self.devices.removeAll()
-             persist()
-         }
+        if env["UNIFIEDSCANNER_CLEAR_ON_START"] == "1" {
+            self.devices.removeAll()
+            persist()
+        }
         NotificationCenter.default.addObserver(forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification, object: NSUbiquitousKeyValueStore.default, queue: .main) { [weak self] _ in
             guard let self else { return }
             Task { @MainActor in
@@ -140,7 +270,7 @@ final class SnapshotService: ObservableObject {
         mutationListenerTask?.cancel()
         mutationListenerTask = Task { [weak self] in
             guard let self else { return }
-            let stream = mutationBus.mutationStream(includeBuffered: true)
+            let stream = mutationPublisher.mutationStream(includeBuffered: true)
             for await mutation in stream {
                 if Task.isCancelled { break }
                 await self.applyMutation(mutation)
@@ -169,17 +299,17 @@ final class SnapshotService: ObservableObject {
      private func startOfflineHeartbeat() {
          // Skip offline heartbeat in test environment to prevent tests from hanging
           offlineHeartbeatTask?.cancel()
-          offlineHeartbeatTask = Task { [weak self] in
-              guard let self else { return }
-              while !Task.isCancelled {
-                  await self.performOfflineSweep()
-                  try? await Task.sleep(nanoseconds: UInt64(self.offlineCheckInterval * 1_000_000_000))
-              }
-          }
+        offlineHeartbeatTask = Task { [weak self] in
+            guard let self else { return }
+            while !Task.isCancelled {
+                await self.performOfflineSweep()
+                await self.clock.sleep(seconds: self.offlineCheckInterval)
+            }
+        }
      }
      
      private func performOfflineSweep() async {
-         let now = Date()
+        let now = clock.now
          var mutations: [DeviceChange] = []
          for (idx, dev) in devices.enumerated() {
              guard dev.isOnlineOverride != false else { continue }
@@ -255,7 +385,7 @@ final class SnapshotService: ObservableObject {
             }
         } else {
             if var sanitized = sanitize(device: newDevice) {
-                sanitized.classification = await classification.classify(device: sanitized)
+                sanitized.classification = await classificationCoordinator.classify(sanitized)
                 newDevice = sanitized
                 devices.append(sanitized)
                 changedFields = Set(DeviceField.allCases)
@@ -330,7 +460,7 @@ final class SnapshotService: ObservableObject {
                newDevice.firstSeen = measurement.timestamp
                newDevice.lastSeen = measurement.timestamp
               if var sanitized = sanitize(device: newDevice) {
-                  sanitized.classification = await classification.classify(device: sanitized)
+                  sanitized.classification = await classificationCoordinator.classify(sanitized)
                   newDevice = sanitized
                   devices.append(sanitized)
                   // Sort after modification
@@ -346,7 +476,7 @@ final class SnapshotService: ObservableObject {
         var newDevices: [Device] = []
         for dev in devices {
             var copy = dev
-            let newClass = await classification.classify(device: dev)
+            let newClass = await classificationCoordinator.classify(dev)
             if dev.classification != newClass {
                 let before = dev
                 copy.classification = newClass
@@ -378,18 +508,13 @@ final class SnapshotService: ObservableObject {
 
     func clearAllData() {
         devices.removeAll()
-        // Remove both persistence locations explicitly
-        UserDefaults.standard.removeObject(forKey: persistenceKey)
-        let ubi = NSUbiquitousKeyValueStore.default
-        ubi.removeObject(forKey: persistenceKey)
-        ubi.synchronize()
+        persistenceCoordinator.clearAllData()
         emit(.snapshot(devices))
     }
 
     // MARK: - Merge Logic
     private func merge(existing: Device, incoming: Device) async -> Device {
         var result = existing
-        let preClassificationFingerprint = classificationFingerprint(of: existing)
 
         // Identity-level fields
         if result.primaryIP == nil, let p = incoming.primaryIP { result.primaryIP = p }
@@ -461,27 +586,16 @@ final class SnapshotService: ObservableObject {
         result.isOnlineOverride = incoming.isOnlineOverride
 
         // Recompute classification if relevant fields changed
-        let postFingerprint = classificationFingerprint(of: result)
-        if postFingerprint != preClassificationFingerprint {
-            result.classification = await classification.classify(device: result)
+        if classificationCoordinator.shouldReclassify(old: existing, merged: result) {
+            result.classification = await classificationCoordinator.classify(result)
         }
 
         return result
     }
 
-    private func classificationFingerprint(of d: Device) -> String {
-        let svcKey = d.services.map { $0.type.rawValue + ("|\($0.port ?? -1)") }.sorted().joined(separator: ",")
-        let portKey = d.openPorts.map { "\($0.number)/\($0.transport)" }.sorted().joined(separator: ",")
-        let fingerprintKey = (d.fingerprints ?? [:])
-            .map { "\($0.key)=\($0.value)" }
-            .sorted()
-            .joined(separator: ",")
-        return "host=\(d.hostname ?? "")|vendor=\(d.vendor ?? "")|model=\(d.modelHint ?? "")|svc=\(svcKey)|ports=\(portKey)|fp=\(fingerprintKey)"
-    }
-
     // MARK: - Persistence
     private func persist() {
-        persistence.save(devices, key: persistenceKey)
+        persistenceCoordinator.save(devices: devices)
     }
 
     func saveSnapshotNow() {
@@ -507,21 +621,21 @@ final class SnapshotService: ObservableObject {
     }
 
     private func reloadFromPersistenceIfChanged() async {
-        let latest = persistence.load(key: persistenceKey)
-        // Only replace if different count or ids changed
-        if latest.map(\.id) != devices.map(\.id) || latest.count != devices.count {
-            // Re-run classification to ensure consistency if loaded persisted snapshot lacks it (older version)
-            var newDevices: [Device] = []
-            for dev in latest {
-                var d = dev
-                if d.classification == nil { d.classification = await classification.classify(device: d) }
-                newDevices.append(d)
-            }
-            devices = newDevices
-            // Sort after loading
-            sortDevices()
-            emit(.snapshot(devices))
+        guard let latest = persistenceCoordinator.reloadIfChanged(currentIDs: devices.map(\.id)) else {
+            return
         }
+        // Only replace if different count or ids changed
+        // Re-run classification to ensure consistency if loaded persisted snapshot lacks it (older version)
+        var newDevices: [Device] = []
+        for dev in latest {
+            var d = dev
+            if d.classification == nil { d.classification = await classificationCoordinator.classify(d) }
+            newDevices.append(d)
+        }
+        devices = newDevices
+        // Sort after loading
+        sortDevices()
+        emit(.snapshot(devices))
     }
 }
 

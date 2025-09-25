@@ -8,11 +8,11 @@ final class BroadcastExclusionPingTests: XCTestCase {
         let persistence = EphemeralPersistenceBroadcast()
         
         // Use the same initialization pattern as other tests that work
-        let store = await MainActor.run { 
-            SnapshotService(persistence: persistence, 
-                          offlineCheckInterval: 60, 
-                          onlineGraceInterval: 180,
-                          mutationBus: DeviceMutationBus()) 
+        let store = await MainActor.run {
+            SnapshotService(persistence: persistence,
+                            offlineCheckInterval: 60,
+                            onlineGraceInterval: 180,
+                            mutationPublisher: DeviceMutationBusPublisher(bus: DeviceMutationBus()))
         }
         
         // Precondition: no devices yet

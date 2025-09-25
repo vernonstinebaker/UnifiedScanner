@@ -25,7 +25,12 @@ final class PingOrchestratorTests: XCTestCase {
     func testEnqueuePingsUpdatesStore() async {
         let persistence = EphemeralPersistencePO()
         let testBus = await MainActor.run { DeviceMutationBus() }
-        let store = await MainActor.run { SnapshotService(persistenceKey: "ping-orch", persistence: persistence, classification: ClassificationService.self, mutationBus: testBus) }
+        let store = await MainActor.run {
+            SnapshotService(persistenceKey: "ping-orch",
+                            persistence: persistence,
+                            classification: ClassificationService.self,
+                            mutationPublisher: DeviceMutationBusPublisher(bus: testBus))
+        }
         
         await store.upsert(Device(primaryIP: "192.168.1.200", ips: ["192.168.1.200"], hostname: "h1", discoverySources: [.mdns]))
         await store.upsert(Device(primaryIP: "192.168.1.201", ips: ["192.168.1.201"], hostname: "h2", discoverySources: [.mdns]))

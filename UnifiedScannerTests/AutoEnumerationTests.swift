@@ -5,7 +5,10 @@ import XCTest
     func testAutoEnumerationUsesHostEnumeratorWhenPingHostsEmpty() async {
         // Arrange
         let testBus = DeviceMutationBus()
-        let store = SnapshotService(persistenceKey: "auto-enum", persistence: MemoryPersistenceAE(), classification: ClassificationService.self, mutationBus: testBus)
+        let store = SnapshotService(persistenceKey: "auto-enum",
+                                    persistence: MemoryPersistenceAE(),
+                                    classification: ClassificationService.self,
+                                    mutationPublisher: DeviceMutationBusPublisher(bus: testBus))
         let mockEnumerator = MockEnumerator(hosts: ["192.168.1.200", "192.168.1.201"]) // deterministic
         let mockPingService = OneShotMockPingServiceAE(rtt: 3.3)
         let orchestrator = PingOrchestrator(pingService: mockPingService, mutationBus: testBus, maxConcurrent: 4)

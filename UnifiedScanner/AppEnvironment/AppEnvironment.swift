@@ -93,6 +93,7 @@ final class AppEnvironment: ObservableObject {
     let deviceMutationBusProvider: DeviceMutationBusProviding
     let loggingService: LoggingServiceProviding
     let classificationService: ClassificationServiceProviding
+    let mutationPublisher: DeviceMutationPublishing
 
     init(deviceMutationBus: DeviceMutationBus = .shared,
          loggingService: LoggingServiceProviding = LoggingServiceAdapter(),
@@ -101,6 +102,7 @@ final class AppEnvironment: ObservableObject {
         self.deviceMutationBusProvider = DeviceMutationBusAdapter(bus: deviceMutationBus)
         self.loggingService = loggingService
         self.classificationService = classificationService
+        self.mutationPublisher = DeviceMutationBusPublisher(bus: deviceMutationBus)
     }
 
     func makePortScanService() -> PortScanService {
@@ -116,6 +118,6 @@ final class AppEnvironment: ObservableObject {
         SnapshotService(persistenceKey: persistenceKey,
                         persistence: persistence,
                         classification: ClassificationService.self,
-                        mutationBus: deviceMutationBus)
+                        mutationPublisher: mutationPublisher)
     }
 }

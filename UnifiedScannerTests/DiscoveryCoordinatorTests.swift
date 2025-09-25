@@ -4,7 +4,10 @@ import XCTest
 @MainActor final class DiscoveryCoordinatorTests: XCTestCase {
     func testCoordinatorStagesMDNSBeforePingAndCreatesDeviceOnFirstSuccessfulPing() async {
         let environment = AppEnvironment(deviceMutationBus: DeviceMutationBus())
-        let store = SnapshotService(persistenceKey: "coord-test", persistence: MemoryPersistence(), classification: ClassificationService.self, mutationBus: environment.deviceMutationBus)
+        let store = SnapshotService(persistenceKey: "coord-test",
+                                    persistence: MemoryPersistence(),
+                                    classification: ClassificationService.self,
+                                    mutationPublisher: DeviceMutationBusPublisher(bus: environment.deviceMutationBus))
         let providerDevice = Device(primaryIP: "192.168.1.10", ips: ["192.168.1.10"], hostname: "apple-tv.local", discoverySources: [.mdns])
         let provider = TestProvider(devices: [providerDevice], perDeviceDelay: 0.05)
         let mockPingService = OneShotMockPingService(rtt: 7.0)

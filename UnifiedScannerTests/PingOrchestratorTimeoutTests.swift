@@ -5,7 +5,10 @@ import XCTest
     func testTimeoutDoesNotCreateDevice() async {
         let persistence = EphemeralPersistencePOT()
         let environment = AppEnvironment(deviceMutationBus: DeviceMutationBus())
-        let store = SnapshotService(persistenceKey: "ping-orch-timeout", persistence: persistence, classification: ClassificationService.self, mutationBus: environment.deviceMutationBus)
+        let store = SnapshotService(persistenceKey: "ping-orch-timeout",
+                                    persistence: persistence,
+                                    classification: ClassificationService.self,
+                                    mutationPublisher: DeviceMutationBusPublisher(bus: environment.deviceMutationBus))
         // Ensure store initially empty
         let initialCount = await MainActor.run { store.devices.count }
         XCTAssertEqual(initialCount, 0)

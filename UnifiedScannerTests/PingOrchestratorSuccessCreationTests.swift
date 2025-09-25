@@ -5,7 +5,10 @@ import XCTest
     func testSuccessCreatesDevice() async {
         let persistence = EphemeralPersistencePOS()
         let environment = AppEnvironment(deviceMutationBus: DeviceMutationBus())
-        let store = SnapshotService(persistenceKey: "ping-orch-success", persistence: persistence, classification: ClassificationService.self, mutationBus: environment.deviceMutationBus)
+        let store = SnapshotService(persistenceKey: "ping-orch-success",
+                                    persistence: persistence,
+                                    classification: ClassificationService.self,
+                                    mutationPublisher: DeviceMutationBusPublisher(bus: environment.deviceMutationBus))
         // Ensure store initially empty
         XCTAssertEqual(store.devices.count, 0)
         // Mock ping service that emits a single success with RTT
