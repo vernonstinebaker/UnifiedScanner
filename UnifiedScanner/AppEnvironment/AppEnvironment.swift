@@ -128,6 +128,10 @@ final class AppEnvironment: ObservableObject {
         HTTPFingerprintService(mutationBus: deviceMutationBus)
     }
 
+    func makeSSHHostKeyService() -> SSHHostKeyService {
+        SSHHostKeyService(mutationBus: deviceMutationBus)
+    }
+
     func makeSnapshotService(persistenceKey: String = "unifiedscanner:devices:v1",
                              persistence: DevicePersistence? = nil) -> SnapshotService {
         SnapshotService(persistenceKey: persistenceKey,

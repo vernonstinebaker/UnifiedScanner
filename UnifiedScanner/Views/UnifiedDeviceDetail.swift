@@ -182,8 +182,8 @@ struct UnifiedDeviceDetail: View {
         }
         .background(Theme.color(.bgRoot).ignoresSafeArea())
         .navigationTitle("Device")
-        .onChange(of: inputDevice) { _, newValue in
-            viewModel.update(device: newValue)
+        .onChange(of: inputDevice) {
+            viewModel.update(device: inputDevice)
         }
     }
 

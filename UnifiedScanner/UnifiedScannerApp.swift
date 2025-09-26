@@ -12,6 +12,7 @@ struct UnifiedScannerApp: App {
     private let appEnvironment: AppEnvironment
     private let portScanService: PortScanService
     private let httpFingerprintService: HTTPFingerprintService
+    private let sshHostKeyService: SSHHostKeyService
     @StateObject private var snapshotStore: SnapshotService
 
     init() {
@@ -19,6 +20,7 @@ struct UnifiedScannerApp: App {
         self.appEnvironment = environment
         self.portScanService = environment.makePortScanService()
         self.httpFingerprintService = environment.makeHTTPFingerprintService()
+        self.sshHostKeyService = environment.makeSSHHostKeyService()
         self._snapshotStore = StateObject(wrappedValue: environment.makeSnapshotService())
     }
     @State private var discoveryCoordinator: DiscoveryCoordinator? = nil
@@ -29,6 +31,7 @@ struct UnifiedScannerApp: App {
     @State private var isScanRunning = false
     @State private var scanMonitorTask: Task<Void, Never>? = nil
     @State private var portScannerStarted = false
+    @State private var sshHostKeyStarted = false
     @State private var httpFingerprintStarted = false
     @State private var showSettingsFromMenu = false
 
@@ -92,6 +95,10 @@ struct UnifiedScannerApp: App {
             portScannerStarted = true
             Task { await portScanService.start() }
         }
+        if !sshHostKeyStarted {
+            sshHostKeyStarted = true
+            sshHostKeyService.start()
+        }
         if !httpFingerprintStarted {
             httpFingerprintStarted = true
             httpFingerprintService.start()
@@ -115,6 +122,7 @@ struct UnifiedScannerApp: App {
             let devices = await MainActor.run { snapshotStore.devices }
             await portScanService.rescan(devices: devices)
             await MainActor.run { httpFingerprintService.rescan(devices: devices, force: true) }
+            await MainActor.run { sshHostKeyService.rescan(devices: devices, force: true) }
         }
     }
 
@@ -154,6 +162,7 @@ struct UnifiedScannerApp: App {
             let devices = await MainActor.run { snapshotStore.devices }
             await portScanService.rescan(devices: devices)
             await MainActor.run { httpFingerprintService.rescan(devices: devices, force: true) }
+            await MainActor.run { sshHostKeyService.rescan(devices: devices, force: true) }
 #endif
             await updateCoordinatorState()
             startScanMonitor()
@@ -179,9 +188,12 @@ struct UnifiedScannerApp: App {
             discoveryCoordinator = nil
             coordinatorStarted = false
             portScannerStarted = false
+            sshHostKeyStarted = false
             isBonjourRunning = false
             isScanRunning = false
             await Task.yield()
+            await portScanService.stop()
+            sshHostKeyService.stop()
             startDiscoveryIfNeeded()
         }
     }

@@ -135,6 +135,20 @@ final class DeviceClassificationTests: XCTestCase {
         XCTAssertEqual(d.classification?.confidence, .high)
     }
 
+    func testHTTPTItleClassifiesSynologyNAS() async {
+        var d = Device(primaryIP: "192.168.1.41",
+                       discoverySources: [.httpProbe],
+                       services: [NetworkService(name: "HTTP", type: .http, rawType: "_http._tcp", port: 5000, isStandardPort: true)],
+                       openPorts: [Port(number: 5000, serviceName: "http", description: "DSM", status: .open, lastSeenOpen: Date())],
+                       fingerprints: ["http.title": "Synology DiskStation Manager"],
+                       lastSeen: Date())
+        d.classification = await ClassificationService.classify(device: d)
+        XCTAssertEqual(d.classification?.formFactor, .server)
+        XCTAssertEqual(d.classification?.rawType, "synology_nas")
+        XCTAssertEqual(d.classification?.confidence, .high)
+        XCTAssertTrue(d.classification?.reason.contains("HTTP title") ?? false)
+    }
+
     func testHostnameDetectsIPhoneWithoutVendor() async {
         let service = ServiceDeriver.makeService(fromRaw: "_companion-link._tcp.", port: nil)
         var d = Device(primaryIP: "192.168.1.60",

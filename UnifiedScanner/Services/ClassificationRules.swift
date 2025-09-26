@@ -260,6 +260,16 @@ struct FingerprintClassificationRule: ClassificationRule {
                              reason: "HTTP fingerprint indicates AirPort base station",
                              sources: httpSources)
         }
+        if let httpTitle = context.fingerprints?["http.title"],
+           let match = ClassificationRuleHelpers.classifyHTTPTitle(title: httpTitle) {
+            accumulator.add(formFactor: match.formFactor,
+                             rawType: match.rawType,
+                             confidence: match.confidence,
+                             reason: match.reason,
+                             sources: ["http.title"],
+                             shortCircuitAnnotation: match.authoritative ? " (authoritative)" : nil)
+            if match.authoritative { return }
+        }
     }
 }
 
@@ -485,6 +495,68 @@ struct FallbackClassificationRule: ClassificationRule {
 enum ClassificationRuleHelpers {
     static func containsAny(_ haystack: String, _ needles: [String]) -> Bool {
         needles.contains { haystack.contains($0) }
+    }
+
+    struct HTTPTitleMatch {
+        let formFactor: DeviceFormFactor?
+        let rawType: String?
+        let confidence: ClassificationConfidence
+        let reason: String
+        let authoritative: Bool
+    }
+
+    static func classifyHTTPTitle(title: String) -> HTTPTitleMatch? {
+        let lower = title.lowercased()
+        if lower.contains("synology") {
+            return HTTPTitleMatch(formFactor: .server,
+                                  rawType: "synology_nas",
+                                  confidence: .high,
+                                  reason: "HTTP title indicates Synology appliance",
+                                  authoritative: true)
+        }
+        if lower.contains("routeros") || lower.contains("mikrotik") {
+            return HTTPTitleMatch(formFactor: .router,
+                                  rawType: "mikrotik_router",
+                                  confidence: .high,
+                                  reason: "HTTP title indicates MikroTik RouterOS",
+                                  authoritative: true)
+        }
+        if lower.contains("unifi") || lower.contains("ubiquiti") {
+            return HTTPTitleMatch(formFactor: .router,
+                                  rawType: "ubiquiti_unifi",
+                                  confidence: .high,
+                                  reason: "HTTP title indicates Ubiquiti UniFi controller",
+                                  authoritative: true)
+        }
+        if lower.contains("pfsense") {
+            return HTTPTitleMatch(formFactor: .router,
+                                  rawType: "pfsense",
+                                  confidence: .high,
+                                  reason: "HTTP title indicates pfSense firewall",
+                                  authoritative: true)
+        }
+        if lower.contains("hikvision") {
+            return HTTPTitleMatch(formFactor: .camera,
+                                  rawType: "hikvision_camera",
+                                  confidence: .medium,
+                                  reason: "HTTP title indicates Hikvision device",
+                                  authoritative: false)
+        }
+        if lower.contains("laserjet") || lower.contains("hp printer") {
+            return HTTPTitleMatch(formFactor: .printer,
+                                  rawType: "hp_printer",
+                                  confidence: .medium,
+                                  reason: "HTTP title indicates HP printer",
+                                  authoritative: false)
+        }
+        if lower.contains("qnap") {
+            return HTTPTitleMatch(formFactor: .server,
+                                  rawType: "qnap_nas",
+                                  confidence: .medium,
+                                  reason: "HTTP title indicates QNAP NAS",
+                                  authoritative: false)
+        }
+        return nil
     }
 
     static func classifyAppleModel(fingerprintModelRaw: String,

@@ -130,3 +130,54 @@ private struct StubPortProber: PortProbing {
     }
 }
 }
+
+@MainActor
+final class SSHHostKeyServiceTests: XCTestCase {
+    func testSSHHostKeyServiceEmitsFingerprint() async {
+        let bus = DeviceMutationBus()
+        defer { bus.resetForTesting() }
+
+        let mockCollector = MockCollector(result: ["ssh.hostkey.rsa.sha256": "ABC="])
+        let service = SSHHostKeyService(mutationBus: bus, collector: mockCollector, cooldown: 0, timeout: 0.1)
+
+        let stream = bus.mutationStream(includeBuffered: false)
+        let expectation = expectation(description: "Host key fingerprint emitted")
+        var capturedChange: DeviceChange?
+
+        let collectTask = Task {
+            for await mutation in stream {
+                if case .change(let change) = mutation, change.source == .portScan {
+                    if let fingerprints = change.after.fingerprints,
+                       fingerprints["ssh.hostkey.rsa.sha256"] == "ABC=" {
+                        capturedChange = change
+                        expectation.fulfill()
+                        break
+                    }
+                }
+            }
+        }
+
+        let device = Device(primaryIP: "router.local",
+                            ips: ["router.local"],
+                            hostname: "router.local",
+                            discoverySources: [.portScan],
+                            services: [NetworkService(name: "SSH", type: .ssh, rawType: "_ssh._tcp", port: 22, isStandardPort: true)],
+                            openPorts: [Port(number: 22, transport: "tcp", serviceName: "ssh", description: "SSH", status: .open, lastSeenOpen: Date())])
+
+        service.rescan(devices: [device], force: true)
+
+        await fulfillment(of: [expectation], timeout: 1.0)
+        collectTask.cancel()
+
+        XCTAssertNotNil(capturedChange)
+    }
+
+    private struct MockCollector: SSHHostKeyCollecting {
+        let result: [String: String]
+        func collect(target: SSHFingerprintTarget, timeout: TimeInterval) async -> [String: String] {
+            _ = target
+            _ = timeout
+            return result
+        }
+    }
+}

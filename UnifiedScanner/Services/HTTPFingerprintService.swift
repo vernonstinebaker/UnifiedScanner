@@ -1,5 +1,8 @@
 import Foundation
 import Security
+#if canImport(CryptoKit)
+import CryptoKit
+#endif
 
 private struct FingerprintKey: Hashable, Sendable {
     let deviceID: String
@@ -13,6 +16,11 @@ private struct FingerprintTarget: Sendable {
     let host: String
     let scheme: String
     let port: Int
+}
+
+private struct HTTPFingerprintResponse {
+    let response: HTTPURLResponse
+    let data: Data?
 }
 
 @MainActor
@@ -202,7 +210,9 @@ private final class HTTPFingerprinter: NSObject, URLSessionDelegate {
         let session = URLSession(configuration: configuration, delegate: delegate, delegateQueue: nil)
         defer { session.invalidateAndCancel() }
 
-        guard let response = await performRequest(session: session, url: url) else { return [:] }
+        guard let result = await performRequest(session: session, url: url) else { return [:] }
+        let response = result.response
+        let bodyData = result.data
         var entries: [String: String] = [:]
 
         if let serverHeader = header("Server", in: response), !serverHeader.isEmpty {
@@ -223,12 +233,21 @@ private final class HTTPFingerprinter: NSObject, URLSessionDelegate {
             }
         }
 
+        if let title = extractHTMLTitle(bodyData: bodyData, response: response) {
+            entries["http.title"] = title
+        }
+
+        if let faviconFingerprint = await fetchFavicon(for: target, baseURL: url, session: session) {
+            entries["http.favicon.sha256"] = faviconFingerprint.hash
+            entries["http.favicon.size"] = String(faviconFingerprint.size)
+        }
+
         return entries
     }
 
-    private func performRequest(session: URLSession, url: URL) async -> HTTPURLResponse? {
+    private func performRequest(session: URLSession, url: URL) async -> HTTPFingerprintResponse? {
         if let headResponse = await sendRequest(session: session, url: url, method: "HEAD") {
-            if headResponse.statusCode == 405 || headResponse.statusCode == 501 {
+            if headResponse.response.statusCode == 405 || headResponse.response.statusCode == 501 {
                 return await sendRequest(session: session, url: url, method: "GET")
             }
             return headResponse
@@ -236,13 +255,14 @@ private final class HTTPFingerprinter: NSObject, URLSessionDelegate {
         return await sendRequest(session: session, url: url, method: "GET")
     }
 
-    private func sendRequest(session: URLSession, url: URL, method: String) async -> HTTPURLResponse? {
+    private func sendRequest(session: URLSession, url: URL, method: String) async -> HTTPFingerprintResponse? {
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: timeout)
         request.httpMethod = method
         request.setValue("UnifiedScanner/1.0", forHTTPHeaderField: "User-Agent")
         do {
-            let (_, response) = try await session.data(for: request)
-            return response as? HTTPURLResponse
+            let (data, response) = try await session.data(for: request)
+            guard let http = response as? HTTPURLResponse else { return nil }
+            return HTTPFingerprintResponse(response: http, data: data)
         } catch {
             return nil
         }
@@ -283,5 +303,60 @@ private final class HTTPFingerprinter: NSObject, URLSessionDelegate {
         if let subject, !subject.isEmpty {
             entries["https.cert.cn"] = subject
         }
+    }
+
+    private func extractHTMLTitle(bodyData: Data?, response: HTTPURLResponse) -> String? {
+        guard let data = bodyData, !data.isEmpty else { return nil }
+        guard let contentType = response.value(forHTTPHeaderField: "Content-Type")?.lowercased() else { return nil }
+        guard contentType.contains("text/html") else { return nil }
+        let limit = min(data.count, 16_384)
+        guard let snippet = String(data: data.prefix(limit), encoding: .utf8) else { return nil }
+
+        let lower = snippet.lowercased()
+        guard let titleStart = lower.range(of: "<title") else { return nil }
+        guard let closingTag = lower.range(of: "</title>", range: titleStart.upperBound..<lower.endIndex) else { return nil }
+
+        let afterTag = snippet[titleStart.upperBound..<closingTag.lowerBound]
+        guard let start = afterTag.firstIndex(of: ">") else { return nil }
+        let titleText = afterTag[afterTag.index(after: start)...].trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleaned = titleText.replacingOccurrences(of: "\n", with: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+        return cleaned.isEmpty ? nil : cleaned
+    }
+
+    private func fetchFavicon(for target: FingerprintTarget, baseURL: URL, session: URLSession) async -> (hash: String, size: Int)? {
+        guard target.scheme == "http" || target.scheme == "https" else { return nil }
+        guard let faviconURL = buildFaviconURL(host: target.host, scheme: target.scheme, port: target.port) else { return nil }
+
+        var request = URLRequest(url: faviconURL, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: timeout)
+        request.setValue("UnifiedScanner/1.0", forHTTPHeaderField: "User-Agent")
+
+        do {
+            let (data, response) = try await session.data(for: request)
+            guard let http = response as? HTTPURLResponse else { return nil }
+            guard http.statusCode < 400, !data.isEmpty, data.count <= 131_072 else { return nil }
+            guard let hash = sha256Base64(data) else { return nil }
+            return (hash, data.count)
+        } catch {
+            return nil
+        }
+    }
+
+    private func buildFaviconURL(host: String, scheme: String, port: Int) -> URL? {
+        var components = URLComponents()
+        components.scheme = scheme
+        components.host = host
+        let defaultPort = (scheme == "https") ? 443 : 80
+        if port != defaultPort { components.port = port }
+        components.path = "/favicon.ico"
+        return components.url
+    }
+
+    private func sha256Base64(_ data: Data) -> String? {
+#if canImport(CryptoKit)
+        let digest = SHA256.hash(data: data)
+        return Data(digest).base64EncodedString()
+#else
+        return data.base64EncodedString()
+#endif
     }
 }
