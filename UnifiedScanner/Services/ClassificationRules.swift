@@ -326,7 +326,6 @@ struct VendorHostnameClassificationRule: ClassificationRule {
         let vendor = context.vendor
         let host = context.host
         let services = context.serviceTypes
-        let ports = context.ports
 
         if services.contains(.printer) || services.contains(.ipp) || host.contains("printer") {
             if ClassificationRuleHelpers.containsAny(vendor, ["hp", "canon", "epson", "brother"]) {
